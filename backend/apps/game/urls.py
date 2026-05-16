@@ -17,9 +17,19 @@ from .views import (
     InventoryItemUnequipView,
     InventoryView,
     LeaderboardView,
+    LoginView,
+    LogoutView,
+    MeView,
+    RegisterView,
 )
+from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
+    path("auth/register", RegisterView.as_view(), name="auth_register"),
+    path("auth/login", LoginView.as_view(), name="auth_login"),
+    path("auth/refresh", TokenRefreshView.as_view(), name="auth_refresh"),
+    path("auth/me", MeView.as_view(), name="auth_me"),
+    path("auth/logout", LogoutView.as_view(), name="auth_logout"),
     path("character-classes", CharacterClassListView.as_view(), name="character_classes"),
     path("characters", CharacterCreateView.as_view(), name="character_create"),
     path("characters/me", CharacterMeView.as_view(), name="character_me"),
@@ -37,4 +47,3 @@ urlpatterns = [
     path("inventory/items/<int:item_id>/unequip", InventoryItemUnequipView.as_view(), name="inventory_item_unequip"),
     path("leaderboard", LeaderboardView.as_view(), name="leaderboard"),
 ]
-

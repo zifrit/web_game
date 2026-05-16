@@ -277,6 +277,7 @@ class UserItemDetailSerializer(serializers.ModelSerializer):
 
     def get_can_equip(self, obj):
         character = self.context.get("character")
+        # Todo Такого метода нету.
         return bool(character and InventoryService.can_equip(obj, character))
 
     def get_media(self, obj):

@@ -19,6 +19,8 @@ coverage/
 
 media/
 staticfiles/
+celerybeat-schedule
+backend/celerybeat-schedule
 
 .idea/
 .vscode/

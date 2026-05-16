@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17.9
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-web_game}
       POSTGRES_USER: ${POSTGRES_USER:-web_game}
