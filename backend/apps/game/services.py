@@ -10,6 +10,7 @@ from django.db.models import Q
 from django.utils import timezone
 from rest_framework import serializers
 
+from .i18n import DEFAULT_LOCALE, message
 from .models import (
     Character,
     CharacterClass,
@@ -59,8 +60,12 @@ DEFAULT_RARITIES = {
 
 
 class GameConfigService:
+    """Сервис чтения игровых настроек с дефолтами и переопределениями из БД."""
+
     @staticmethod
     def get_config(key: str) -> dict[str, Any]:
+        """Возвращает активную настройку по ключу, объединяя БД с DEFAULT_CONFIGS."""
+
         value = DEFAULT_CONFIGS.get(key, {}).copy()
         db_config = GameConfig.objects.filter(key=key, is_active=True).first()
         if db_config and isinstance(db_config.value, dict):
@@ -69,8 +74,12 @@ class GameConfigService:
 
 
 class GameBalanceService:
+    """Сервис базового баланса: создание героя и параметры редкостей."""
+
     @staticmethod
     def create_character(user, name: str, character_class: CharacterClass) -> Character:
+        """Создаёт героя с начальными статами класса и кэширует его силу."""
+
         character = Character.objects.create(
             user=user,
             name=name,
@@ -88,6 +97,8 @@ class GameBalanceService:
 
     @staticmethod
     def rarity_config(rarity: str) -> dict[str, Any]:
+        """Возвращает параметры редкости из БД или встроенного набора по умолчанию."""
+
         db_config = RarityConfig.objects.filter(key=rarity, is_active=True).first()
         if db_config:
             return {
@@ -104,13 +115,19 @@ class GameBalanceService:
 
 
 class GameFormulaService:
+    """Сервис серверных игровых формул для опыта, силы, шансов и прочности."""
+
     @staticmethod
     def experience_required(level: int) -> int:
+        """Считает требуемый опыт для перехода с указанного уровня на следующий."""
+
         config = GameConfigService.get_config("experience_curve_config")
         return math.ceil(float(config["base"]) * (level ** float(config["exponent"])))
 
     @staticmethod
     def level_growth_stats(character: Character) -> dict[str, float]:
+        """Считает прирост характеристик героя от уровней и профиля роста класса."""
+
         profile = character.character_class.growth_profile or {}
         levels_gained = max(character.level - 1, 0)
         stats = {
@@ -130,6 +147,8 @@ class GameFormulaService:
 
     @classmethod
     def character_stats(cls, character: Character, include_equipment: bool = True) -> dict[str, float]:
+        """Собирает итоговые характеристики героя с уровнем, экипировкой и капами."""
+
         stats = {
             "health": float(character.base_health),
             "attack": float(character.base_attack),
@@ -154,30 +173,42 @@ class GameFormulaService:
 
     @staticmethod
     def power_from_stats(stats: dict[str, float]) -> float:
+        """Считает показатель силы по набору характеристик и весам формулы."""
+
         config = GameConfigService.get_config("power_formula_config")
         return round(sum(float(stats.get(key, 0)) * float(config.get(key, 0)) for key in STAT_KEYS), 2)
 
     @staticmethod
     def success_chance(character_power: float, required_power: float) -> float:
+        """Считает шанс успеха забега по силе героя и требуемой силе локации."""
+
         config = GameConfigService.get_config("success_chance_config")
         raw = float(config["base"]) + (character_power - required_power) * float(config["power_delta_multiplier"])
         return round(max(float(config["min"]), min(float(config["max"]), raw)), 2)
 
     @staticmethod
     def repair_cost(item: UserItem) -> int:
+        """Считает стоимость ремонта недостающей прочности предмета."""
+
         missing = max(item.durability_max - item.durability_current, 0)
         config = GameConfigService.get_config("repair_cost_config")
         return int(missing * int(config.get("copper_per_durability", 10)))
 
     @staticmethod
     def durability_loss(is_success: bool) -> int:
+        """Возвращает потерю прочности экипировки для успешного или провального забега."""
+
         config = GameConfigService.get_config("durability_loss_config")
         return int(config["success" if is_success else "failure"])
 
 
 class LootGenerationService:
+    """Сервис генерации предметных наград за успешные подземелья."""
+
     @staticmethod
     def _weighted_choice(chances: dict[str, float]) -> str:
+        """Выбирает ключ из словаря весов случайным взвешенным броском."""
+
         total = sum(float(value) for value in chances.values())
         roll = random.uniform(0, total)
         upto = 0.0
@@ -189,6 +220,8 @@ class LootGenerationService:
 
     @classmethod
     def generate_item_reward(cls, character: Character, location: DungeonLocation) -> dict[str, Any] | None:
+        """Генерирует черновик выпавшего предмета или None, если дропа нет."""
+
         if random.uniform(0, 100) > location.item_drop_chance:
             return None
 
@@ -232,6 +265,8 @@ class LootGenerationService:
 
 
 def item_allowed_for_character(item: ItemTemplate | UserItem, character: Character) -> bool:
+    """Проверяет, подходит ли предмет классу героя по типу оружия и ограничениям."""
+
     item_type = item.item_type
     required_class = WEAPON_CLASS_BY_TYPE.get(item_type)
     if required_class and required_class != character.character_class_id:
@@ -244,6 +279,8 @@ def item_allowed_for_character(item: ItemTemplate | UserItem, character: Charact
 
 @dataclass
 class ClaimResult:
+    """Результат получения наград за забег, включая уровни до и после."""
+
     run: DungeonRun
     claim: DungeonRunClaim
     items: list[UserItem]
@@ -252,26 +289,32 @@ class ClaimResult:
 
 
 class DungeonRunService:
+    """Сервис жизненного цикла забегов: старт, завершение, claim и durability."""
+
     @staticmethod
-    def _get_character(user) -> Character:
+    def _get_character(user, locale=DEFAULT_LOCALE) -> Character:
+        """Возвращает героя пользователя или выбрасывает локализованную ошибку."""
+
         try:
             return user.character
         except Character.DoesNotExist as exc:
-            raise serializers.ValidationError("User has no character.") from exc
+            raise serializers.ValidationError(message("no_character", locale)) from exc
 
     @classmethod
     @transaction.atomic
-    def start_run(cls, user, location_id: int) -> DungeonRun:
-        character = cls._get_character(user)
+    def start_run(cls, user, location_id: int, locale=DEFAULT_LOCALE) -> DungeonRun:
+        """Транзакционно запускает новый забег героя в выбранную локацию."""
+
+        character = cls._get_character(user, locale)
         character = Character.objects.select_for_update().select_related("character_class").get(pk=character.pk)
         if DungeonRun.objects.filter(character=character, status=DungeonRunStatus.IN_PROGRESS).exists():
-            raise serializers.ValidationError("Character already has an active dungeon run.")
+            raise serializers.ValidationError(message("active_run_exists", locale))
         if character.equipped_items.filter(durability_current=0).exists():
-            raise serializers.ValidationError("Broken equipped items block starting a new dungeon run.")
+            raise serializers.ValidationError(message("broken_items_block_run", locale))
         try:
             location = DungeonLocation.objects.get(pk=location_id, is_active=True)
         except DungeonLocation.DoesNotExist as exc:
-            raise serializers.ValidationError("Dungeon location not found.") from exc
+            raise serializers.ValidationError(message("dungeon_not_found", locale)) from exc
 
         power = GameFormulaService.character_stats(character)["power"]
         success_chance = GameFormulaService.success_chance(power, location.required_power)
@@ -287,6 +330,8 @@ class DungeonRunService:
 
     @classmethod
     def finalize_due_run(cls, run: DungeonRun, now=None) -> DungeonRun:
+        """Завершает забег, если его таймер истёк, и фиксирует результат."""
+
         now = now or timezone.now()
         if run.status != DungeonRunStatus.IN_PROGRESS or run.ends_at > now:
             return run
@@ -317,14 +362,16 @@ class DungeonRunService:
 
     @classmethod
     @transaction.atomic
-    def claim_run(cls, user, run_id: int) -> ClaimResult:
+    def claim_run(cls, user, run_id: int, locale=DEFAULT_LOCALE) -> ClaimResult:
+        """Идемпотентно начисляет награды за готовый забег и помечает его claimed."""
+
         run = (
             DungeonRun.objects.select_for_update()
             .select_related("character", "character__user", "character__character_class", "location")
             .get(pk=run_id)
         )
         if run.character.user_id != user.id:
-            raise serializers.ValidationError("Dungeon run does not belong to this user.")
+            raise serializers.ValidationError(message("run_not_owned", locale))
         cls.finalize_due_run(run)
 
         existing_claim = getattr(run, "claim", None)
@@ -338,7 +385,7 @@ class DungeonRunService:
             )
 
         if run.status not in (DungeonRunStatus.SUCCESS_WAITING_CLAIM, DungeonRunStatus.FAILED_WAITING_CLAIM):
-            raise serializers.ValidationError("Dungeon run is not ready to claim.")
+            raise serializers.ValidationError(message("run_not_ready", locale))
 
         user = type(user).objects.select_for_update().get(pk=user.pk)
         character = Character.objects.select_for_update().select_related("character_class").get(pk=run.character_id)
@@ -383,6 +430,8 @@ class DungeonRunService:
 
     @staticmethod
     def _apply_level_ups(character: Character) -> None:
+        """Повышает уровень героя, пока хватает опыта и не достигнут максимум."""
+
         config = GameConfigService.get_config("experience_curve_config")
         max_level = int(config.get("max_level", 20))
         while character.level < max_level:
@@ -394,6 +443,8 @@ class DungeonRunService:
 
     @staticmethod
     def _apply_durability_loss(character: Character, loss: int) -> None:
+        """Списывает прочность со всей экипировки героя после завершения забега."""
+
         if loss <= 0:
             return
         for item in character.equipped_items.select_for_update():
@@ -402,6 +453,8 @@ class DungeonRunService:
 
     @classmethod
     def complete_due_runs(cls, limit: int = 100) -> int:
+        """Находит просроченные активные забеги и завершает их пачкой."""
+
         due_ids = list(
             DungeonRun.objects.filter(status=DungeonRunStatus.IN_PROGRESS, ends_at__lte=timezone.now())
             .order_by("ends_at")
@@ -419,8 +472,24 @@ class DungeonRunService:
 
 
 class InventoryService:
+    """Сервис правил инвентаря, экипировки и ремонта предметов."""
+
+    @staticmethod
+    def can_equip(item: UserItem, character: Character) -> bool:
+        """Проверяет владение, прочность, слот и классовые ограничения предмета."""
+
+        if item.owner_user_id != character.user_id:
+            return False
+        if item.is_broken:
+            return False
+        if item.slot not in EQUIPMENT_SLOTS:
+            return False
+        return item_allowed_for_character(item, character)
+
     @staticmethod
     def equipment_summary(character: Character) -> dict[str, float]:
+        """Суммирует вклад несломанной экипировки в характеристики героя."""
+
         stats = {key: 0.0 for key in STAT_KEYS}
         for item in character.equipped_items.all():
             if item.is_broken:
@@ -433,6 +502,8 @@ class InventoryService:
 
     @staticmethod
     def repair_preview(user, item: UserItem) -> dict[str, Any]:
+        """Возвращает расчёт ремонта предмета без изменения баланса и прочности."""
+
         cost = GameFormulaService.repair_cost(item)
         missing = max(item.durability_max - item.durability_current, 0)
         return {
@@ -445,14 +516,16 @@ class InventoryService:
 
     @staticmethod
     @transaction.atomic
-    def repair(user, item_id: int) -> tuple[UserItem, int, int]:
+    def repair(user, item_id: int, locale=DEFAULT_LOCALE) -> tuple[UserItem, int, int]:
+        """Транзакционно ремонтирует предмет и списывает стоимость с пользователя."""
+
         item = UserItem.objects.select_for_update().get(pk=item_id, owner_user=user)
         user = type(user).objects.select_for_update().get(pk=user.pk)
         cost = GameFormulaService.repair_cost(item)
         if item.durability_current >= item.durability_max:
-            raise serializers.ValidationError("Item is already fully repaired.")
+            raise serializers.ValidationError(message("item_fully_repaired", locale))
         if user.money_copper < cost:
-            raise serializers.ValidationError("Not enough money to repair this item.")
+            raise serializers.ValidationError(message("not_enough_money_repair", locale))
         before = item.durability_current
         user.money_copper -= cost
         item.durability_current = item.durability_max
@@ -469,27 +542,31 @@ class InventoryService:
 
     @staticmethod
     @transaction.atomic
-    def equip(user, item_id: int) -> tuple[UserItem, float]:
-        character = DungeonRunService._get_character(user)
+    def equip(user, item_id: int, locale=DEFAULT_LOCALE) -> tuple[UserItem, float]:
+        """Транзакционно экипирует предмет, снимая прежний предмет из того же слота."""
+
+        character = DungeonRunService._get_character(user, locale)
         character = Character.objects.select_for_update().select_related("character_class").get(pk=character.pk)
         item = UserItem.objects.select_for_update().select_related("template").get(pk=item_id, owner_user=user)
         if item.is_broken:
-            raise serializers.ValidationError("Broken items cannot be equipped.")
+            raise serializers.ValidationError(message("broken_item_equip", locale))
         if not item_allowed_for_character(item, character):
-            raise serializers.ValidationError("This item is not allowed for the character class.")
+            raise serializers.ValidationError(message("class_not_allowed", locale))
 
         UserItem.objects.filter(equipped_character=character, slot=item.slot).exclude(pk=item.pk).update(equipped_character=None)
         item.equipped_character = character
         try:
             item.save(update_fields=["equipped_character", "updated_at"])
         except IntegrityError as exc:
-            raise serializers.ValidationError("Could not equip item in this slot.") from exc
+            raise serializers.ValidationError(message("equip_failed", locale)) from exc
         return item, GameFormulaService.character_stats(character)["power"]
 
     @staticmethod
     @transaction.atomic
-    def unequip(user, item_id: int) -> float:
-        character = DungeonRunService._get_character(user)
+    def unequip(user, item_id: int, locale=DEFAULT_LOCALE) -> float:
+        """Транзакционно снимает предмет с героя и возвращает новую силу героя."""
+
+        character = DungeonRunService._get_character(user, locale)
         item = UserItem.objects.select_for_update().get(pk=item_id, owner_user=user)
         if item.equipped_character_id == character.id:
             item.equipped_character = None

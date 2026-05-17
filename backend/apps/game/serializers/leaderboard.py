@@ -1,0 +1,30 @@
+from apps.game.i18n import DEFAULT_LOCALE
+from apps.game.models import Character
+
+from .common import localized_name, media_payload
+
+
+class LeaderboardItemSerializer:
+    """Рендер таблицы лидеров по уровню героя."""
+
+    @staticmethod
+    def render(items, my_character, locale=DEFAULT_LOCALE):
+        """Формирует топ героев и позицию текущего героя относительно топа."""
+
+        payload = [
+            {
+                "rank": index + 1,
+                "character_id": character.id,
+                "character_name": character.name,
+                "class": {"key": character.character_class_id, "name": localized_name(character.character_class, locale)},
+                "level": character.level,
+                "avatar": media_payload(character.avatar_media),
+            }
+            for index, character in enumerate(items)
+        ]
+        my_rank = None
+        if my_character:
+            better = Character.objects.filter(level__gt=my_character.level).count()
+            same_level_better = Character.objects.filter(level=my_character.level, experience__gt=my_character.experience).count()
+            my_rank = {"rank": better + same_level_better + 1, "character_id": my_character.id, "level": my_character.level}
+        return {"type": "level", "items": payload, "my_rank": my_rank}

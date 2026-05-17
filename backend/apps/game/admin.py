@@ -37,8 +37,8 @@ class UserAdmin(DjangoUserAdmin):
 
 @admin.register(MediaAsset)
 class MediaAssetAdmin(admin.ModelAdmin):
-    list_display = ("id", "original_url", "icon_url", "created_at")
-    search_fields = ("original_url", "large_url", "medium_url", "small_url", "icon_url")
+    list_display = ("id", "name", "original_url", "icon_url", "created_at")
+    search_fields = ("name", "original", "large", "medium", "small", "thumbnail", "icon")
 
 
 @admin.register(CharacterClass)

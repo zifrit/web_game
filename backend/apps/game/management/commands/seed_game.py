@@ -31,16 +31,17 @@ class Command(BaseCommand):
             )
 
         classes = [
-            ("warrior", "Воин", 120, 10, 8, 5, 3, {"critical_chance": 0.5, "evasion": 0}),
-            ("mage", "Маг", 80, 16, 3, 8, 4, {"critical_chance": 0.8, "evasion": 0}),
-            ("archer", "Лучник", 95, 12, 5, 12, 8, {"critical_chance": 0.5, "evasion": 0.5}),
-            ("assassin", "Ассассин", 75, 14, 3, 20, 15, {"critical_chance": 1, "evasion": 0.8}),
+            ("warrior", {"en": "Warrior", "ru": "Воин"}, 120, 10, 8, 5, 3, {"critical_chance": 0.5, "evasion": 0}),
+            ("mage", {"en": "Mage", "ru": "Маг"}, 80, 16, 3, 8, 4, {"critical_chance": 0.8, "evasion": 0}),
+            ("archer", {"en": "Archer", "ru": "Лучник"}, 95, 12, 5, 12, 8, {"critical_chance": 0.5, "evasion": 0.5}),
+            ("assassin", {"en": "Assassin", "ru": "Ассассин"}, 75, 14, 3, 20, 15, {"critical_chance": 1, "evasion": 0.8}),
         ]
-        for index, (key, name, hp, attack, defense, crit, evasion, special) in enumerate(classes):
+        for index, (key, names, hp, attack, defense, crit, evasion, special) in enumerate(classes):
             CharacterClass.objects.update_or_create(
                 key=key,
                 defaults={
-                    "name": name,
+                    "name": names["ru"],
+                    "name_i18n": names,
                     "start_health": hp,
                     "start_attack": attack,
                     "start_defense": defense,
@@ -53,17 +54,18 @@ class Command(BaseCommand):
             )
 
         rarities = [
-            ("common", "Обычный", 1.0, 1, 3, 1, 1),
-            ("uncommon", "Необычный", 1.25, 2, 5, 1, 2),
-            ("rare", "Редкий", 1.6, 4, 8, 2, 3),
-            ("epic", "Эпический", 2.2, 7, 10, 3, 3),
+            ("common", {"en": "Common", "ru": "Обычный"}, 1.0, 1, 3, 1, 1),
+            ("uncommon", {"en": "Uncommon", "ru": "Необычный"}, 1.25, 2, 5, 1, 2),
+            ("rare", {"en": "Rare", "ru": "Редкий"}, 1.6, 4, 8, 2, 3),
+            ("epic", {"en": "Epic", "ru": "Эпический"}, 2.2, 7, 10, 3, 3),
         ]
         for index, rarity in enumerate(rarities):
-            key, name, mult, min_level, max_level, min_stats, max_stats = rarity
+            key, names, mult, min_level, max_level, min_stats, max_stats = rarity
             RarityConfig.objects.update_or_create(
                 key=key,
                 defaults={
-                    "name": name,
+                    "name": names["ru"],
+                    "name_i18n": names,
                     "stat_multiplier": mult,
                     "min_item_level": min_level,
                     "max_item_level": max_level,
@@ -74,26 +76,36 @@ class Command(BaseCommand):
                 },
             )
 
-        for index, (key, name) in enumerate(
-            [("weapon", "Оружие"), ("helmet", "Шлем"), ("armor", "Броня"), ("boots", "Ботинки"), ("ring", "Кольцо")]
+        for index, (key, names) in enumerate(
+            [
+                ("weapon", {"en": "Weapon", "ru": "Оружие"}),
+                ("helmet", {"en": "Helmet", "ru": "Шлем"}),
+                ("armor", {"en": "Armor", "ru": "Броня"}),
+                ("boots", {"en": "Boots", "ru": "Ботинки"}),
+                ("ring", {"en": "Ring", "ru": "Кольцо"}),
+            ]
         ):
-            EquipmentSlotConfig.objects.update_or_create(key=key, defaults={"name": name, "sort_order": index, "is_active": True})
+            EquipmentSlotConfig.objects.update_or_create(
+                key=key,
+                defaults={"name": names["ru"], "name_i18n": names, "sort_order": index, "is_active": True},
+            )
 
         templates = [
-            ("Ржавый меч", "weapon", "sword", ["warrior"], {"attack": {"min": 3, "max": 6}, "defense": {"min": 1, "max": 2}}),
-            ("Треснувший посох", "weapon", "staff", ["mage"], {"attack": {"min": 4, "max": 8}, "critical_chance": {"min": 1, "max": 3}}),
-            ("Короткий лук", "weapon", "bow", ["archer"], {"attack": {"min": 3, "max": 7}, "evasion": {"min": 1, "max": 2}}),
-            ("Старый кинжал", "weapon", "dagger", ["assassin"], {"attack": {"min": 3, "max": 7}, "critical_chance": {"min": 1, "max": 4}}),
-            ("Потертый шлем", "helmet", "helmet", None, {"health": {"min": 5, "max": 12}, "defense": {"min": 1, "max": 3}}),
-            ("Кожаная броня", "armor", "armor", None, {"health": {"min": 8, "max": 18}, "defense": {"min": 2, "max": 5}}),
-            ("Дорожные ботинки", "boots", "boots", None, {"evasion": {"min": 1, "max": 3}, "defense": {"min": 1, "max": 2}}),
-            ("Медное кольцо", "ring", "ring", None, {"critical_chance": {"min": 1, "max": 3}, "health": {"min": 3, "max": 8}}),
+            ({"en": "Rusty Sword", "ru": "Ржавый меч"}, "weapon", "sword", ["warrior"], {"attack": {"min": 3, "max": 6}, "defense": {"min": 1, "max": 2}}),
+            ({"en": "Cracked Staff", "ru": "Треснувший посох"}, "weapon", "staff", ["mage"], {"attack": {"min": 4, "max": 8}, "critical_chance": {"min": 1, "max": 3}}),
+            ({"en": "Short Bow", "ru": "Короткий лук"}, "weapon", "bow", ["archer"], {"attack": {"min": 3, "max": 7}, "evasion": {"min": 1, "max": 2}}),
+            ({"en": "Old Dagger", "ru": "Старый кинжал"}, "weapon", "dagger", ["assassin"], {"attack": {"min": 3, "max": 7}, "critical_chance": {"min": 1, "max": 4}}),
+            ({"en": "Worn Helmet", "ru": "Потертый шлем"}, "helmet", "helmet", None, {"health": {"min": 5, "max": 12}, "defense": {"min": 1, "max": 3}}),
+            ({"en": "Leather Armor", "ru": "Кожаная броня"}, "armor", "armor", None, {"health": {"min": 8, "max": 18}, "defense": {"min": 2, "max": 5}}),
+            ({"en": "Travel Boots", "ru": "Дорожные ботинки"}, "boots", "boots", None, {"evasion": {"min": 1, "max": 3}, "defense": {"min": 1, "max": 2}}),
+            ({"en": "Copper Ring", "ru": "Медное кольцо"}, "ring", "ring", None, {"critical_chance": {"min": 1, "max": 3}, "health": {"min": 3, "max": 8}}),
         ]
         item_templates = []
-        for name, slot, item_type, allowed, stats in templates:
+        for names, slot, item_type, allowed, stats in templates:
             template, _ = ItemTemplate.objects.update_or_create(
-                name=name,
+                name=names["ru"],
                 defaults={
+                    "name_i18n": names,
                     "slot": slot,
                     "item_type": item_type,
                     "allowed_classes": allowed,
@@ -106,16 +118,18 @@ class Command(BaseCommand):
             item_templates.append(template)
 
         dungeons = [
-            ("Старый лес", "Безопасная стартовая локация.", 15, 50, 5, 8, 30, 60, 10, {"common": 90, "uncommon": 10, "rare": 0, "epic": 0}),
-            ("Заброшенная тропа", "Легкий риск и быстрый фарм.", 30, 70, 8, 14, 45, 90, 15, {"common": 70, "uncommon": 28, "rare": 2, "epic": 0}),
-            ("Сырая пещера", "Рискованный early dungeon.", 300, 100, 18, 35, 120, 220, 25, {"common": 45, "uncommon": 45, "rare": 9, "epic": 1}),
+            ({"en": "Old Forest", "ru": "Старый лес"}, {"en": "A safe starting location.", "ru": "Безопасная стартовая локация."}, 15, 50, 5, 8, 30, 60, 10, {"common": 90, "uncommon": 10, "rare": 0, "epic": 0}),
+            ({"en": "Abandoned Trail", "ru": "Заброшенная тропа"}, {"en": "Light risk and quick farming.", "ru": "Легкий риск и быстрый фарм."}, 30, 70, 8, 14, 45, 90, 15, {"common": 70, "uncommon": 28, "rare": 2, "epic": 0}),
+            ({"en": "Damp Cave", "ru": "Сырая пещера"}, {"en": "A risky early dungeon.", "ru": "Рискованный early dungeon."}, 300, 100, 18, 35, 120, 220, 25, {"common": 45, "uncommon": 45, "rare": 9, "epic": 1}),
         ]
         for index, data in enumerate(dungeons):
-            name, description, duration, power, exp_min, exp_max, money_min, money_max, drop, rarity = data
+            names, descriptions, duration, power, exp_min, exp_max, money_min, money_max, drop, rarity = data
             dungeon, _ = DungeonLocation.objects.update_or_create(
-                name=name,
+                name=names["ru"],
                 defaults={
-                    "description": description,
+                    "description": descriptions["ru"],
+                    "name_i18n": names,
+                    "description_i18n": descriptions,
                     "duration_seconds": duration,
                     "required_power": power,
                     "experience_min": exp_min,
