@@ -1,5 +1,8 @@
 import clsx from "clsx";
 
+/* ─────────────────────────────────────────
+   Button
+───────────────────────────────────────── */
 export function Button({
   className,
   variant = "primary",
@@ -10,15 +13,16 @@ export function Button({
   return (
     <button
       className={clsx(
-        "inline-flex min-h-11 items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2 rounded-[10px] px-4 py-2.5 text-sm font-semibold transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-45",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/50",
         variant === "primary" &&
-          "border-brass bg-brass text-ink shadow-lg shadow-black/20 hover:bg-[#efc76c]",
+          "bg-[#2563EB] text-white shadow-[0_0_12px_rgba(59,130,246,0.2)] hover:-translate-y-px hover:bg-[#3B82F6] hover:shadow-[0_0_18px_rgba(59,130,246,0.35)] disabled:translate-y-0",
         variant === "secondary" &&
-          "border-white/15 bg-white/10 text-parchment hover:bg-white/15",
+          "border border-[#3B82F6] bg-transparent text-[#60A5FA] hover:-translate-y-px hover:bg-[#3B82F6]/10 disabled:translate-y-0",
         variant === "danger" &&
-          "border-blood bg-blood text-white hover:bg-[#cf4b57]",
+          "bg-[#EF4444] text-white hover:-translate-y-px hover:bg-[#DC2626] disabled:translate-y-0",
         variant === "ghost" &&
-          "border-transparent bg-transparent text-parchment hover:bg-white/10",
+          "border border-transparent bg-transparent text-[#94A3B8] hover:bg-[#3B82F6]/10 hover:text-white",
         className
       )}
       {...props}
@@ -26,17 +30,23 @@ export function Button({
   );
 }
 
+/* ─────────────────────────────────────────
+   Panel
+───────────────────────────────────────── */
 export function Panel({
   children,
-  className
+  className,
+  glow,
 }: {
   children: React.ReactNode;
   className?: string;
+  glow?: boolean;
 }) {
   return (
     <section
       className={clsx(
-        "rounded-lg border border-white/12 bg-[#191713]/88 p-5 shadow-iron backdrop-blur",
+        "rounded-xl border border-[#2E3B5A] bg-[#1A2235] p-5 shadow-[0_4px_24px_rgba(0,0,0,0.4)]",
+        glow && "animate-pulse-glow",
         className
       )}
     >
@@ -45,58 +55,63 @@ export function Panel({
   );
 }
 
+/* ─────────────────────────────────────────
+   Field
+───────────────────────────────────────── */
 export function Field({
   label,
   error,
-  children
+  children,
 }: {
   label: string;
   error?: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="grid gap-2 text-sm text-parchment/82">
-      <span className="font-bold text-parchment">{label}</span>
+    <label className="grid gap-1.5 text-sm">
+      <span className="font-medium text-[#94A3B8]">{label}</span>
       {children}
-      {error ? <span className="text-sm text-[#ff9aa3]">{error}</span> : null}
+      {error ? (
+        <span className="text-xs text-[#EF4444]">{error}</span>
+      ) : null}
     </label>
   );
 }
 
 export const inputClassName =
-  "min-h-11 w-full rounded-md border border-white/15 bg-black/25 px-3 py-2 text-parchment placeholder:text-parchment/35 shadow-inner shadow-black/20 transition focus:border-brass";
+  "min-h-11 w-full rounded-lg border border-[#2E3B5A] bg-[#0B1020]/80 px-3 py-2.5 text-[#E2E8F0] placeholder:text-[#64748B] transition focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/15";
 
-export function EmptyState({
-  title,
-  body
-}: {
-  title: string;
-  body: string;
-}) {
+/* ─────────────────────────────────────────
+   EmptyState
+───────────────────────────────────────── */
+export function EmptyState({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-white/15 bg-black/20 p-6 text-center">
-      <p className="text-lg font-bold text-parchment">{title}</p>
-      <p className="mt-2 text-sm text-parchment/65">{body}</p>
+    <div className="rounded-xl border border-dashed border-[#2E3B5A] bg-[#111827]/60 p-6 text-center">
+      <p className="font-semibold text-[#E2E8F0]">{title}</p>
+      <p className="mt-1.5 text-sm text-[#64748B]">{body}</p>
     </div>
   );
 }
 
+/* ─────────────────────────────────────────
+   ErrorNotice
+───────────────────────────────────────── */
 export function ErrorNotice({ message }: { message?: string }) {
-  if (!message) {
-    return null;
-  }
-
+  if (!message) return null;
   return (
-    <div className="rounded-md border border-blood/60 bg-blood/15 px-4 py-3 text-sm text-[#ffd6d9]">
+    <div className="rounded-lg border border-[#EF4444]/40 bg-[#EF4444]/10 px-4 py-3 text-sm text-[#FCA5A5]">
       {message}
     </div>
   );
 }
 
+/* ─────────────────────────────────────────
+   StatBadge
+───────────────────────────────────────── */
 export function StatBadge({
   label,
   value,
-  tone = "plain"
+  tone = "plain",
 }: {
   label: string;
   value: string | number;
@@ -105,60 +120,123 @@ export function StatBadge({
   return (
     <div
       className={clsx(
-        "rounded-md border px-3 py-2",
-        tone === "plain" && "border-white/10 bg-white/[0.06]",
-        tone === "good" && "border-moss/50 bg-moss/20",
-        tone === "warn" && "border-ember/50 bg-ember/15"
+        "rounded-lg border px-3 py-2",
+        tone === "plain" && "border-[#2E3B5A] bg-[#202B44]",
+        tone === "good"  && "border-[#22C55E]/30 bg-[#22C55E]/10",
+        tone === "warn"  && "border-[#F59E0B]/30 bg-[#F59E0B]/10"
       )}
     >
-      <div className="text-xs uppercase text-parchment/55">{label}</div>
-      <div className="mt-1 text-lg font-bold text-parchment">{value}</div>
+      <div className="text-[11px] uppercase tracking-wider text-[#64748B]">{label}</div>
+      <div
+        className={clsx(
+          "mt-0.5 text-base font-bold",
+          tone === "plain" && "text-[#E2E8F0]",
+          tone === "good"  && "text-[#22C55E]",
+          tone === "warn"  && "text-[#F59E0B]"
+        )}
+      >
+        {value}
+      </div>
     </div>
   );
 }
 
+/* ─────────────────────────────────────────
+   LoadingLine
+───────────────────────────────────────── */
 export function LoadingLine({ label = "Loading" }: { label?: string }) {
   return (
-    <div className="flex items-center gap-3 text-sm text-parchment/65">
-      <span className="h-2 w-2 animate-pulse rounded-full bg-brass" />
+    <div className="flex items-center gap-3 text-sm text-[#64748B]">
+      <span className="h-2 w-2 animate-pulse rounded-full bg-[#3B82F6]" />
       {label}
     </div>
   );
 }
 
+/* ─────────────────────────────────────────
+   ItemGlyph — rarity-aware item icon cell
+───────────────────────────────────────── */
+const rarityBorder: Record<string, string> = {
+  common:   "border-[#9CA3AF]/40",
+  uncommon: "border-[#22C55E]/50 shadow-[0_0_8px_rgba(34,197,94,0.2)]",
+  rare:     "border-[#3B82F6]/50 shadow-[0_0_8px_rgba(59,130,246,0.25)]",
+  epic:     "border-[#A855F7]/50 shadow-[0_0_10px_rgba(168,85,247,0.3)]",
+};
+
+const rarityText: Record<string, string> = {
+  common:   "text-[#9CA3AF]",
+  uncommon: "text-[#22C55E]",
+  rare:     "text-[#3B82F6]",
+  epic:     "text-[#A855F7]",
+};
+
 export function ItemGlyph({
   src,
   rarity,
   broken,
-  size = "md"
+  size = "md",
 }: {
   src?: string;
   rarity: string;
   broken?: boolean;
   size?: "sm" | "md" | "lg";
 }) {
-  const initials = rarity.slice(0, 1).toUpperCase();
+  const borderClass = broken
+    ? "border-[#EF4444]/60"
+    : (rarityBorder[rarity.toLowerCase()] ?? rarityBorder.common);
 
   return (
     <div
       className={clsx(
-        "grid shrink-0 place-items-center overflow-hidden rounded-md border bg-black/35",
+        "relative grid shrink-0 place-items-center overflow-hidden rounded-lg border bg-[#0B1020]/60",
         size === "sm" && "h-10 w-10",
         size === "md" && "h-14 w-14",
         size === "lg" && "h-24 w-24",
-        broken ? "border-blood/70" : "border-brass/45"
+        borderClass,
+        broken && "opacity-70"
       )}
     >
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img alt="" className="h-full w-full object-cover" src={src} />
       ) : (
-        <span className="text-xl font-bold text-brass">{initials}</span>
+        <span
+          className={clsx(
+            "text-xl font-bold",
+            rarityText[rarity.toLowerCase()] ?? rarityText.common
+          )}
+        >
+          {rarity.slice(0, 1).toUpperCase()}
+        </span>
+      )}
+      {broken && (
+        <span className="absolute bottom-0.5 right-0.5 text-[10px] leading-none text-[#EF4444]">
+          X
+        </span>
       )}
     </div>
   );
 }
 
+/* ─────────────────────────────────────────
+   RarityLabel
+───────────────────────────────────────── */
+export function RarityLabel({ rarity }: { rarity: string }) {
+  return (
+    <span
+      className={clsx(
+        "text-xs font-bold uppercase tracking-widest",
+        rarityText[rarity.toLowerCase()] ?? rarityText.common
+      )}
+    >
+      {rarity}
+    </span>
+  );
+}
+
+/* ─────────────────────────────────────────
+   Helpers
+───────────────────────────────────────── */
 export function formatCopper(value?: number) {
   return `${new Intl.NumberFormat("en-US").format(value ?? 0)} cp`;
 }
@@ -166,11 +244,7 @@ export function formatCopper(value?: number) {
 export function formatDuration(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const rest = seconds % 60;
-
-  if (minutes <= 0) {
-    return `${rest}s`;
-  }
-
+  if (minutes <= 0) return `${rest}s`;
   return `${minutes}m ${rest.toString().padStart(2, "0")}s`;
 }
 

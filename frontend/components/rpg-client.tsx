@@ -1,14 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Backpack,
-  Crown,
-  DoorOpen,
-  LogOut,
-  Shield,
-  Swords
-} from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AuthScreen } from "@/components/screens/auth-screen";
 import { CharacterScreen } from "@/components/screens/character-screen";
@@ -16,25 +9,275 @@ import { CreateCharacterScreen } from "@/components/screens/create-character-scr
 import { DungeonsScreen } from "@/components/screens/dungeons-screen";
 import { InventoryScreen } from "@/components/screens/inventory-screen";
 import { LeaderboardScreen } from "@/components/screens/leaderboard-screen";
-import { Button, ErrorNotice, LoadingLine, formatCopper } from "@/components/ui";
+import { SettingsScreen } from "@/components/screens/settings-screen";
+import { LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
-import { useSession } from "@/components/providers";
+import { useI18n, useSession } from "@/components/providers";
+import { formatCopper, type TranslationKey } from "@/lib/i18n";
 
-type Tab = "character" | "dungeons" | "inventory" | "leaderboard";
+type Tab = "character" | "dungeons" | "inventory" | "leaderboard" | "settings";
 
-const tabs: Array<{
-  key: Tab;
-  label: string;
-  icon: React.ComponentType<{ size?: number }>;
-}> = [
-  { key: "character", label: "Character", icon: Shield },
-  { key: "dungeons", label: "Dungeons", icon: DoorOpen },
-  { key: "inventory", label: "Inventory", icon: Backpack },
-  { key: "leaderboard", label: "Leaderboard", icon: Crown }
+/* ── nav structure matching the HTML prototype ── */
+const ADVENTURE_NAV: Array<{ key: Tab; labelKey: "nav.character" | "nav.dungeons"; glyph: string }> = [
+  { key: "character",   labelKey: "nav.character", glyph: "✦" },
+  { key: "dungeons",    labelKey: "nav.dungeons",  glyph: "⌬" },
 ];
 
+const HERO_NAV: Array<{ key: Tab; labelKey: "nav.inventory" | "nav.leaderboard" | "nav.settings"; glyph: string }> = [
+  { key: "inventory",   labelKey: "nav.inventory",   glyph: "◊" },
+  { key: "leaderboard", labelKey: "nav.leaderboard", glyph: "☰" },
+  { key: "settings",    labelKey: "nav.settings",    glyph: "⚙" },
+];
+
+const PAGE_META: Record<Tab, { sectionKey: TranslationKey; titleKey: TranslationKey }> = {
+  character:   { sectionKey: "page.character.section",    titleKey: "page.character.title" },
+  dungeons:    { sectionKey: "page.dungeons.section",     titleKey: "page.dungeons.title"  },
+  inventory:   { sectionKey: "page.inventory.section",    titleKey: "page.inventory.title" },
+  leaderboard: { sectionKey: "page.leaderboard.section",  titleKey: "page.leaderboard.title" },
+  settings:    { sectionKey: "page.settings.section",     titleKey: "page.settings.title" },
+};
+
+/* ─── Sidebar ─── */
+function Sidebar({
+  tab,
+  setTab,
+  characterName,
+  characterClass,
+  characterLevel,
+  onLogout,
+  t,
+}: {
+  tab: Tab;
+  setTab: (t: Tab) => void;
+  characterName?: string;
+  characterClass?: string;
+  characterLevel?: number;
+  onLogout: () => void;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  return (
+    <aside style={{
+      background: "linear-gradient(180deg, #111827, #0B1020)",
+      borderRight: "1px solid #2E3B5A",
+      padding: "28px 18px",
+      position: "sticky",
+      top: 0,
+      height: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      gap: 4,
+      width: 240,
+      flexShrink: 0,
+      overflowY: "auto",
+    }}>
+      {/* Brand */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "0 6px 22px", borderBottom: "1px solid #243150", marginBottom: 18,
+      }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+          background: "linear-gradient(135deg, #3B82F6, #2563EB)",
+          boxShadow: "inset 0 -10px 16px rgba(15,23,42,0.6), 0 0 24px rgba(59,130,246,0.35)",
+          position: "relative",
+        }}>
+          <div style={{
+            position: "absolute", inset: 6, border: "1px solid rgba(15,23,42,0.7)", borderRadius: 4,
+          }} />
+        </div>
+        <div>
+          <div style={{
+            fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
+            fontSize: 22, fontWeight: 600, letterSpacing: "0.02em",
+          }}>Ashreach</div>
+        </div>
+      </div>
+
+      {/* Adventure section */}
+      <div style={{
+        fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+        fontSize: 10, letterSpacing: "0.20em", textTransform: "uppercase",
+        color: "#64748B", padding: "18px 12px 6px",
+      }}>{t("nav.adventure")}</div>
+
+      {ADVENTURE_NAV.map((item) => (
+        <button
+          key={item.key}
+          onClick={() => setTab(item.key)}
+          className={`nav-item ${tab === item.key ? "active" : ""}`}
+        >
+          <span style={{
+            width: 18, textAlign: "center",
+            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+            fontSize: 13, color: tab === item.key ? "#60A5FA" : "#64748B",
+          }}>{item.glyph}</span>
+          <span>{t(item.labelKey)}</span>
+        </button>
+      ))}
+
+      {/* Hero section */}
+      <div style={{
+        fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+        fontSize: 10, letterSpacing: "0.20em", textTransform: "uppercase",
+        color: "#64748B", padding: "18px 12px 6px",
+      }}>{t("nav.hero")}</div>
+
+      {HERO_NAV.map((item) => (
+        <button
+          key={item.key}
+          onClick={() => setTab(item.key)}
+          className={`nav-item ${tab === item.key ? "active" : ""}`}
+        >
+          <span style={{
+            width: 18, textAlign: "center",
+            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+            fontSize: 13, color: tab === item.key ? "#60A5FA" : "#64748B",
+          }}>{item.glyph}</span>
+          <span>{t(item.labelKey)}</span>
+        </button>
+      ))}
+
+      {/* Footer */}
+      <div style={{
+        marginTop: "auto", paddingTop: 18, borderTop: "1px solid #243150",
+        display: "flex", flexDirection: "column", gap: 12,
+      }}>
+        {characterName && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 4, flexShrink: 0,
+              background: "repeating-linear-gradient(45deg, #202B44 0 6px, #1A2235 6px 12px)",
+              border: "1px solid #2E3B5A",
+            }} />
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{
+                fontSize: 13, fontWeight: 500,
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                color: "#E5E7EB",
+              }}>{characterName}</div>
+              <div style={{
+                fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                fontSize: 10, color: "#64748B", letterSpacing: "0.12em", textTransform: "uppercase",
+              }}>
+                {characterClass ?? "—"} · {t("common.levelShort")} {characterLevel ?? "—"}
+              </div>
+            </div>
+            <button
+              onClick={onLogout}
+              style={{
+                background: "transparent", border: "none", cursor: "pointer",
+                color: "#64748B", padding: "4px", borderRadius: 4, display: "flex",
+              }}
+              title="Logout"
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
+        )}
+        <div style={{
+          fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+          fontSize: 10, color: "#64748B", letterSpacing: "0.18em", textTransform: "uppercase",
+          padding: "0 2px",
+        }}>v0.1 — MVP</div>
+      </div>
+    </aside>
+  );
+}
+
+/* ─── Mobile nav (bottom bar on small screens) ─── */
+function MobileNav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
+  const { t } = useI18n();
+  const all = [...ADVENTURE_NAV, ...HERO_NAV];
+  return (
+    <nav style={{
+      display: "grid",
+      gridTemplateColumns: `repeat(${all.length}, 1fr)`,
+      borderBottom: "1px solid #2E3B5A",
+      background: "#0D1525",
+    }}>
+      {all.map((item) => (
+        <button
+          key={item.key}
+          onClick={() => setTab(item.key)}
+          style={{
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+            padding: "10px 4px",
+            fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em",
+            color: tab === item.key ? "#60A5FA" : "#4B6AA3",
+            background: "transparent", border: "none", cursor: "pointer",
+            borderBottom: tab === item.key ? "2px solid #3B82F6" : "2px solid transparent",
+            transition: "all 150ms ease",
+          }}
+        >
+          <span style={{ fontSize: 16 }}>{item.glyph}</span>
+          {t(item.labelKey)}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+/* ─── Topbar ─── */
+function Topbar({ meta, title, level, gold }: {
+  meta: { section: string };
+  title: string;
+  level?: number;
+  gold?: number;
+}) {
+  const { locale, t } = useI18n();
+  return (
+    <header style={{
+      display: "flex", alignItems: "flex-end", justifyContent: "space-between",
+      borderBottom: "1px solid #2E3B5A", background: "#0B1020",
+      padding: "20px 36px 20px",
+      flexShrink: 0,
+    }}>
+      <div>
+        <div style={{
+          fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+          fontSize: 11, letterSpacing: "0.20em", textTransform: "uppercase",
+          color: "#64748B", marginBottom: 4,
+        }}>{meta.section}</div>
+        <h1 style={{
+          fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
+          fontWeight: 600, fontSize: 28, margin: 0, letterSpacing: "0.04em", color: "#F1F5F9",
+        }}>{title}</h1>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        {level !== undefined && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "8px 14px", borderRadius: 10,
+            background: "#1A2235", border: "1px solid #2E3B5A",
+            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", fontSize: 12,
+          }}>
+            <span style={{ color: "#64748B", letterSpacing: "0.12em", textTransform: "uppercase", fontSize: 10 }}>{t("common.levelShort")}</span>
+            <span style={{ color: "#F1F5F9", fontWeight: 600 }}>{level}</span>
+          </div>
+        )}
+        {gold !== undefined && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "8px 14px", borderRadius: 10,
+            background: "#1A2235", border: "1px solid #2E3B5A",
+            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", fontSize: 12,
+          }}>
+            <span style={{ color: "#64748B", letterSpacing: "0.12em", textTransform: "uppercase", fontSize: 10 }}>{t("common.gold")}</span>
+            <span style={{ color: "#F59E0B", fontWeight: 600 }}>{formatCopper(gold, locale)}</span>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}
+
+/* ═══════════════════════════════════════
+   Main RpgClient
+═══════════════════════════════════════ */
 export function RpgClient() {
   const { accessToken, user, isBooting, logout, setUser } = useSession();
+  const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("character");
   const queryClient = useQueryClient();
 
@@ -42,117 +285,101 @@ export function RpgClient() {
     queryKey: ["me"],
     queryFn: api.me,
     enabled: Boolean(accessToken),
-    staleTime: 10_000
+    staleTime: 10_000,
+  });
+
+  const characterQuery = useQuery({
+    queryKey: ["character"],
+    queryFn: api.character,
+    enabled: Boolean(accessToken) && Boolean(meQuery.data?.has_character),
+    staleTime: 30_000,
   });
 
   const activeUser = meQuery.data ?? user;
 
   useEffect(() => {
-    if (meQuery.data) {
-      setUser(meQuery.data);
-    }
+    if (meQuery.data) setUser(meQuery.data);
   }, [meQuery.data, setUser]);
 
+  /* ── Loading / auth gates ── */
   if (isBooting) {
     return (
-      <main className="rpg-shell grid min-h-screen place-items-center p-6">
-        <LoadingLine label="Opening the account ledger" />
+      <main style={{ display: "grid", minHeight: "100vh", placeItems: "center", padding: 24 }}>
+        <LoadingLine label={t("common.loading")} />
       </main>
     );
   }
-
-  if (!accessToken) {
-    return <AuthScreen />;
-  }
-
+  if (!accessToken) return <AuthScreen />;
   if (meQuery.isLoading && !activeUser) {
     return (
-      <main className="rpg-shell grid min-h-screen place-items-center p-6">
-        <LoadingLine label="Reading hero records" />
+      <main style={{ display: "grid", minHeight: "100vh", placeItems: "center", padding: 24 }}>
+        <LoadingLine label={t("character.loadingHero")} />
       </main>
     );
   }
+  if (!activeUser?.has_character) return <CreateCharacterScreen />;
 
-  if (meQuery.error) {
-    return (
-      <main className="rpg-shell grid min-h-screen place-items-center p-6">
-        <div className="max-w-md space-y-4">
-          <ErrorNotice message={(meQuery.error as Error).message} />
-          <Button onClick={() => void logout()} variant="secondary">
-            Return to login
-          </Button>
-        </div>
-      </main>
-    );
-  }
+  const charLevel = characterQuery.data?.level;
+  const gold = activeUser.money_copper ?? 0;
+  const pageMeta = PAGE_META[tab];
+  const meta = { section: t(pageMeta.sectionKey) };
+  const pageTitle = tab === "character" && characterQuery.data
+    ? characterQuery.data.name
+    : t(pageMeta.titleKey);
 
-  if (!activeUser?.has_character) {
-    return <CreateCharacterScreen />;
-  }
+  const handleLogout = () => {
+    queryClient.clear();
+    void logout();
+  };
 
   return (
-    <main className="rpg-shell min-h-screen px-4 py-5 sm:px-6 lg:px-8">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
-        <header className="flex flex-col gap-4 rounded-lg border border-white/12 bg-black/30 p-4 shadow-iron backdrop-blur md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="flex items-center gap-3 text-brass">
-              <Swords size={22} />
-              <span className="text-sm font-bold uppercase tracking-normal">
-                Browser Async RPG
-              </span>
-            </div>
-            <h1 className="mt-2 text-3xl font-black text-parchment">
-              Expedition Desk
-            </h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="rounded-md border border-white/12 bg-white/[0.06] px-4 py-2">
-              <div className="text-xs text-parchment/55">{activeUser.email}</div>
-              <div className="font-bold text-parchment">
-                {formatCopper(activeUser.money_copper)}
-              </div>
-            </div>
-            <Button
-              onClick={() => {
-                queryClient.clear();
-                void logout();
-              }}
-              variant="secondary"
-            >
-              <LogOut size={17} />
-              Logout
-            </Button>
-          </div>
-        </header>
+    <div style={{ display: "flex", minHeight: "100vh" }}>
 
-        <nav className="grid grid-cols-2 gap-2 rounded-lg border border-white/10 bg-black/20 p-2 md:grid-cols-4">
-          {tabs.map((item) => {
-            const Icon = item.icon;
-            const selected = tab === item.key;
-
-            return (
-              <button
-                className={`flex min-h-12 items-center justify-center gap-2 rounded-md border px-3 text-sm font-bold transition ${
-                  selected
-                    ? "border-brass bg-brass text-ink"
-                    : "border-white/10 bg-white/[0.04] text-parchment hover:bg-white/10"
-                }`}
-                key={item.key}
-                onClick={() => setTab(item.key)}
-                type="button"
-              >
-                <Icon size={17} />
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
-
-        {tab === "character" ? <CharacterScreen /> : null}
-        {tab === "dungeons" ? <DungeonsScreen /> : null}
-        {tab === "inventory" ? <InventoryScreen /> : null}
-        {tab === "leaderboard" ? <LeaderboardScreen /> : null}
+      {/* ─── Sidebar (desktop) ─── */}
+      <div className="hidden lg:block">
+        <Sidebar
+          tab={tab}
+          setTab={setTab}
+          characterName={characterQuery.data?.name}
+          characterClass={characterQuery.data?.class?.name}
+          characterLevel={characterQuery.data?.level}
+          onLogout={handleLogout}
+          t={t}
+        />
       </div>
-    </main>
+
+      {/* ─── Main area ─── */}
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
+
+        {/* Top header */}
+        <Topbar
+          meta={meta}
+          title={pageTitle}
+          level={charLevel}
+          gold={gold}
+        />
+
+        {/* Mobile nav */}
+        <div className="lg:hidden">
+          <MobileNav tab={tab} setTab={setTab} />
+        </div>
+
+        {/* Page content */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "28px 36px 60px" }}>
+          <div style={{ maxWidth: 1400, width: "100%", margin: "0 auto" }} className="animate-fade-in">
+            {tab === "character"   && (
+              <CharacterScreen
+                onOpenDungeons={() => setTab("dungeons")}
+                onOpenInventory={() => setTab("inventory")}
+              />
+            )}
+            {tab === "dungeons"    && <DungeonsScreen />}
+            {tab === "inventory"   && <InventoryScreen />}
+            {tab === "leaderboard" && <LeaderboardScreen />}
+            {tab === "settings"    && <SettingsScreen />}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

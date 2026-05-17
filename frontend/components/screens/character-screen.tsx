@@ -1,158 +1,723 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { Activity, BadgeInfo, ShieldCheck } from "lucide-react";
-import {
-  EmptyState,
-  ErrorNotice,
-  ItemGlyph,
-  LoadingLine,
-  Panel,
-  StatBadge,
-  formatStatName
-} from "@/components/ui";
+import { useEffect, useState, type DragEvent } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useI18n } from "@/components/providers";
+import { ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
-import type { EquipmentSlot } from "@/lib/types";
+import { formatDuration, type Locale, type TranslationKey } from "@/lib/i18n";
+import type { EquipmentSlot, InventoryCard } from "@/lib/types";
 
-const equipmentSlots: EquipmentSlot[] = [
-  "weapon",
-  "helmet",
-  "armor",
-  "boots",
-  "ring"
+/* ── Rarity helpers ── */
+const RARITY_COLOR: Record<string, string> = {
+  common:   "#9CA3AF",
+  uncommon: "#22C55E",
+  rare:     "#3B82F6",
+  epic:     "#A855F7",
+  legendary:"#F59E0B",
+};
+const RARITY_GLOW: Record<string, string> = {
+  common:   "rgba(156,163,175,0.25)",
+  uncommon: "rgba(34,197,94,0.30)",
+  rare:     "rgba(59,130,246,0.35)",
+  epic:     "rgba(168,85,247,0.35)",
+  legendary:"rgba(245,158,11,0.35)",
+};
+function rc(rarity?: string) { return RARITY_COLOR[(rarity ?? "common").toLowerCase()] ?? RARITY_COLOR.common; }
+function rg(rarity?: string) { return RARITY_GLOW[(rarity ?? "common").toLowerCase()]  ?? RARITY_GLOW.common;  }
+
+const EQUIPMENT_SLOTS: Array<{
+  slot: EquipmentSlot;
+  label: TranslationKey;
+  glyph: string;
+}> = [
+  { slot: "weapon", label: "slot.weapon", glyph: "W" },
+  { slot: "helmet", label: "slot.helmet", glyph: "H" },
+  { slot: "armor", label: "slot.armor", glyph: "A" },
+  { slot: "boots", label: "slot.boots", glyph: "B" },
+  { slot: "ring", label: "slot.ring", glyph: "R" },
 ];
+const INVENTORY_PAGE_SIZE = 24;
 
-export function CharacterScreen() {
-  const characterQuery = useQuery({
-    queryKey: ["character"],
-    queryFn: api.character
+type DragState = {
+  item: InventoryCard;
+  source: "inventory" | "equipment";
+};
+
+/* ── Equipment Slot Cell ── */
+function SlotCell({
+  label,
+  glyph,
+  rarity,
+  broken,
+  canDrop,
+  dropActive,
+  draggable,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}: {
+  label: string;
+  glyph: string;
+  rarity?: string;
+  broken?: boolean;
+  canDrop?: boolean;
+  dropActive?: boolean;
+  draggable?: boolean;
+  onDragStart?: (event: DragEvent<HTMLDivElement>) => void;
+  onDragEnd?: () => void;
+  onDragOver?: (event: DragEvent<HTMLDivElement>) => void;
+  onDragLeave?: () => void;
+  onDrop?: (event: DragEvent<HTMLDivElement>) => void;
+}) {
+  const color   = rarity ? rc(rarity) : undefined;
+  const hasItem = Boolean(rarity);
+  const durPct  = 0.78; // placeholder until backend sends durability per slot
+
+  return (
+    <div
+      className={`slot${draggable ? " draggable" : ""}${dropActive ? (canDrop ? " drop-ok" : " drop-blocked") : ""}`}
+      draggable={draggable}
+      onDragEnd={onDragEnd}
+      onDragLeave={onDragLeave}
+      onDragOver={onDragOver}
+      onDragStart={onDragStart}
+      onDrop={onDrop}
+      style={hasItem ? {
+        borderColor: color + "80",
+        boxShadow: `0 0 14px ${rg(rarity)}`,
+      } : {}}
+    >
+      {hasItem && (
+        <>
+          <div className="slot-rare" style={{ background: color }} />
+          <div className="slot-dur">
+            <i style={{ width: `${durPct * 100}%`, background: durPct < 0.20 ? "var(--blood)" : durPct < 0.45 ? "var(--warning)" : "var(--moss)" }} />
+          </div>
+        </>
+      )}
+      <span className="slot-glyph" style={{ color: hasItem ? (color ?? "var(--text)") : "var(--text-mute)" }}>
+        {glyph}
+      </span>
+      <span className="slot-name">{label}</span>
+      {broken && (
+        <div style={{
+          position: "absolute", inset: 0, background: "rgba(239,68,68,0.12)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          borderRadius: 10,
+        }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: "#EF4444" }}>!</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Inventory mini cell ── */
+function InvCell({
+  item,
+  onDragStart,
+  onDragEnd,
+}: {
+  item?: InventoryCard;
+  onDragStart?: (item: InventoryCard, event: DragEvent<HTMLDivElement>) => void;
+  onDragEnd?: () => void;
+}) {
+  const rarity = item?.rarity;
+  const broken = item?.is_broken;
+  const color   = rarity ? rc(rarity) : undefined;
+  const hasItem = Boolean(rarity);
+  return (
+    <div
+      className={`inv-cell${hasItem ? "" : " empty"}${hasItem && !broken ? " draggable" : ""}`}
+      draggable={Boolean(item && !broken)}
+      onDragEnd={onDragEnd}
+      onDragStart={item && !broken ? (event) => onDragStart?.(item, event) : undefined}
+      style={hasItem ? { borderColor: color, boxShadow: `inset 0 0 14px ${rg(rarity)}` } : {}}
+      title={item ? `${item.slot} item #${item.id}` : undefined}
+    >
+      {hasItem && <div className="inv-icon" />}
+      {hasItem && broken && <div className="broken-tag">!</div>}
+      {hasItem && (
+        <div className="inv-dur">
+          <i style={{ width: "78%", background: "var(--success)" }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Quick expedition row ── */
+function QuickDungeonRow({
+  dungeon, canRun, onRun, isPending, locale, runLabel,
+}: {
+  dungeon: { id: number; name: string; required_power: number; duration_seconds: number; item_drop_chance: number; rewards_preview?: { experience?: { min: number; max: number } } };
+  canRun: boolean;
+  onRun: (id: number) => void;
+  isPending: boolean;
+  locale: Locale;
+  runLabel: string;
+}) {
+  // Derive a tier (1–4) from required_power for the artwork gradient
+  const tier = dungeon.required_power <= 50 ? 1 : dungeon.required_power <= 150 ? 2 : dungeon.required_power <= 300 ? 3 : 4;
+  const artGradients: Record<number, string> = {
+    1: "linear-gradient(135deg, rgba(34,197,94,0.30), var(--bg-2))",
+    2: "linear-gradient(135deg, rgba(59,130,246,0.30), var(--bg-2))",
+    3: "linear-gradient(135deg, rgba(168,85,247,0.32), var(--bg-2))",
+    4: "linear-gradient(135deg, rgba(245,158,11,0.35), var(--bg-2))",
+  };
+
+  const durLabel = formatDuration(dungeon.duration_seconds, locale);
+
+  return (
+    <div className="quick-d" onClick={() => canRun && !isPending && onRun(dungeon.id)}>
+      <div className="quick-d-art" style={{ background: artGradients[tier] }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
+          fontSize: 15, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase",
+          color: "var(--bone)",
+        }}>{dungeon.name}</div>
+        <div className="mono" style={{ fontSize: 11, color: "var(--text-mute)", marginTop: 4 }}>
+          PWR {dungeon.required_power}+ · {durLabel} · {dungeon.rewards_preview?.experience?.max ?? "?"} XP · Loot {dungeon.item_drop_chance}%
+        </div>
+      </div>
+      <button
+        className="btn btn-primary"
+        disabled={!canRun || isPending}
+        style={{ padding: "8px 14px", fontSize: 13 }}
+        onClick={(e) => { e.stopPropagation(); if (canRun && !isPending) onRun(dungeon.id); }}
+      >
+        {isPending ? "…" : runLabel}
+      </button>
+    </div>
+  );
+}
+
+/* ── Bar block ── */
+function BarBlock({ label, cur, max, kind }: { label: string; cur: number; max: number; kind: "xp" | "hp" }) {
+  const pct = Math.min(1, cur / Math.max(1, max));
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6, gap: 8 }}>
+        <span className="mono" style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-mute)", whiteSpace: "nowrap" }}>
+          {label}
+        </span>
+        <span className="mono" style={{ fontSize: 11, color: "var(--bone)", whiteSpace: "nowrap" }}>
+          {cur} / {max}
+        </span>
+      </div>
+      <div className={`bar ${kind}`} style={{ height: 8 }}>
+        <i style={{ width: `${pct * 100}%` }} />
+      </div>
+    </div>
+  );
+}
+
+/* ── Active expedition strip ── */
+function ActiveExpeditionStrip({ run }: {
+  run: NonNullable<Awaited<ReturnType<typeof api.currentRun>>>;
+}) {
+  const queryClient = useQueryClient();
+  const { t } = useI18n();
+  const [localNow, setLocalNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (run.status !== "IN_PROGRESS") return;
+    const t = window.setInterval(() => setLocalNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [run.status]);
+
+  const claimMut = useMutation({
+    mutationFn: (id: number) => api.claimRun(id),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["current-run"] }),
+        queryClient.invalidateQueries({ queryKey: ["character"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+        queryClient.invalidateQueries({ queryKey: ["me"] }),
+      ]);
+    },
+  });
+
+  const waitingClaim = run.status === "SUCCESS_WAITING_CLAIM" || run.status === "FAILED_WAITING_CLAIM";
+  const inProgress   = run.status === "IN_PROGRESS";
+
+  let remaining  = 0;
+  let totalSecs  = 1;
+  let progress   = 0;
+
+  if (inProgress && run.ends_at) {
+    totalSecs = run.started_at
+      ? Math.max(1, Math.ceil((new Date(run.ends_at).getTime() - new Date(run.started_at).getTime()) / 1000))
+      : (run.remaining_seconds ?? 60);
+    remaining = Math.max(0, Math.ceil((new Date(run.ends_at).getTime() - localNow) / 1000));
+    progress  = Math.min(1, (totalSecs - remaining) / totalSecs);
+  } else if (waitingClaim) {
+    progress = 1;
+  }
+
+  const mins = Math.floor(remaining / 60);
+  const secs = remaining % 60;
+  const timeLabel = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+
+  const done = waitingClaim;
+
+  return (
+    <div className="card active-strip" style={{
+      borderColor: done ? "var(--warning)" : "var(--primary)",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "16px 20px" }}>
+        <div style={{
+          width: 90, height: 90, minWidth: 90, borderRadius: 10,
+          background: "linear-gradient(180deg, rgba(59,130,246,0.22), var(--bg-2)), repeating-linear-gradient(135deg, rgba(0,0,0,0.25) 0 6px, transparent 6px 12px)",
+          border: "1px solid var(--line-soft)",
+          flexShrink: 0,
+        }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="mono" style={{
+            fontSize: 10, letterSpacing: "0.20em", textTransform: "uppercase",
+            color: done ? "var(--warning)" : "var(--primary-bright)",
+          }}>
+            {done ? `◆ ${t("dungeons.activeReward")}` : `◷ ${t("dungeons.inProgress")}`}
+          </div>
+          <div style={{
+            fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
+            fontSize: 22, fontWeight: 600, letterSpacing: "0.04em",
+            textTransform: "uppercase", marginTop: 2, color: "var(--bone)",
+          }}>
+            {run.location.name}
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <div className="bar" style={{ height: 8 }}>
+              <i style={{
+                width: `${progress * 100}%`,
+                background: done ? "var(--warning)" : "linear-gradient(90deg, var(--primary-deep), var(--primary-bright))",
+                transition: "width 1s linear",
+              }} />
+            </div>
+            <div className="mono" style={{
+              fontSize: 11, color: "var(--text-mute)", marginTop: 6,
+              display: "flex", justifyContent: "space-between",
+            }}>
+              <span>{t("dungeons.complete", { progress: Math.round(progress * 100) })}</span>
+              {inProgress && <span style={{ color: "var(--bone)" }}>{t("dungeons.left", { time: timeLabel })}</span>}
+            </div>
+          </div>
+        </div>
+        <div>
+          {done ? (
+            <button
+              className="btn btn-primary"
+              onClick={() => claimMut.mutate(run.id)}
+              disabled={claimMut.isPending}
+            >
+              {claimMut.isPending ? t("dungeons.claiming") : t("dungeons.claim")}
+            </button>
+          ) : (
+            <button
+              className="btn"
+              onClick={() => queryClient.invalidateQueries({ queryKey: ["current-run"] })}
+            >
+              {t("dungeons.view")}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
+   CharacterScreen
+═══════════════════════════════════════ */
+export function CharacterScreen({
+  onOpenDungeons,
+  onOpenInventory,
+}: {
+  onOpenDungeons?: () => void;
+  onOpenInventory?: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const { locale, t } = useI18n();
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const [dragOverSlot, setDragOverSlot] = useState<EquipmentSlot | null>(null);
+  const [inventoryDropActive, setInventoryDropActive] = useState(false);
+  const [dropError, setDropError] = useState<string | null>(null);
+  const characterQuery  = useQuery({ queryKey: ["character"],    queryFn: api.character });
+  const dungeonsQuery   = useQuery({ queryKey: ["dungeons"],     queryFn: api.dungeons  });
+  const currentRunQuery = useQuery({
+    queryKey: ["current-run"],
+    queryFn: api.currentRun,
+    refetchInterval: (q) => q.state.data?.status === "IN_PROGRESS" ? 5000 : false,
+  });
+  const inventoryQuery  = useQuery({ queryKey: ["inventory"],    queryFn: () => api.inventory() });
+
+  const startMutation = useMutation({
+    mutationFn: (id: number) => api.startRun(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["current-run"] });
+    },
+  });
+
+  const equipMutation = useMutation({
+    mutationFn: (itemId: number) => api.equip(itemId),
+    onSuccess: async () => {
+      setDragState(null);
+      setDragOverSlot(null);
+      setInventoryDropActive(false);
+      setDropError(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["character"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+        queryClient.invalidateQueries({ queryKey: ["me"] }),
+      ]);
+    },
+  });
+
+  const unequipMutation = useMutation({
+    mutationFn: (itemId: number) => api.unequip(itemId),
+    onSuccess: async () => {
+      setDragState(null);
+      setDragOverSlot(null);
+      setInventoryDropActive(false);
+      setDropError(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["character"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+        queryClient.invalidateQueries({ queryKey: ["me"] }),
+      ]);
+    },
   });
 
   if (characterQuery.isLoading) {
     return (
-      <Panel>
-        <LoadingLine label="Loading character" />
-      </Panel>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 256 }}>
+        <LoadingLine label={t("character.loadingHero")} />
+      </div>
     );
   }
-
   if (characterQuery.error || !characterQuery.data) {
-    return (
-      <Panel>
-        <ErrorNotice message={(characterQuery.error as Error | null)?.message} />
-      </Panel>
-    );
+    return <ErrorNotice message={(characterQuery.error as Error | null)?.message ?? t("character.failedLoad")} />;
   }
 
   const character = characterQuery.data;
-  const progress =
-    character.experience_to_next_level && character.experience_to_next_level > 0
-      ? Math.min(
-          100,
-          Math.round(
-            (character.experience / character.experience_to_next_level) * 100
-          )
-        )
-      : 0;
+  const xpMax = character.experience_to_next_level ?? 1000;
+  const xp    = character.experience;
+  const hpMax = character.stats?.health ?? 220;
+  const hpCur = Math.round(hpMax * 0.84);
+
+  const invItems = inventoryQuery.data?.items ?? [];
+  const inventoryCount = inventoryQuery.data?.items_count ?? invItems.length;
+  const inventoryLimit = inventoryQuery.data?.slots_limit ?? null;
+  const equippedItemIds = new Set(
+    Object.values(character.equipment ?? {})
+      .map((item) => item?.id)
+      .filter((id): id is number => typeof id === "number")
+  );
+  const packItems = invItems.filter((item) => !equippedItemIds.has(item.id));
+  const packCells = Array.from(
+    { length: Math.max(INVENTORY_PAGE_SIZE, packItems.length) },
+    (_, i) => packItems[i],
+  );
+
+  const canRun  = !currentRunQuery.data || currentRunQuery.data.status !== "IN_PROGRESS";
+  const dungeons = dungeonsQuery.data ?? [];
+
+  // Compute combat power (sum stats)
+  const stats = character.stats ?? {};
+  const cp = stats.power ?? (
+    (stats.attack ?? 0) * 6 + (stats.defense ?? 0) * 4 +
+    (stats.health ?? 0) * 2 + (stats.critical_chance ?? 0) * 3 +
+    character.level * 10
+  );
+
+  const resetDragState = () => {
+    setDragState(null);
+    setDragOverSlot(null);
+    setInventoryDropActive(false);
+  };
+
+  const handleDragStart = (item: InventoryCard, source: DragState["source"], event: DragEvent<HTMLDivElement>) => {
+    setDragState({ item, source });
+    setDropError(null);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(item.id));
+    event.dataTransfer.setData("application/x-rpg-drag-source", source);
+  };
+
+  const handleSlotDrop = (slot: EquipmentSlot, event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const itemId = Number(event.dataTransfer.getData("text/plain"));
+    const item = dragState?.item ?? invItems.find((candidate) => candidate.id === itemId);
+
+    setDragOverSlot(null);
+    setInventoryDropActive(false);
+
+    if (!item) return;
+    if (item.is_broken) {
+      setDropError(t("equipment.brokenDrop"));
+      return;
+    }
+    if (item.slot !== slot) {
+      setDropError(t("equipment.wrongSlot", { slot: t(`slot.${item.slot}` as TranslationKey) }));
+      return;
+    }
+
+    equipMutation.mutate(item.id);
+  };
+
+  const handleInventoryDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setInventoryDropActive(false);
+
+    if (!dragState || dragState.source !== "equipment") return;
+
+    unequipMutation.mutate(dragState.item.id);
+  };
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_0.9fr]">
-      <Panel>
-        <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+    <div className="dashboard animate-fade-in">
+
+      {/* ════════ LEFT: Character Panel ════════ */}
+      <div className="card">
+        <div className="card-h">
           <div>
-            <p className="text-sm font-bold uppercase text-brass">
-              Level {character.level}
-            </p>
-            <h2 className="text-4xl font-black text-parchment">
-              {character.name}
-            </h2>
-            <p className="mt-1 text-parchment/65">
-              {character.class?.name ?? character.class_key ?? "Unknown class"}
-            </p>
+            <div className="card-title">{t("character.panelTitle")}</div>
+            <div className="card-sub">{t("character.order")}</div>
           </div>
-          <div className="rounded-lg border border-brass/40 bg-brass/10 p-4 text-right">
-            <div className="flex items-center justify-end gap-2 text-brass">
-              <Activity size={18} />
-              <span className="text-xs font-bold uppercase">Power</span>
+        </div>
+        <div className="card-body">
+
+          {/* Portrait */}
+          <div className="portrait" style={{ maxHeight: 220 }}>
+            <div className="lvl-badge">
+              <span className="lbl">{t("common.level")}</span>
+              {character.level}
             </div>
-            <div className="mt-1 text-4xl font-black text-parchment">
-              {character.stats?.power ?? 0}
+            <span className="ph-label">{t("character.portrait")}</span>
+          </div>
+
+          {/* Name + class */}
+          <div style={{ marginTop: 16, textAlign: "center" }}>
+            <div style={{
+              fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
+              fontSize: 18, fontWeight: 600, textTransform: "uppercase",
+              letterSpacing: "0.04em", lineHeight: 1.2, color: "var(--bone)",
+            }}>
+              {character.name}
+            </div>
+            <div className="mono" style={{
+              fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
+              color: "var(--text-dim)", marginTop: 4,
+            }}>
+              <span style={{ color: "var(--primary-bright)" }}>{character.class?.name ?? "—"}</span>
+              {" · "}{t("common.levelShort")} {character.level}
+            </div>
+          </div>
+
+          {/* XP + HP bars */}
+          <div style={{ marginTop: 20 }}>
+            <BarBlock label={t("common.experience")} cur={xp} max={xpMax} kind="xp" />
+            <BarBlock label={t("common.vitality")}   cur={hpCur} max={hpMax} kind="hp" />
+          </div>
+
+          <div className="divider" />
+
+          {/* Combat stats */}
+          <div className="card-sub" style={{ marginBottom: 10 }}>{t("character.combatStats")}</div>
+          <div className="stat-list" style={{ gridTemplateColumns: "1fr 1fr" }}>
+            <div className="sl-row">
+              <span className="lbl">{t("common.power")}</span>
+              <span className="val" style={{ color: "var(--primary-bright)" }}>{cp}</span>
+            </div>
+            <div className="sl-row">
+              <span className="lbl">{t("common.attack")}</span>
+              <span className="val">{stats.attack ?? 0}</span>
+            </div>
+            <div className="sl-row">
+              <span className="lbl">{t("common.defense")}</span>
+              <span className="val">{stats.defense ?? 0}</span>
+            </div>
+            <div className="sl-row">
+              <span className="lbl">{t("common.crit")}</span>
+              <span className="val">{stats.critical_chance ?? 0}%</span>
+            </div>
+            <div className="sl-row">
+              <span className="lbl">{t("common.evasion")}</span>
+              <span className="val">{stats.evasion ?? 0}%</span>
+            </div>
+            <div className="sl-row">
+              <span className="lbl">{t("common.health")}</span>
+              <span className="val">{stats.health ?? 0}</span>
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="mt-6">
-          <div className="mb-2 flex items-center justify-between text-sm">
-            <span className="font-bold text-parchment">Experience</span>
-            <span className="text-parchment/65">
-              {character.experience} / {character.experience_to_next_level ?? "-"}
+      {/* ════════ CENTER: Equipment + Quick Expeditions ════════ */}
+      <div className="col">
+
+        {/* Active expedition strip */}
+        {currentRunQuery.data && currentRunQuery.data.status !== "CLAIMED" && (
+          <ActiveExpeditionStrip run={currentRunQuery.data} />
+        )}
+
+        {/* Equipment paperdoll */}
+        <div className="card">
+          <div className="card-h">
+            <div>
+              <div className="card-title">{t("equipment.title")}</div>
+              <div className="card-sub">{t("equipment.slots")}</div>
+            </div>
+            <span className="tag rare-rare" style={{ fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)" }}>
+              {t("common.power")} {cp}
             </span>
           </div>
-          <div className="h-3 overflow-hidden rounded-full bg-black/35">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-moss via-brass to-ember"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3">
-          {Object.entries(character.stats ?? {}).map(([key, value]) => (
-            <StatBadge
-              key={key}
-              label={formatStatName(key)}
-              tone={key === "power" ? "good" : "plain"}
-              value={value}
-            />
-          ))}
-        </div>
-      </Panel>
-
-      <Panel>
-        <div className="mb-4 flex items-center gap-3">
-          <ShieldCheck className="text-moss" size={22} />
-          <h2 className="text-2xl font-black text-parchment">Equipment</h2>
-        </div>
-        <div className="grid gap-3">
-          {equipmentSlots.map((slot) => {
-            const item = character.equipment?.[slot] ?? null;
-
-            return (
-              <div
-                className="flex min-h-16 items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.04] p-3"
-                key={slot}
-              >
-                <div>
-                  <div className="text-xs uppercase text-parchment/55">
-                    {formatStatName(slot)}
-                  </div>
-                  <div className="mt-1 font-bold text-parchment">
-                    {item ? `${item.rarity} item #${item.id}` : "Empty slot"}
-                  </div>
-                </div>
-                {item ? (
-                  <ItemGlyph
-                    broken={item.is_broken}
-                    rarity={item.rarity}
-                    size="sm"
-                    src={item.icon_url}
+          <div className="card-body">
+            <ErrorNotice message={
+              dropError ??
+              (equipMutation.error as Error | null)?.message ??
+              (unequipMutation.error as Error | null)?.message
+            } />
+            <div className="equipment-layout">
+              {EQUIPMENT_SLOTS.map((cell, i) => {
+                const item = character.equipment?.[cell.slot] ?? null;
+                const dropActive = dragOverSlot === cell.slot && Boolean(dragState);
+                return (
+                  <SlotCell
+                    key={i}
+                    label={t(cell.label)}
+                    glyph={cell.glyph}
+                    rarity={item?.rarity}
+                    broken={item?.is_broken}
+                    canDrop={dragState?.item.slot === cell.slot}
+                    draggable={Boolean(item)}
+                    dropActive={dropActive}
+                    onDragEnd={resetDragState}
+                    onDragLeave={() => setDragOverSlot((current) => current === cell.slot ? null : current)}
+                    onDragOver={(event) => {
+                      if (!dragState || equipMutation.isPending || unequipMutation.isPending) return;
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = dragState.item.slot === cell.slot ? "move" : "none";
+                      setDragOverSlot(cell.slot);
+                    }}
+                    onDragStart={item ? (event) => handleDragStart(item, "equipment", event) : undefined}
+                    onDrop={(event) => handleSlotDrop(cell.slot, event)}
                   />
-                ) : (
-                  <BadgeInfo className="text-parchment/35" size={22} />
-                )}
-              </div>
-            );
-          })}
-        </div>
-        {!character.equipment ? (
-          <div className="mt-4">
-            <EmptyState
-              body="The backend did not return equipment yet."
-              title="No equipment payload"
-            />
+                );
+              })}
+            </div>
           </div>
-        ) : null}
-      </Panel>
+        </div>
+
+        {/* Quick expeditions */}
+        <div className="card">
+          <div className="card-h">
+            <div>
+              <div className="card-title">{t("dungeons.quickTitle")}</div>
+              <div className="card-sub">{canRun ? t("dungeons.sendRun") : t("dungeons.heroAway")}</div>
+            </div>
+            <button
+              className="btn"
+              style={{ padding: "8px 12px", fontSize: 12, whiteSpace: "nowrap" }}
+              onClick={onOpenDungeons}
+            >
+              {t("dungeons.all")} →
+            </button>
+          </div>
+          <div className="card-body">
+            <ErrorNotice message={(startMutation.error as Error | null)?.message} />
+            <div className="quick-dungeons">
+              {dungeonsQuery.isLoading && <LoadingLine label={t("dungeons.loading")} />}
+              {dungeons.slice(0, 3).map((d) => (
+                <QuickDungeonRow
+                  key={d.id}
+                  dungeon={d}
+                  canRun={canRun}
+                  onRun={(id) => startMutation.mutate(id)}
+                  isPending={startMutation.isPending}
+                  locale={locale}
+                  runLabel={t("dungeons.run")}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ════════ RIGHT: Inventory mini-grid + Journal ════════ */}
+      <div
+        className={`card inventory-card${inventoryDropActive ? " inventory-drop-ok" : ""}`}
+        onDragLeave={() => setInventoryDropActive(false)}
+        onDragOver={(event) => {
+          if (!dragState || dragState.source !== "equipment" || unequipMutation.isPending) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+          setInventoryDropActive(true);
+        }}
+        onDrop={handleInventoryDrop}
+      >
+        <div className="card-h">
+          <div>
+            <div className="card-title">{t("nav.inventory")}</div>
+            <div className="card-sub">
+              {inventoryLimit === null ? t("inventory.inPack", { count: packItems.length }) : `${inventoryCount} / ${inventoryLimit}`} · {t("inventory.dragItem")}
+            </div>
+          </div>
+          <button
+            className="btn"
+            style={{ padding: "6px 10px", fontSize: 12 }}
+            title={t("inventory.open")}
+            onClick={onOpenInventory}
+          >
+            ↗
+          </button>
+        </div>
+        <div className="card-body">
+          <div className="inv-grid">
+            {packCells.map((item, i) => {
+              return (
+                <InvCell
+                  key={item?.id ?? `empty-${i}`}
+                  item={item}
+                  onDragEnd={resetDragState}
+                  onDragStart={(dragged, event) => handleDragStart(dragged, "inventory", event)}
+                />
+              );
+            })}
+          </div>
+
+          <div className="divider" />
+
+          {/* Journal */}
+          <div className="card-sub" style={{ marginBottom: 10 }}>{t("inventory.recentJournal")}</div>
+          {currentRunQuery.data?.result_preview ? (
+            <div className="log-line" style={{ color: currentRunQuery.data.result_preview.is_success ? "var(--success)" : "var(--error)" }}>
+              <span className="t">{t("inventory.now")}</span>
+              <span className="m">
+                {currentRunQuery.data.result_preview.is_success
+                  ? `+${currentRunQuery.data.result_preview.experience} XP · +${currentRunQuery.data.result_preview.money_copper}c ${t("inventory.gold")}`
+                  : t("inventory.failed")}
+              </span>
+            </div>
+          ) : (
+            <>
+              <div className="log-line">
+                <span className="t">—:—</span>
+                <span className="m" style={{ color: "var(--text-mute)", fontStyle: "italic" }}>{t("inventory.noActivity")}</span>
+              </div>
+              <div className="log-line">
+                <span className="t">—:—</span>
+                <span className="m" style={{ color: "var(--text-mute)", fontStyle: "italic" }}>{t("inventory.sendExpedition")}</span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
     </div>
   );
 }

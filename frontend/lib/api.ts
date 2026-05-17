@@ -1,4 +1,5 @@
 import type * as AppTypes from "@/lib/types";
+import type { Locale } from "@/lib/i18n";
 
 export type Tokens = {
   access_token: string;
@@ -69,7 +70,9 @@ export type CurrentRun =
 
 export type ItemSummary = {
   id: number;
+  name?: string;
   icon_url: string;
+  slot: string;
   rarity: string;
   is_broken: boolean;
 };
@@ -77,6 +80,17 @@ export type ItemSummary = {
 export type Inventory = {
   equipment_summary: Record<string, number>;
   equipped: Record<string, ItemSummary | null>;
+  items_count: number;
+  slots_limit: number | null;
+  free_slots: number | null;
+  pagination: {
+    page: number;
+    page_size: number;
+    total_items: number;
+    total_pages: number;
+    has_next: boolean;
+    has_previous: boolean;
+  };
   items: ItemSummary[];
 };
 
@@ -103,6 +117,11 @@ export type RepairPreview = {
 };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
+let activeLocale: Locale = "en";
+
+export function setApiLocale(locale: Locale) {
+  activeLocale = locale;
+}
 
 export class ApiError extends Error {
   status: number;
@@ -147,7 +166,7 @@ export function clearTokens() {
 async function refreshAccessToken(tokens: Tokens): Promise<Tokens> {
   const response = await fetch(`${API_BASE}/auth/refresh`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "Accept-Language": activeLocale },
     body: JSON.stringify({ refresh: tokens.refresh_token }),
   });
   if (!response.ok) throw new ApiError(response.status, "Session expired");
@@ -164,6 +183,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}, retry
   const tokens = readTokens();
   const headers = new Headers(options.headers);
   headers.set("Content-Type", "application/json");
+  headers.set("Accept-Language", activeLocale);
   if (tokens?.access_token) headers.set("Authorization", `Bearer ${tokens.access_token}`);
   const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
   if (response.status === 401 && retry && tokens?.refresh_token) {
@@ -245,8 +265,8 @@ export const api = {
   claimRun(runId: number) {
     return apiFetch<AppTypes.ClaimResponse>(`/dungeon-runs/${runId}/claim`, { method: "POST" });
   },
-  inventory() {
-    return apiFetch<AppTypes.Inventory>("/inventory");
+  inventory(page = 1, pageSize = 24) {
+    return apiFetch<AppTypes.Inventory>(`/inventory?page=${page}&page_size=${pageSize}`);
   },
   item(itemId: number) {
     return apiFetch<AppTypes.ItemDetail>(`/inventory/items/${itemId}`);

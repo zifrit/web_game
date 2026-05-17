@@ -1,104 +1,130 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Medal } from "lucide-react";
-import {
-  EmptyState,
-  ErrorNotice,
-  ItemGlyph,
-  LoadingLine,
-  Panel
-} from "@/components/ui";
+import { useI18n } from "@/components/providers";
+import { ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 
-function rankTone(rank: number) {
-  if (rank === 1) {
-    return "border-brass bg-brass/15 text-brass";
-  }
-
-  if (rank === 2) {
-    return "border-white/25 bg-white/10 text-parchment";
-  }
-
-  if (rank === 3) {
-    return "border-ember/45 bg-ember/15 text-ember";
-  }
-
-  return "border-white/10 bg-white/[0.04] text-parchment/75";
+function rankStyle(rank: number): { borderColor: string; background: string; color: string } {
+  if (rank === 1) return { borderColor: "rgba(245,158,11,0.5)", background: "rgba(245,158,11,0.12)", color: "#F59E0B" };
+  if (rank === 2) return { borderColor: "rgba(148,163,184,0.35)", background: "rgba(148,163,184,0.08)", color: "#94A3B8" };
+  if (rank === 3) return { borderColor: "rgba(205,124,69,0.45)", background: "rgba(205,124,69,0.12)", color: "#CD7C45" };
+  return { borderColor: "var(--line)", background: "var(--bg-3)", color: "var(--text-mute)" };
 }
 
 export function LeaderboardScreen() {
-  const leaderboardQuery = useQuery({
+  const { t } = useI18n();
+  const boardQuery = useQuery({
     queryKey: ["leaderboard", "level"],
-    queryFn: api.leaderboard
+    queryFn: api.leaderboard,
   });
 
   return (
-    <Panel>
-      <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-3">
-          <Medal className="text-brass" size={24} />
-          <div>
-            <p className="text-sm font-bold uppercase text-brass">Top by level</p>
-            <h2 className="text-3xl font-black text-parchment">Leaderboard</h2>
+    <div className="col animate-fade-in">
+      <div className="card">
+        <div className="card-h">
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 22 }}>🏅</span>
+            <div>
+              <div className="card-sub">{t("leaderboard.top")}</div>
+              <div className="card-title">{t("nav.leaderboard")}</div>
+            </div>
+          </div>
+
+          {boardQuery.data?.my_rank && (
+            <div style={{
+              borderRadius: 12, border: "1px solid rgba(59,130,246,0.3)",
+              background: "rgba(59,130,246,0.10)", padding: "8px 16px", textAlign: "right",
+            }}>
+              <div className="mono" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-mute)" }}>
+                {t("leaderboard.myRank")}
+              </div>
+              <div style={{ fontWeight: 700, color: "var(--text)", marginTop: 2 }}>
+                #{boardQuery.data.my_rank.rank} · {t("common.level")} {boardQuery.data.my_rank.level}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="card-body">
+          {boardQuery.isLoading && <LoadingLine label={t("leaderboard.loading")} />}
+          <ErrorNotice message={(boardQuery.error as Error | null)?.message} />
+
+          {boardQuery.data?.items.length === 0 && !boardQuery.isLoading && (
+            <div style={{
+              textAlign: "center", padding: "40px 20px",
+              border: "1px dashed var(--line)", borderRadius: 10,
+            }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-dim)" }}>{t("leaderboard.empty")}</div>
+              <div style={{ fontSize: 12, color: "var(--text-mute)", marginTop: 6 }}>
+                {t("leaderboard.emptyBody")}
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {boardQuery.data?.items.map((entry) => {
+              const rs = rankStyle(entry.rank);
+              return (
+                <div
+                  key={entry.character_id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "56px 1fr auto",
+                    alignItems: "center",
+                    gap: 12,
+                    minHeight: 72,
+                    borderRadius: 12,
+                    border: "1px solid var(--line)",
+                    background: "var(--bg-3)",
+                    padding: 12,
+                    transition: "border-color 150ms ease",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--line-hover)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--line)")}
+                >
+                  {/* Rank badge */}
+                  <div style={{
+                    width: 44, height: 44, display: "grid", placeItems: "center",
+                    borderRadius: 10, border: `1px solid ${rs.borderColor}`,
+                    background: rs.background, color: rs.color,
+                    fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                    fontSize: 14, fontWeight: 700,
+                  }}>
+                    #{entry.rank}
+                  </div>
+
+                  {/* Name + class */}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{
+                      fontWeight: 600, color: "var(--text)",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {entry.character_name}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--text-mute)", marginTop: 2 }}>
+                      {entry.class.name}
+                    </div>
+                  </div>
+
+                  {/* Level */}
+                  <div style={{ textAlign: "right" }}>
+                    <div className="mono" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-mute)" }}>
+                      {t("common.level")}
+                    </div>
+                    <div style={{
+                      fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
+                      fontSize: 22, fontWeight: 700, color: "var(--bone)", lineHeight: 1,
+                    }}>
+                      {entry.level}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-        {leaderboardQuery.data?.my_rank ? (
-          <div className="rounded-md border border-moss/40 bg-moss/15 px-4 py-2 text-right">
-            <div className="text-xs uppercase text-parchment/55">My rank</div>
-            <div className="font-black text-parchment">
-              #{leaderboardQuery.data.my_rank.rank} / Level{" "}
-              {leaderboardQuery.data.my_rank.level}
-            </div>
-          </div>
-        ) : null}
       </div>
-
-      {leaderboardQuery.isLoading ? <LoadingLine label="Loading leaderboard" /> : null}
-      <ErrorNotice message={(leaderboardQuery.error as Error | null)?.message} />
-
-      {leaderboardQuery.data?.items.length === 0 ? (
-        <EmptyState
-          body="Heroes will appear once the backend has leaderboard rows."
-          title="No rankings yet"
-        />
-      ) : null}
-
-      <div className="grid gap-2">
-        {leaderboardQuery.data?.items.map((entry) => (
-          <div
-            className="grid min-h-20 grid-cols-[64px_1fr_auto] items-center gap-3 rounded-lg border border-white/10 bg-white/[0.045] p-3"
-            key={entry.character_id}
-          >
-            <div
-              className={`grid h-12 w-12 place-items-center rounded-md border text-lg font-black ${rankTone(
-                entry.rank
-              )}`}
-            >
-              #{entry.rank}
-            </div>
-            <div className="min-w-0">
-              <div className="truncate text-lg font-black text-parchment">
-                {entry.character_name}
-              </div>
-              <div className="text-sm text-parchment/60">{entry.class.name}</div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <div className="text-xs uppercase text-parchment/55">Level</div>
-                <div className="text-2xl font-black text-parchment">
-                  {entry.level}
-                </div>
-              </div>
-              <ItemGlyph
-                rarity={entry.class.key}
-                size="sm"
-                src={entry.avatar?.icon_url ?? entry.avatar?.small_url}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    </Panel>
+    </div>
   );
 }

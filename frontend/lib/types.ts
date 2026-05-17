@@ -118,7 +118,9 @@ export type ClaimResponse = {
 
 export type InventoryCard = {
   id: number;
+  name?: string;
   icon_url?: string;
+  slot: EquipmentSlot;
   rarity: string;
   is_broken: boolean;
 };
@@ -126,6 +128,17 @@ export type InventoryCard = {
 export type Inventory = {
   equipment_summary: StatBlock;
   equipped: Record<EquipmentSlot, InventoryCard | null>;
+  items_count: number;
+  slots_limit: number | null;
+  free_slots: number | null;
+  pagination: {
+    page: number;
+    page_size: number;
+    total_items: number;
+    total_pages: number;
+    has_next: boolean;
+    has_previous: boolean;
+  };
   items: InventoryCard[];
 };
 

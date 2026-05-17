@@ -2,32 +2,30 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Castle, LogIn, UserPlus } from "lucide-react";
+import { Lock, LogIn, Mail, ShieldCheck, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useSession } from "@/components/providers";
-import { Button, ErrorNotice, Field, Panel, inputClassName } from "@/components/ui";
+import { useI18n, useSession } from "@/components/providers";
+import { ErrorNotice } from "@/components/ui";
 import { api } from "@/lib/api";
 
-const authSchema = z.object({
-  email: z.string().email("Enter a valid email."),
-  password: z.string().min(6, "Use at least 6 characters.")
+const authSchema = (t: ReturnType<typeof useI18n>["t"]) => z.object({
+  email: z.string().email(t("validation.email")),
+  password: z.string().min(6, t("validation.password")),
 });
 
-type AuthValues = z.infer<typeof authSchema>;
+type AuthValues = z.infer<ReturnType<typeof authSchema>>;
 type AuthMode = "login" | "register";
 
 export function AuthScreen() {
   const [mode, setMode] = useState<AuthMode>("login");
   const { setSession } = useSession();
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const form = useForm<AuthValues>({
-    resolver: zodResolver(authSchema),
-    defaultValues: {
-      email: "",
-      password: ""
-    }
+    resolver: zodResolver(authSchema(t)),
+    defaultValues: { email: "", password: "" },
   });
 
   const mutation = useMutation({
@@ -38,102 +36,137 @@ export function AuthScreen() {
     onSuccess: (auth) => {
       setSession(auth);
       void queryClient.invalidateQueries({ queryKey: ["me"] });
-    }
+    },
   });
 
+  const setAuthMode = (nextMode: AuthMode) => {
+    setMode(nextMode);
+    form.clearErrors();
+    mutation.reset();
+  };
+
+  const isLogin = mode === "login";
+
   return (
-    <main className="rpg-shell grid min-h-screen place-items-center px-4 py-8">
-      <div className="grid w-full max-w-5xl gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="min-h-[520px] rounded-lg border border-white/12 bg-[#18140f]/90 p-6 shadow-iron sm:p-8">
-          <div className="flex h-full flex-col justify-between gap-10">
+    <main className="auth-shell">
+      <section className="auth-frame">
+        <div className="auth-hero">
+          <div className="auth-brand">
+            <div className="brand-mark auth-brand-mark" />
             <div>
-              <div className="mb-8 flex h-16 w-16 items-center justify-center rounded-lg border border-brass/40 bg-brass/15 text-brass">
-                <Castle size={34} />
-              </div>
-              <p className="text-sm font-bold uppercase text-brass">
-                Idle dungeon command
-              </p>
-              <h1 className="mt-4 max-w-xl text-5xl font-black leading-tight text-parchment sm:text-6xl">
-                Send one hero. Bring back scars, coin, and better steel.
-              </h1>
-            </div>
-            <div className="grid gap-3 text-sm text-parchment/72 sm:grid-cols-3">
-              <div className="border-l-2 border-moss pl-3">
-                Async dungeon timers
-              </div>
-              <div className="border-l-2 border-brass pl-3">
-                Loot, equip, repair
-              </div>
-              <div className="border-l-2 border-blood pl-3">
-                Level leaderboard
-              </div>
+              <div className="brand-name">Ashreach</div>
+              <div className="brand-sub">v0.1 — MVP</div>
             </div>
           </div>
-        </section>
 
-        <Panel className="self-center">
-          <div className="mb-5 grid grid-cols-2 gap-2 rounded-md border border-white/10 bg-black/25 p-1">
-            <Button
-              onClick={() => setMode("login")}
-              type="button"
-              variant={mode === "login" ? "primary" : "ghost"}
-            >
-              <LogIn size={17} />
-              Login
-            </Button>
-            <Button
-              onClick={() => setMode("register")}
-              type="button"
-              variant={mode === "register" ? "primary" : "ghost"}
-            >
-              <UserPlus size={17} />
-              Register
-            </Button>
+          <div className="auth-copy">
+            <div className="card-sub">{t("auth.heroSub")}</div>
+            <h1>{t("auth.heroTitle")}</h1>
+            <p>
+              {t("auth.heroCopy")}
+            </p>
           </div>
 
-          <form
-            className="grid gap-4"
-            onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
-          >
-            <Field
-              error={form.formState.errors.email?.message}
-              label="Email"
+          <div className="auth-ledger">
+            <div>
+              <span>{t("auth.class")}</span>
+              <strong>{t("auth.vanguard")}</strong>
+            </div>
+            <div>
+              <span>{t("auth.status")}</span>
+              <strong>{t("auth.awaiting")}</strong>
+            </div>
+            <div>
+              <span>{t("auth.realm")}</span>
+              <strong>Ashreach</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="auth-panel card">
+          <div className="auth-mode" aria-label={t("auth.modeLabel")}>
+            <button
+              type="button"
+              className={isLogin ? "active" : ""}
+              onClick={() => setAuthMode("login")}
             >
-              <input
-                autoComplete="email"
-                className={inputClassName}
-                placeholder="you@example.com"
-                type="email"
-                {...form.register("email")}
-              />
-            </Field>
-            <Field
-              error={form.formState.errors.password?.message}
-              label="Password"
+              <LogIn size={16} />
+              {t("auth.login")}
+            </button>
+            <button
+              type="button"
+              className={!isLogin ? "active" : ""}
+              onClick={() => setAuthMode("register")}
             >
-              <input
-                autoComplete={
-                  mode === "login" ? "current-password" : "new-password"
-                }
-                className={inputClassName}
-                placeholder="Your password"
-                type="password"
-                {...form.register("password")}
-              />
-            </Field>
+              <UserPlus size={16} />
+              {t("auth.register")}
+            </button>
+          </div>
+
+          <div className="auth-panel-head">
+            <div className="card-sub">{isLogin ? t("auth.accountAccess") : t("auth.newAccount")}</div>
+            <h2>{isLogin ? t("auth.enterKeep") : t("auth.openGate")}</h2>
+          </div>
+
+          <form className="auth-form" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
+            <label>
+              <span>{t("auth.email")}</span>
+              <div className="auth-input-wrap">
+                <Mail size={16} />
+                <input
+                  autoComplete="email"
+                  className="input"
+                  placeholder="you@example.com"
+                  type="email"
+                  {...form.register("email")}
+                />
+              </div>
+              {form.formState.errors.email && (
+                <small>{form.formState.errors.email.message}</small>
+              )}
+            </label>
+
+            <label>
+              <span>{t("auth.password")}</span>
+              <div className="auth-input-wrap">
+                <Lock size={16} />
+                <input
+                  autoComplete={isLogin ? "current-password" : "new-password"}
+                  className="input"
+                  placeholder={t("auth.passwordPlaceholder")}
+                  type="password"
+                  {...form.register("password")}
+                />
+              </div>
+              {form.formState.errors.password && (
+                <small>{form.formState.errors.password.message}</small>
+              )}
+            </label>
 
             <ErrorNotice message={(mutation.error as Error | null)?.message} />
 
-            <Button disabled={mutation.isPending} type="submit">
-              {mutation.isPending
-                ? "Working..."
-                : mode === "login"
-                  ? "Enter"
-                  : "Create account"}
-            </Button>
+            <button
+              type="submit"
+              disabled={mutation.isPending}
+              className="btn btn-primary auth-submit"
+            >
+              {mutation.isPending ? (
+                t("auth.working")
+              ) : isLogin ? (
+                <>
+                  <ShieldCheck size={17} />
+                  {t("auth.enter")}
+                </>
+              ) : (
+                <>
+                  <UserPlus size={17} />
+                  {t("auth.createAccount")}
+                </>
+              )}
+            </button>
           </form>
-        </Panel>
-      </div>
+        </div>
+      </section>
     </main>
   );
 }

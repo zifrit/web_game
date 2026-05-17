@@ -13,7 +13,14 @@ import {
   useMemo,
   useState
 } from "react";
-import { api, clearTokens, getStoredTokens, storeTokens } from "@/lib/api";
+import { api, clearTokens, getStoredTokens, setApiLocale, storeTokens } from "@/lib/api";
+import {
+  type Locale,
+  makeTranslator,
+  readStoredLocale,
+  type TranslationKey,
+  writeStoredLocale
+} from "@/lib/i18n";
 import type { AuthResponse, User } from "@/lib/types";
 
 type SessionContextValue = {
@@ -27,6 +34,13 @@ type SessionContextValue = {
 };
 
 const SessionContext = createContext<SessionContextValue | null>(null);
+type LocaleContextValue = {
+  locale: Locale;
+  setLocale: (locale: Locale) => void;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+};
+
+const LocaleContext = createContext<LocaleContextValue | null>(null);
 
 function SessionProvider({ children }: { children: React.ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -108,6 +122,38 @@ export function useSession() {
   return context;
 }
 
+function LocaleProvider({ children }: { children: React.ReactNode }) {
+  const [locale, setLocaleState] = useState<Locale>(() => readStoredLocale());
+
+  useEffect(() => {
+    setApiLocale(locale);
+  }, [locale]);
+
+  const setLocale = useCallback((nextLocale: Locale) => {
+    writeStoredLocale(nextLocale);
+    setApiLocale(nextLocale);
+    setLocaleState(nextLocale);
+    void queryClient.invalidateQueries();
+  }, []);
+
+  const value = useMemo(
+    () => ({ locale, setLocale, t: makeTranslator(locale) }),
+    [locale, setLocale],
+  );
+
+  return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
+}
+
+export function useI18n() {
+  const context = useContext(LocaleContext);
+
+  if (!context) {
+    throw new Error("useI18n must be used inside AppProviders");
+  }
+
+  return context;
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -125,7 +171,9 @@ if (typeof window !== "undefined") {
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <SessionProvider>{children}</SessionProvider>
+      <LocaleProvider>
+        <SessionProvider>{children}</SessionProvider>
+      </LocaleProvider>
     </QueryClientProvider>
   );
 }
