@@ -1,0 +1,2182 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ashreach — Async Dungeon RPG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Backgrounds — deep navy ladder per spec */
+  --bg-0: #0B1020;
+  --bg-1: #111827;
+  --bg-2: #1A2235;
+  --bg-3: #202B44;
+  --bg-4: #2A375A;
+  --line: #2E3B5A;
+  --line-soft: #243150;
+  --line-hover: #4B6AA3;
+
+  /* Text */
+  --text: #E5E7EB;
+  --text-dim: #94A3B8;
+  --text-mute: #64748B;
+  --bone: #F1F5F9;
+
+  /* Primary accents — Diablo-blue */
+  --primary: #3B82F6;
+  --primary-deep: #2563EB;
+  --primary-bright: #60A5FA;
+  --cyan: #38BDF8;
+
+  /* Aliases kept for codebase compatibility */
+  --ember: var(--primary);
+  --ember-soft: var(--primary-bright);
+  --ember-deep: var(--primary-deep);
+
+  /* Rarity per spec */
+  --rare-common:   #9CA3AF;
+  --rare-uncommon: #22C55E;
+  --rare-rare:     #3B82F6;
+  --rare-epic:     #A855F7;
+
+  /* Status */
+  --success: #22C55E;
+  --error:   #EF4444;
+  --warning: #F59E0B;
+  --info:    #38BDF8;
+  --moss:    #22C55E;
+  --blood:   #EF4444;
+  --gold:    #F59E0B;
+
+  /* Shadows */
+  --shadow-blue: 0 0 12px rgba(59, 130, 246, 0.15);
+  --shadow-blue-strong: 0 0 24px rgba(59, 130, 246, 0.28);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg-0);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(1200px 700px at 85% -10%, rgba(59, 130, 246, 0.10), transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, rgba(99, 102, 241, 0.08), transparent 55%);
+}
+.serif { font-family: 'Cinzel', 'Times New Roman', serif; letter-spacing: 0.02em; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg-1); }
+::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 100px; border: 2px solid var(--bg-1); }
+::-webkit-scrollbar-thumb:hover { background: var(--line-hover); }
+.mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.app { min-height: 100vh; display: grid; grid-template-columns: 240px minmax(0, 1fr); }
+
+/* Sidebar */
+.sidebar {
+  background: linear-gradient(180deg, var(--bg-1), var(--bg-0));
+  border-right: 1px solid var(--line);
+  padding: 28px 18px;
+  position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 6px 22px; border-bottom: 1px solid var(--line-soft); margin-bottom: 18px;
+}
+.brand-mark {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+  position: relative;
+  box-shadow: inset 0 -10px 16px rgba(15,23,42,0.6), 0 0 24px rgba(59,130,246,0.35);
+}
+.brand-mark::after {
+  content: ""; position: absolute; inset: 6px; border: 1px solid rgba(15,23,42,0.7);
+  border-radius: 4px;
+}
+.brand-name { font-family: 'Cinzel', 'Times New Roman', serif; font-size: 22px; font-weight: 600; letter-spacing: 0.02em; }
+.brand-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-mute); letter-spacing: 0.18em; text-transform: uppercase; }
+
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 6px;
+  color: var(--text-dim); cursor: pointer; user-select: none;
+  font-size: 13px; font-weight: 500; letter-spacing: 0.01em;
+  border: 1px solid transparent;
+  transition: all 140ms ease;
+}
+.nav-item:hover { background: var(--bg-2); color: var(--text); }
+.nav-item.active {
+  background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
+  color: var(--bone); border-color: var(--line);
+  box-shadow: inset 0 1px 0 oklch(0.35 0.02 60 / 0.4);
+}
+.nav-item.active .nav-glyph { color: var(--primary-bright); }
+.nav-glyph {
+  width: 18px; text-align: center; font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; color: var(--text-mute);
+}
+.nav-badge {
+  margin-left: auto; font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; padding: 2px 6px; border-radius: 3px;
+  background: var(--ember); color: oklch(0.18 0.02 50); font-weight: 600;
+}
+.nav-section-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  letter-spacing: 0.20em; text-transform: uppercase;
+  color: var(--text-mute); padding: 18px 12px 6px;
+}
+.sidebar-footer {
+  margin-top: auto; padding-top: 18px; border-top: 1px solid var(--line-soft);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.sidebar-version {
+  font-size: 10px; color: var(--text-mute);
+  letter-spacing: 0.18em; text-transform: uppercase;
+  padding: 0 2px;
+}
+.avatar-sm {
+  width: 36px; height: 36px; border-radius: 4px;
+  background: repeating-linear-gradient(45deg, var(--bg-3) 0 6px, var(--bg-2) 6px 12px);
+  border: 1px solid var(--line);
+}
+
+/* Main */
+.main { padding: 28px 36px 60px; max-width: 1400px; min-width: 0; }
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28px;
+}
+.topbar-left h1 {
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  font-weight: 600; font-size: 28px; margin: 0;
+  letter-spacing: 0.04em;
+}
+.topbar-left .kicker {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text-mute); letter-spacing: 0.20em; text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.stat-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 10px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  white-space: nowrap;
+}
+.stat-chip .lbl { color: var(--text-mute); letter-spacing: 0.12em; text-transform: uppercase; font-size: 10px; }
+.stat-chip .val { color: var(--bone); font-weight: 600; }
+.stat-chip.gold .val { color: var(--gold); }
+.stat-chip.ember .val { color: var(--ember); }
+
+/* Card */
+.card {
+  background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  position: relative;
+  box-shadow: var(--shadow-blue);
+}
+.card-h {
+  padding: 16px 20px; border-bottom: 1px solid var(--line-soft);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-title {
+  font-family: 'Cinzel', 'Times New Roman', serif; font-size: 18px;
+  font-weight: 600; letter-spacing: 0.04em;
+}
+.card-sub {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-mute);
+}
+.card-body { padding: 20px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 18px; border-radius: 10px;
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500;
+  letter-spacing: 0.01em; border: 1px solid var(--line);
+  background: var(--bg-3); color: var(--text);
+  cursor: pointer; transition: all 180ms ease;
+}
+.btn:hover { background: var(--bg-4); border-color: var(--line-hover); }
+.btn.primary {
+  background: var(--primary-deep);
+  color: #fff; border-color: var(--primary);
+  font-weight: 600;
+  box-shadow: 0 0 16px rgba(59,130,246,0.30);
+}
+.btn.primary:hover { background: var(--primary); box-shadow: 0 0 22px rgba(59,130,246,0.45); }
+.btn.ghost { background: transparent; }
+.btn.danger { color: #fff; background: var(--error); border-color: var(--error); }
+.btn.danger:hover { background: #DC2626; border-color: #DC2626; }
+.btn.lg { padding: 14px 28px; font-size: 14px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Bar */
+.bar { width: 100%; height: 6px; background: var(--bg-2); border-radius: 100px; overflow: hidden; position: relative; border: 1px solid var(--line-soft); }
+.bar > i { display: block; height: 100%; background: var(--ember); }
+.bar.xp > i { background: linear-gradient(90deg, var(--ember-deep), var(--ember)); }
+.bar.hp > i { background: linear-gradient(90deg, oklch(0.45 0.14 25), var(--blood)); }
+.bar.dur > i { background: var(--moss); }
+.bar.dur.warn > i { background: var(--ember); }
+.bar.dur.crit > i { background: var(--blood); }
+
+/* Misc */
+.row { display: flex; gap: 18px; }
+.col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.grid-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+
+.divider { height: 1px; background: var(--line-soft); margin: 14px 0; }
+
+.tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px; border-radius: 3px;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  background: var(--bg-2); border: 1px solid var(--line-soft); color: var(--text-dim);
+}
+.tag.rare-common { color: var(--rare-common); border-color: #475569; background: rgba(148,163,184,0.08); }
+.tag.rare-uncommon { color: var(--rare-uncommon); border-color: rgba(34,197,94,0.45); background: rgba(34,197,94,0.10); }
+.tag.rare-rare { color: var(--rare-rare); border-color: rgba(59,130,246,0.45); background: rgba(59,130,246,0.10); }
+.tag.rare-epic { color: var(--rare-epic); border-color: rgba(168,85,247,0.45); background: rgba(168,85,247,0.10); }
+.tag.rare-legendary { color: var(--warning); border-color: rgba(245,158,11,0.45); background: rgba(245,158,11,0.10); }
+
+.kbd {
+  display: inline-block; font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; padding: 2px 6px; border-radius: 3px;
+  background: var(--bg-2); border: 1px solid var(--line); color: var(--text-dim);
+}
+
+/* Equipment slot */
+.slot {
+  aspect-ratio: 1;
+  background: linear-gradient(180deg, var(--bg-3), var(--bg-2));
+  border: 1px solid var(--line); border-radius: 10px;
+  position: relative; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 180ms ease;
+}
+.slot:hover { border-color: var(--line-hover); box-shadow: var(--shadow-blue); }
+.slot.empty { border-style: dashed; border-color: var(--line-soft); background: transparent; }
+.slot .slot-name {
+  position: absolute; bottom: 4px; left: 0; right: 0; text-align: center;
+  font-family: 'JetBrains Mono', monospace; font-size: 9px;
+  color: var(--text-mute); letter-spacing: 0.10em; text-transform: uppercase;
+}
+.slot .slot-glyph {
+  font-family: 'Cinzel', 'Times New Roman', serif; font-size: 28px; color: var(--text);
+}
+.slot .slot-rare { position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 100px; }
+.slot .slot-dur { position: absolute; top: 5px; left: 5px; right: 16px; height: 3px; border-radius: 100px; background: var(--bg-3); overflow: hidden; }
+.slot .slot-dur i { display: block; height: 100%; background: var(--moss); }
+
+/* Dungeon card */
+.dungeon {
+  background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
+  border: 1px solid var(--line); border-radius: 16px;
+  overflow: hidden; display: flex; flex-direction: column;
+  transition: all 200ms ease; cursor: pointer;
+  box-shadow: var(--shadow-blue);
+}
+.dungeon:hover { border-color: var(--line-hover); transform: translateY(-2px); box-shadow: var(--shadow-blue-strong); }
+.dungeon.locked { opacity: 0.55; cursor: not-allowed; }
+.dungeon.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary) inset, 0 0 30px rgba(59,130,246,0.30); }
+.dungeon-hero {
+  height: 130px; position: relative;
+  background:
+    repeating-linear-gradient(135deg, oklch(0.20 0.02 60 / 0.4) 0 6px, transparent 6px 12px),
+    linear-gradient(180deg, var(--bg-3), var(--bg-1));
+  border-bottom: 1px solid var(--line-soft);
+  display: flex; align-items: flex-end; padding: 12px;
+}
+.dungeon-hero .ph-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 9px;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-mute);
+  background: var(--bg-1); padding: 3px 6px; border-radius: 2px;
+}
+.dungeon-hero.tier-1 { background: linear-gradient(180deg, rgba(34,197,94,0.18), var(--bg-2)), repeating-linear-gradient(135deg, rgba(0,0,0,0.25) 0 6px, transparent 6px 12px); }
+.dungeon-hero.tier-2 { background: linear-gradient(180deg, rgba(59,130,246,0.22), var(--bg-2)), repeating-linear-gradient(135deg, rgba(0,0,0,0.25) 0 6px, transparent 6px 12px); }
+.dungeon-hero.tier-3 { background: linear-gradient(180deg, rgba(168,85,247,0.25), var(--bg-2)), repeating-linear-gradient(135deg, rgba(0,0,0,0.25) 0 6px, transparent 6px 12px); }
+.dungeon-hero.tier-4 { background: linear-gradient(180deg, rgba(245,158,11,0.28), var(--bg-2)), repeating-linear-gradient(135deg, rgba(0,0,0,0.25) 0 6px, transparent 6px 12px); }
+.dungeon-hero .tier-tag {
+  position: absolute; top: 10px; right: 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  padding: 3px 8px; background: var(--bg-1);
+  border: 1px solid var(--line); border-radius: 2px;
+  color: var(--text-dim); letter-spacing: 0.12em;
+}
+.dungeon-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.dungeon-body h3 { font-family: 'Cinzel', 'Times New Roman', serif; font-size: 20px; font-weight: 600; margin: 0; line-height: 1.2; letter-spacing: 0.03em; text-wrap: balance; min-width: 0; flex: 1; }
+.dungeon-body p { color: var(--text-dim); font-size: 12px; margin: 0; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.dungeon-cta { margin-top: auto; padding-top: 4px; }
+.dungeon-meta { display: flex; gap: 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-mute); }
+.dungeon-meta b { color: var(--bone); font-weight: 500; }
+
+/* Modal */
+.modal-backdrop {
+  position: fixed; inset: 0; background: oklch(0.08 0.005 60 / 0.75);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+  animation: fade-in 200ms ease;
+}
+.modal {
+  width: 540px; max-width: 92vw;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: 16px; padding: 0;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 40px rgba(59,130,246,0.18);
+  animation: pop-in 240ms cubic-bezier(.2,.9,.3,1.2);
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(8px) scale(0.96); } to { opacity: 1; transform: none; } }
+
+/* Item ph */
+.item-ph {
+  width: 40px; height: 40px; border-radius: 2px;
+  background: repeating-linear-gradient(45deg, var(--bg-3) 0 4px, var(--bg-2) 4px 8px);
+  border: 1px solid var(--line-soft);
+}
+.item-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border: 1px solid var(--line-soft); border-radius: 4px;
+  background: var(--bg-1);
+  transition: all 140ms ease; cursor: pointer;
+}
+.item-row:hover { background: var(--bg-2); border-color: var(--line); }
+.item-row .name { font-family: 'Cinzel', 'Times New Roman', serif; font-size: 16px; font-weight: 500; }
+.item-row .sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-mute); letter-spacing: 0.10em; text-transform: uppercase; }
+
+/* Timer */
+.timer-ring {
+  width: 220px; height: 220px; position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.timer-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.timer-ring .digits {
+  font-family: 'JetBrains Mono', monospace; font-size: 38px; font-weight: 500;
+  letter-spacing: 0.04em; color: var(--bone);
+  font-variant-numeric: tabular-nums;
+}
+.timer-ring .label {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  letter-spacing: 0.20em; text-transform: uppercase; color: var(--text-mute);
+  margin-top: 6px;
+}
+
+/* Log */
+.log-line {
+  display: flex; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  padding: 6px 0; border-bottom: 1px dashed var(--line-soft);
+}
+.log-line:last-child { border: 0; }
+.log-line .t { color: var(--text-mute); width: 50px; flex-shrink: 0; }
+.log-line .m { color: var(--text-dim); }
+.log-line.crit .m { color: var(--ember); }
+.log-line.loot .m { color: var(--gold); }
+.log-line.dmg .m { color: var(--blood); }
+
+/* Stat list */
+.stat-list { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 28px; }
+.stat-list .sl-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 5px 0; border-bottom: 1px dashed var(--line-soft);
+}
+.stat-list .sl-row:last-child { border: 0; }
+.stat-list .lbl { font-size: 12px; color: var(--text-dim); }
+.stat-list .val { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--bone); font-variant-numeric: tabular-nums; }
+.stat-list .delta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--moss); margin-left: 6px; }
+
+/* Hero portrait */
+.portrait {
+  aspect-ratio: 3/4;
+  background:
+    radial-gradient(ellipse at 50% 30%, oklch(0.30 0.06 55 / 0.6), transparent 70%),
+    repeating-linear-gradient(135deg, var(--bg-2) 0 8px, var(--bg-1) 8px 16px);
+  border: 1px solid var(--line); border-radius: 4px;
+  position: relative; overflow: hidden;
+}
+.portrait .ph-label {
+  position: absolute; bottom: 12px; left: 12px;
+  font-family: 'JetBrains Mono', monospace; font-size: 9px;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-mute);
+  background: var(--bg-1); padding: 4px 8px; border-radius: 2px;
+}
+.portrait .lvl-badge {
+  position: absolute; top: 12px; left: 12px;
+  font-family: 'Cinzel', 'Times New Roman', serif; font-size: 38px; font-weight: 600;
+  color: var(--bone); line-height: 1; text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+}
+.portrait .lvl-badge .lbl { display: block; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.20em; color: var(--text-mute); margin-bottom: 2px; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-2); border: 1px solid var(--ember-soft);
+  padding: 12px 20px; border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--bone);
+  box-shadow: 0 12px 40px oklch(0 0 0 / 0.5);
+  z-index: 200; animation: slide-up 240ms cubic-bezier(.2,.9,.3,1.2);
+}
+@keyframes slide-up { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* Section header */
+.section-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+.section-h h2 { font-family: 'Cinzel', 'Times New Roman', serif; font-size: 26px; font-weight: 500; margin: 0; letter-spacing: 0.005em; }
+.section-h .sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-mute); letter-spacing: 0.20em; text-transform: uppercase; }
+
+/* ===== Dashboard 3-col layout ===== */
+.dashboard {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr) 300px;
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 1380px) {
+  .dashboard { grid-template-columns: 280px minmax(0, 1fr) 280px; gap: 14px; }
+}
+@media (max-width: 1200px) {
+  .dashboard { grid-template-columns: 280px minmax(0, 1fr); }
+  .dashboard .inventory-card { grid-column: 1 / -1; }
+}
+@media (max-width: 860px) {
+  .dashboard { grid-template-columns: 1fr; }
+}
+
+/* Equipment paperdoll layout */
+.equipment-layout {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+/* Attribute pills */
+.attr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.attr-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: 10px;
+  background: var(--bg-1); border: 1px solid var(--line);
+  font-size: 13px;
+}
+.attr-pill .mono { font-size: 11px; color: var(--text-mute); letter-spacing: 0.12em; }
+.attr-pill .serif { flex: 1; font-size: 18px; font-weight: 600; color: var(--bone); text-align: right; font-family: 'Cinzel', serif; }
+.attr-btn {
+  width: 22px; height: 22px; border-radius: 6px;
+  background: var(--primary-deep); color: #fff; border: none;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: all 160ms ease;
+}
+.attr-btn:hover { background: var(--primary); box-shadow: 0 0 10px rgba(59,130,246,0.5); }
+
+/* Active expedition strip */
+.active-strip {
+  background: linear-gradient(180deg, rgba(59,130,246,0.10), var(--bg-2));
+  box-shadow: var(--shadow-blue-strong);
+}
+
+/* Quick dungeons */
+.quick-dungeons { display: flex; flex-direction: column; gap: 10px; }
+.quick-d {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px; border-radius: 12px;
+  background: var(--bg-1); border: 1px solid var(--line);
+  cursor: pointer; transition: all 180ms ease;
+}
+.quick-d:hover { border-color: var(--line-hover); background: var(--bg-3); box-shadow: var(--shadow-blue); }
+.quick-d.locked { opacity: 0.5; cursor: not-allowed; }
+.quick-d-art {
+  width: 64px; height: 64px; border-radius: 8px;
+  background: var(--bg-3); border: 1px solid var(--line-soft);
+  flex-shrink: 0;
+}
+.quick-d-art.tier-1 { background: linear-gradient(135deg, rgba(34,197,94,0.30), var(--bg-2)); }
+.quick-d-art.tier-2 { background: linear-gradient(135deg, rgba(59,130,246,0.30), var(--bg-2)); }
+.quick-d-art.tier-3 { background: linear-gradient(135deg, rgba(168,85,247,0.32), var(--bg-2)); }
+.quick-d-art.tier-4 { background: linear-gradient(135deg, rgba(245,158,11,0.35), var(--bg-2)); }
+
+/* Inventory grid */
+.inv-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.inv-cell {
+  aspect-ratio: 1;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  position: relative;
+  cursor: pointer;
+  transition: all 160ms ease;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.inv-cell:not(.empty):hover { transform: translateY(-1px); }
+.inv-cell.empty { border-style: dashed; border-color: var(--line-soft); background: rgba(0,0,0,0.15); }
+.inv-icon {
+  width: 60%; height: 60%; border-radius: 4px;
+  background: repeating-linear-gradient(45deg, var(--bg-3) 0 4px, var(--bg-2) 4px 8px);
+  border: 1px solid var(--line-soft);
+}
+.broken-tag {
+  position: absolute; top: 3px; right: 3px;
+  width: 14px; height: 14px; border-radius: 100px;
+  background: var(--error); color: #fff;
+  font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  font-family: 'Inter', sans-serif;
+}
+.inv-dur {
+  position: absolute; bottom: 3px; left: 4px; right: 4px;
+  height: 3px; border-radius: 100px; background: rgba(0,0,0,0.4); overflow: hidden;
+}
+.inv-dur i { display: block; height: 100%; }
+
+/* Language toggle */
+.lang-toggle {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  gap: 0;
+}
+.lang-opt {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-mute);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  padding: 6px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+.lang-opt:hover { color: var(--text); }
+.lang-opt.active {
+  background: linear-gradient(180deg, var(--primary), var(--primary-deep));
+  color: #fff;
+  box-shadow: 0 0 12px rgba(59,130,246,0.45);
+}
+
+/* Currency chip — gold / silver / copper */
+.currency-chip {
+  display: inline-flex; align-items: center;
+  gap: 10px;
+  padding: 8px 14px; border-radius: 10px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  white-space: nowrap;
+  box-shadow: var(--shadow-blue);
+}
+.coin-pair { display: inline-flex; align-items: center; gap: 4px; }
+.coin-pair + .coin-pair { padding-left: 8px; border-left: 1px solid var(--line-soft); }
+.coin {
+  width: 12px; height: 12px; border-radius: 100px;
+  border: 1px solid rgba(0,0,0,0.45);
+  display: inline-block;
+  box-shadow: inset 0 -2px 3px rgba(0,0,0,0.35), inset 0 1px 1px rgba(255,255,255,0.25);
+}
+.coin-gold   { background: radial-gradient(circle at 35% 30%, #FBE08A, #C28F1A 70%, #6F4A06); }
+.coin-silver { background: radial-gradient(circle at 35% 30%, #F5F7FB, #A8B0C0 70%, #6E7587); }
+.coin-copper { background: radial-gradient(circle at 35% 30%, #F1A877, #B66A2C 70%, #5D3008); }
+.coin-val { color: var(--bone); font-weight: 600; font-variant-numeric: tabular-nums; }
+.coin-suf { color: var(--text-mute); font-size: 10px; letter-spacing: 0.06em; }
+
+/* Settings */
+.settings-grid { max-width: 900px; }
+.lang-cards {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.lang-card {
+  appearance: none; border: 1px solid var(--line);
+  background: var(--bg-1); color: var(--text);
+  padding: 18px 20px; border-radius: 12px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  cursor: pointer; transition: all 180ms ease;
+  position: relative;
+  font-family: inherit;
+}
+.lang-card:hover { border-color: var(--line-hover); background: var(--bg-3); box-shadow: var(--shadow-blue); }
+.lang-card.active {
+  border-color: var(--primary);
+  background: linear-gradient(180deg, rgba(59,130,246,0.12), var(--bg-2));
+  box-shadow: 0 0 0 1px var(--primary) inset, var(--shadow-blue-strong);
+}
+.lang-card-code {
+  font-family: 'Cinzel', serif;
+  font-size: 26px; font-weight: 700;
+  letter-spacing: 0.10em;
+  color: var(--primary-bright);
+}
+.lang-card.active .lang-card-code { color: var(--bone); }
+.lang-card-name {
+  font-size: 12px; color: var(--text-dim);
+  letter-spacing: 0.04em;
+}
+.lang-card-check {
+  position: absolute; top: 12px; right: 14px;
+  width: 22px; height: 22px; border-radius: 100px;
+  background: var(--primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+  box-shadow: 0 0 10px rgba(59,130,246,0.55);
+}
+.setting-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  padding: 6px 0;
+}
+.seg-toggle {
+  display: inline-flex; padding: 3px;
+  background: var(--bg-1); border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.seg-opt {
+  appearance: none; border: 0; background: transparent;
+  color: var(--text-dim); padding: 6px 14px;
+  border-radius: 7px; font-size: 12px; cursor: pointer;
+  font-family: inherit;
+}
+.seg-opt.active {
+  background: linear-gradient(180deg, var(--primary), var(--primary-deep));
+  color: #fff; font-weight: 600;
+}
+
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" data-presets="react">
+
+const { useState, useEffect, useRef, useMemo, useContext, createContext } = React;
+
+// =====================================================================
+// i18n
+// =====================================================================
+
+const STRINGS = {
+  en: {
+    brandName: 'Ashreach', brandSub: 'v0.1 — MVP',
+    navSecAdventure: 'Adventure', navSecHero: 'Hero',
+    navHero: 'Hero', navDungeons: 'Dungeons', navExpedition: 'Expedition',
+    navInventory: 'Inventory', navSmithy: 'Smithy', navCodex: 'Codex', navSettings: 'Settings',
+
+    lv: 'Lv', gold: 'Gold', shards: 'Shards',
+    coinGold: 'g', coinSilver: 's', coinCopper: 'c',
+
+    titleHeroK: 'Character', titleHero: "Hero of Sallow's Gate",
+    titleDungeonsK: 'World Map', titleDungeons: 'Dungeons of Ashreach',
+    titleExpK: 'Expedition', titleNoExp: 'No Active Expedition',
+    titleInvK: 'Pack & Gear', titleInv: 'Inventory',
+    titleSmithyK: 'Repair', titleSmithy: 'The Smithy',
+    titleCodexK: 'Lore', titleCodex: 'Codex',
+    titleSettingsK: 'Preferences', titleSettings: 'Settings',
+
+    settingsLanguage: 'Language', settingsLanguageSub: 'Choose interface language',
+    settingsAppearance: 'Appearance', settingsAppearanceSub: 'Visual preferences',
+    settingsTheme: 'Theme', settingsThemeDark: 'Dark (Obsidian)',
+    settingsSound: 'Sound', settingsSoundSub: 'Audio preferences',
+    settingsSoundMaster: 'Master volume',
+    settingsAccount: 'Account', settingsAccountSub: 'Your hero, your data',
+    settingsVersion: 'Build', settingsCurrentHero: 'Active hero',
+
+    character: 'Character', characterSub: 'Order of the Sallow Crown',
+    experience: 'Experience', vitality: 'Vitality',
+    combatStats: 'Combat Stats',
+    stPower: 'Power', stAttack: 'Attack', stDefense: 'Defense',
+    stCrit: 'Crit', stBlock: 'Block', stEvasion: 'Evasion',
+    attributes: 'Attributes', unspent: '{n} unspent',
+    str: 'STR', dex: 'DEX', vit: 'VIT', will: 'WIL',
+    strFull: 'Strength', dexFull: 'Dexterity', vitFull: 'Vitality', willFull: 'Willpower',
+    armor: 'Armor', bonusHp: 'Bonus HP', speed: 'Speed',
+
+    equipment: 'Equipment', equipSub: '9 slots · click to inspect',
+    powerN: 'Power {n}',
+    quickExp: 'Quick Expeditions', heroAway: 'Hero is away',
+    sendOnRun: 'Send hero on a run', allArrow: 'All →',
+    run: 'Run', locked: 'Locked',
+    inventory: 'Inventory', invSub: '{n} / 24 · click slot',
+    recentJournal: 'Recent Journal',
+
+    slotHead: 'Head', slotChest: 'Chest', slotHands: 'Hands',
+    slotLegs: 'Legs', slotFeet: 'Feet', slotWeapon: 'Weapon',
+    slotOffhand: 'Offhand', slotRing: 'Ring', slotAmulet: 'Amulet',
+
+    expInProgress: '◷ Expedition in progress',
+    awaitsReward: '◆ Hero awaits reward',
+    pctComplete: '{n}% complete', leftTime: '{t} left',
+    claimReward: 'Claim Reward', view: 'View',
+
+    lvReq: 'LV {n}+',
+    sendHero: 'Send Hero', heroBusy: 'Hero is busy',
+    lockedLv: 'Locked · Level {n}', inProgress: 'In Progress',
+    lootPct: 'Loot {n}%',
+
+    tierExp: 'Tier {n} expedition',
+    timeRemaining: 'Time remaining',
+    pctCompleteShort: '{n}% complete',
+    recallHero: 'Recall Hero', awaiting: 'Awaiting…',
+    liveChronicle: 'Live Chronicle', eventsStream: 'events stream from the depths',
+    elapsedLabel: 'Elapsed',
+    estReward: 'Estimated Reward', xpN: '{n} XP',
+    rewardSub: '+ {gold} gold · {pct}% item drop',
+    survival: 'Survival Forecast',
+    survivalSub: 'Combat Power vs. dungeon difficulty',
+    equipWear: 'Equipment Wear', wearVal: '~ −8 dur',
+    wearSub: 'per equipped item · repair after run',
+
+    waitsAtGate: 'The hero waits at the gate.',
+    noActiveExp: 'No active expedition. Choose a dungeon to begin.',
+    openDungeons: 'Open Dungeons',
+
+    pack: 'Pack', invCount: '{a} / {b}', invFree: '{n} free',
+    needsRepair: 'Needs Repair', itemsN: '{n} items',
+    cost: 'cost ◈ {n}',
+    quickAction: 'Quick Action', repairEntirePack: 'Repair entire pack',
+    repairAll: 'Repair All',
+    equipped: 'Equipped', inUse: 'in use',
+    packStored: 'Pack', storedItems: 'stored items',
+    equippedTag: 'EQUIPPED',
+
+    forgedIn: '{slot} · forged in Veyl',
+    durability: 'Durability',
+    criticalWear: '⚠ Critical wear — repair before next expedition.',
+    repairBtn: 'Repair · ◈ {n}', equip: 'Equip',
+
+    expComplete: 'Expedition Complete',
+    heroReturns: 'The Hero Returns', fromThe: 'From the {name}',
+    experienceLong: 'Experience', goldLong: 'Gold',
+    itemDrop: 'Item drop', acceptSpoils: 'Accept Spoils',
+
+    smithyTitle: "The Smithy at Sallow's Gate",
+    smithySub: 'repair · refit · re-edge', total: 'Total',
+    repairAllGear: 'Repair All Equipment · ◈ {n}',
+
+    codexTitle: 'Codex of Ashreach',
+    codexBody: 'Lore, bestiary entries, and rules of the realm. Earn entries by descending into dungeons; once read, they remain in the Codex forever.',
+    codexComing: 'Coming after MVP — see ',
+
+    toastDeparts: 'Hero departs for {name}',
+    toastRecalled: 'Hero recalled. No reward gained.',
+    toastRepaired: 'Repaired {name} (−◈ {n})',
+    toastAllRepaired: 'All gear repaired (−◈ {n})',
+    toastEquipped: 'Equipped {name}',
+
+    d1Name: 'Hollowed Glade',
+    d1Desc: 'A silent grove laced with lichen. Skeletons walk the paths in slow circles.',
+    d2Name: 'Ashen Catacombs',
+    d2Desc: 'Underground halls where ash never settles. The walls remember names.',
+    d3Name: 'The Veyl Reliquary',
+    d3Desc: 'A vaulted temple over the rift. The air trembles with stasis.',
+    d4Name: 'Choir of Embers',
+    d4Desc: 'A singing mine where flame has a voice. Requires level 20.',
+
+    heroName: 'Marek of Sallow', heroClass: 'Vanguard',
+
+    rarityCommon: 'Common', rarityUncommon: 'Uncommon',
+    rarityRare: 'Rare', rarityEpic: 'Epic', rarityLegendary: 'Legendary',
+
+    // Journal
+    j1: 'Returned from Ashen Catacombs.',
+    j2: 'Looted "Stormbound Coat" (Epic).',
+    j3: '+220 XP, +110 gold.',
+    j4: 'Cuirass dropped to 62%.',
+    j5: 'Crit on Ashen Warden.',
+    j6: 'Departed for Ashen Catacombs.',
+
+    // Chronicle events
+    ev1: 'Marek lights a torch in the antechamber.',
+    ev2: 'Echoes of distant chanting drift through the halls.',
+    ev3: 'Critical strike! A skitterling falls in two.',
+    ev4: "Armor scarred by a warden's blade.",
+    ev5: 'A small coin pouch glints in the rubble.',
+    ev6: 'Pressing deeper. The walls hum faintly.',
+    ev7: 'Critical: ember-iron tears through plate.',
+    ev8: 'Discovered a sealed reliquary.',
+    ev9: 'Trap sprung — minor wounds.',
+    ev10: 'Camp pitched beside a black river.',
+    chroIntro: 'Hero descends into the depths…',
+
+    langEN: 'EN', langRU: 'RU'
+  },
+  ru: {
+    brandName: 'Эшрич', brandSub: 'v0.1 — MVP',
+    navSecAdventure: 'Приключения', navSecHero: 'Герой',
+    navHero: 'Герой', navDungeons: 'Данжи', navExpedition: 'Поход',
+    navInventory: 'Инвентарь', navSmithy: 'Кузница', navCodex: 'Кодекс', navSettings: 'Настройки',
+
+    lv: 'Ур', gold: 'Золото', shards: 'Осколки',
+    coinGold: 'з', coinSilver: 'с', coinCopper: 'м',
+
+    titleHeroK: 'Персонаж', titleHero: 'Герой Саллоуских Врат',
+    titleDungeonsK: 'Карта мира', titleDungeons: 'Данжи Эшрича',
+    titleExpK: 'Поход', titleNoExp: 'Активного похода нет',
+    titleInvK: 'Сумка и снаряжение', titleInv: 'Инвентарь',
+    titleSmithyK: 'Ремонт', titleSmithy: 'Кузница',
+    titleCodexK: 'Лор', titleCodex: 'Кодекс',
+    titleSettingsK: 'Параметры', titleSettings: 'Настройки',
+
+    settingsLanguage: 'Язык', settingsLanguageSub: 'Язык интерфейса',
+    settingsAppearance: 'Внешний вид', settingsAppearanceSub: 'Визуальные предпочтения',
+    settingsTheme: 'Тема', settingsThemeDark: 'Тёмная (Obsidian)',
+    settingsSound: 'Звук', settingsSoundSub: 'Настройки звука',
+    settingsSoundMaster: 'Общая громкость',
+    settingsAccount: 'Аккаунт', settingsAccountSub: 'Ваш герой и данные',
+    settingsVersion: 'Сборка', settingsCurrentHero: 'Активный герой',
+
+    character: 'Персонаж', characterSub: 'Орден Саллоуской Короны',
+    experience: 'Опыт', vitality: 'Здоровье',
+    combatStats: 'Боевые характеристики',
+    stPower: 'Сила', stAttack: 'Атака', stDefense: 'Защита',
+    stCrit: 'Крит', stBlock: 'Блок', stEvasion: 'Уклон',
+    attributes: 'Атрибуты', unspent: '{n} нераспред.',
+    str: 'СИЛ', dex: 'ЛВК', vit: 'ВЫН', will: 'ВОЛ',
+    strFull: 'Сила', dexFull: 'Ловкость', vitFull: 'Выносливость', willFull: 'Воля',
+    armor: 'Броня', bonusHp: 'Бонус HP', speed: 'Скорость',
+
+    equipment: 'Снаряжение', equipSub: '9 слотов · нажмите для деталей',
+    powerN: 'Сила {n}',
+    quickExp: 'Быстрые походы', heroAway: 'Герой в походе',
+    sendOnRun: 'Отправить героя в поход', allArrow: 'Все →',
+    run: 'В путь', locked: 'Закрыто',
+    inventory: 'Инвентарь', invSub: '{n} / 24 · нажмите слот',
+    recentJournal: 'Журнал событий',
+
+    slotHead: 'Голова', slotChest: 'Грудь', slotHands: 'Руки',
+    slotLegs: 'Ноги', slotFeet: 'Ступни', slotWeapon: 'Оружие',
+    slotOffhand: 'Щит', slotRing: 'Кольцо', slotAmulet: 'Амулет',
+
+    expInProgress: '◷ Поход в процессе',
+    awaitsReward: '◆ Герой ждёт награду',
+    pctComplete: '{n}% завершено', leftTime: 'Осталось {t}',
+    claimReward: 'Забрать награду', view: 'Открыть',
+
+    lvReq: 'Ур {n}+',
+    sendHero: 'Отправить', heroBusy: 'Герой занят',
+    lockedLv: 'Требуется ур. {n}', inProgress: 'В пути',
+    lootPct: 'Лут {n}%',
+
+    tierExp: 'Поход {n} тира',
+    timeRemaining: 'До завершения',
+    pctCompleteShort: '{n}% пройдено',
+    recallHero: 'Отозвать', awaiting: 'Ожидание…',
+    liveChronicle: 'Хроника похода', eventsStream: 'события из глубин',
+    elapsedLabel: 'Прошло',
+    estReward: 'Ожидаемая награда', xpN: '{n} опыта',
+    rewardSub: '+ {gold} золота · шанс лута {pct}%',
+    survival: 'Прогноз выживания',
+    survivalSub: 'Сила героя против сложности данжа',
+    equipWear: 'Износ снаряжения', wearVal: '~ −8 проч.',
+    wearSub: 'на каждый предмет · ремонт после похода',
+
+    waitsAtGate: 'Герой ожидает у врат.',
+    noActiveExp: 'Нет активного похода. Выберите данж, чтобы начать.',
+    openDungeons: 'Открыть данжи',
+
+    pack: 'Сумка', invCount: '{a} / {b}', invFree: '{n} свободно',
+    needsRepair: 'Требует ремонта', itemsN: '{n} предм.',
+    cost: 'цена ◈ {n}',
+    quickAction: 'Быстрое действие', repairEntirePack: 'Починить всю сумку',
+    repairAll: 'Починить всё',
+    equipped: 'Надето', inUse: 'на герое',
+    packStored: 'Сумка', storedItems: 'хранится',
+    equippedTag: 'НАДЕТО',
+
+    forgedIn: '{slot} · откован в Вейле',
+    durability: 'Прочность',
+    criticalWear: '⚠ Критический износ — почините до следующего похода.',
+    repairBtn: 'Ремонт · ◈ {n}', equip: 'Надеть',
+
+    expComplete: 'Поход завершён',
+    heroReturns: 'Герой возвращается', fromThe: 'Из локации {name}',
+    experienceLong: 'Опыт', goldLong: 'Золото',
+    itemDrop: 'Найден предмет', acceptSpoils: 'Принять добычу',
+
+    smithyTitle: 'Кузница Саллоуских Врат',
+    smithySub: 'ремонт · перековка · заточка', total: 'Итого',
+    repairAllGear: 'Починить всё снаряжение · ◈ {n}',
+
+    codexTitle: 'Кодекс Эшрича',
+    codexBody: 'Лор, бестиарий и правила мира. Записи открываются в походах и навсегда остаются в Кодексе.',
+    codexComing: 'Появится после MVP — см. ',
+
+    toastDeparts: 'Герой отправился в {name}',
+    toastRecalled: 'Герой отозван. Награда не получена.',
+    toastRepaired: 'Починено: {name} (−◈ {n})',
+    toastAllRepaired: 'Всё снаряжение починено (−◈ {n})',
+    toastEquipped: 'Надето: {name}',
+
+    d1Name: 'Полая Роща',
+    d1Desc: 'Тихая роща, оплетённая лишайником. Скелеты ходят кругами по тропам.',
+    d2Name: 'Пепельные катакомбы',
+    d2Desc: 'Подземные коридоры, где пепел не оседает. Стены помнят имена.',
+    d3Name: 'Реликварий Вейла',
+    d3Desc: 'Сводчатый храм над разломом. Воздух дрожит от стасиса.',
+    d4Name: 'Хор Углей',
+    d4Desc: 'Поющая шахта, где пламя имеет голос. Требуется 20-й уровень.',
+
+    heroName: 'Марек из Саллоу', heroClass: 'Авангард',
+
+    rarityCommon: 'Обычный', rarityUncommon: 'Необычный',
+    rarityRare: 'Редкий', rarityEpic: 'Эпический', rarityLegendary: 'Легендарный',
+
+    j1: 'Вернулся из Пепельных катакомб.',
+    j2: 'Получен предмет «Грозовой плащ» (Эпик).',
+    j3: '+220 опыта, +110 золота.',
+    j4: 'Кираса опустилась до 62%.',
+    j5: 'Крит по Пепельному стражу.',
+    j6: 'Отбыл в Пепельные катакомбы.',
+
+    ev1: 'Марек зажигает факел в прихожей.',
+    ev2: 'Эхо далёкого пения скользит по коридорам.',
+    ev3: 'Критический удар! Скиттерлинг разрублен надвое.',
+    ev4: 'Доспех расцарапан клинком стража.',
+    ev5: 'Маленький кошель блестит в обломках.',
+    ev6: 'Двигаюсь глубже. Стены тихо гудят.',
+    ev7: 'Крит: тлеющее железо рассекает пластину.',
+    ev8: 'Найден запечатанный реликварий.',
+    ev9: 'Сработала ловушка — лёгкие раны.',
+    ev10: 'Лагерь разбит у чёрной реки.',
+    chroIntro: 'Герой спускается в глубины…',
+
+    langEN: 'EN', langRU: 'RU'
+  }
+};
+
+const LangContext = createContext('ru');
+const LangSetContext = createContext(() => {});
+
+function useT() {
+  const lang = useContext(LangContext);
+  return (key, params) => {
+    let s = (STRINGS[lang] && STRINGS[lang][key]) ?? STRINGS.en[key] ?? key;
+    if (params) Object.keys(params).forEach((k) => {s = s.replaceAll('{' + k + '}', params[k]);});
+    return s;
+  };
+}
+
+function LangToggle() {
+  const lang = useContext(LangContext);
+  const setLang = useContext(LangSetContext);
+  return (
+    <div className="lang-toggle" role="tablist" aria-label="Language">
+      <button
+        role="tab"
+        aria-selected={lang === 'en'}
+        className={`lang-opt ${lang === 'en' ? 'active' : ''}`}
+        onClick={() => setLang('en')}>
+        EN</button>
+      <button
+        role="tab"
+        aria-selected={lang === 'ru'}
+        className={`lang-opt ${lang === 'ru' ? 'active' : ''}`}
+        onClick={() => setLang('ru')}>
+        RU</button>
+    </div>);
+
+}
+
+
+// =====================================================================
+// MOCK DATA
+// =====================================================================
+
+const RARITY = {
+  common: { labelKey: 'rarityCommon', color: '#9CA3AF', glow: 'rgba(156,163,175,0.30)' },
+  uncommon: { labelKey: 'rarityUncommon', color: '#22C55E', glow: 'rgba(34,197,94,0.35)' },
+  rare: { labelKey: 'rarityRare', color: '#3B82F6', glow: 'rgba(59,130,246,0.40)' },
+  epic: { labelKey: 'rarityEpic', color: '#A855F7', glow: 'rgba(168,85,247,0.40)' },
+  legendary: { labelKey: 'rarityLegendary', color: '#F59E0B', glow: 'rgba(245,158,11,0.40)' }
+};
+
+const SLOTS = [
+{ id: 'head', nameKey: 'slotHead', glyph: 'H' },
+{ id: 'chest', nameKey: 'slotChest', glyph: 'C' },
+{ id: 'hands', nameKey: 'slotHands', glyph: 'G' },
+{ id: 'legs', nameKey: 'slotLegs', glyph: 'L' },
+{ id: 'feet', nameKey: 'slotFeet', glyph: 'B' },
+{ id: 'main', nameKey: 'slotWeapon', glyph: 'W' },
+{ id: 'off', nameKey: 'slotOffhand', glyph: 'O' },
+{ id: 'ring', nameKey: 'slotRing', glyph: 'R' },
+{ id: 'amulet', nameKey: 'slotAmulet', glyph: 'A' }];
+
+
+const SLOT_KEY = { head: 'slotHead', chest: 'slotChest', hands: 'slotHands', legs: 'slotLegs', feet: 'slotFeet', main: 'slotWeapon', off: 'slotOffhand', ring: 'slotRing', amulet: 'slotAmulet' };
+const slotKey = (id) => SLOT_KEY[id] || id;
+
+const INITIAL_EQUIPMENT = {
+  head: { name: 'Pilgrim Hood', slot: 'head', rarity: 'common', durability: 78, dmax: 100, stats: { armor: 4, hp: 8 } },
+  chest: { name: 'Tarnished Cuirass', slot: 'chest', rarity: 'uncommon', durability: 62, dmax: 120, stats: { armor: 14, hp: 22 } },
+  hands: null,
+  legs: { name: 'Banded Greaves', slot: 'legs', rarity: 'common', durability: 41, dmax: 100, stats: { armor: 8, hp: 12 } },
+  feet: { name: 'Worn Sabatons', slot: 'feet', rarity: 'common', durability: 12, dmax: 100, stats: { armor: 6, hp: 10 } },
+  main: { name: 'Emberforged Saber', slot: 'main', rarity: 'rare', durability: 88, dmax: 150, stats: { attack: 28, crit: 6 } },
+  off: { name: 'Oaken Buckler', slot: 'off', rarity: 'uncommon', durability: 55, dmax: 100, stats: { armor: 10, block: 8 } },
+  ring: { name: 'Signet of Veyl', slot: 'ring', rarity: 'epic', durability: 95, dmax: 100, stats: { crit: 8, attack: 6 } },
+  amulet: null
+};
+
+const INVENTORY = [
+{ id: 'inv1', name: 'Steel Gauntlets', slot: 'hands', rarity: 'uncommon', durability: 90, dmax: 100, stats: { armor: 9, attack: 3 } },
+{ id: 'inv2', name: 'Ashen Amulet', slot: 'amulet', rarity: 'rare', durability: 100, dmax: 100, stats: { hp: 24, crit: 4 } },
+{ id: 'inv3', name: 'Marauder Helm', slot: 'head', rarity: 'uncommon', durability: 84, dmax: 110, stats: { armor: 7, hp: 14 } },
+{ id: 'inv4', name: 'Vagrant\'s Dagger', slot: 'main', rarity: 'common', durability: 45, dmax: 100, stats: { attack: 18 } },
+{ id: 'inv5', name: 'Bone-Carver Ring', slot: 'ring', rarity: 'rare', durability: 100, dmax: 100, stats: { attack: 10 } },
+{ id: 'inv6', name: 'Stormbound Coat', slot: 'chest', rarity: 'epic', durability: 73, dmax: 140, stats: { armor: 22, hp: 30 } }];
+
+
+const DUNGEONS = [
+{ id: 'd1', nameKey: 'd1Name', descKey: 'd1Desc', tier: 1, lvl: 1, durationMin: 5, xp: 80, gold: 40, itemChance: 0.35, locked: false },
+{ id: 'd2', nameKey: 'd2Name', descKey: 'd2Desc', tier: 2, lvl: 5, durationMin: 15, xp: 220, gold: 110, itemChance: 0.55, locked: false },
+{ id: 'd3', nameKey: 'd3Name', descKey: 'd3Desc', tier: 3, lvl: 12, durationMin: 35, xp: 480, gold: 280, itemChance: 0.75, locked: false },
+{ id: 'd4', nameKey: 'd4Name', descKey: 'd4Desc', tier: 4, lvl: 20, durationMin: 90, xp: 1100, gold: 720, itemChance: 0.85, locked: true }];
+
+
+const INITIAL_HERO = {
+  nameKey: 'heroName',
+  classKey: 'heroClass',
+  level: 8,
+  xp: 1280,
+  xpMax: 2000,
+  hp: 184,
+  hpMax: 220,
+  gold: 13487,
+  shards: 27,
+  base: { str: 14, dex: 9, vit: 16, will: 6 }
+};
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+
+function formatTime(ms) {
+  if (ms <= 0) return '00:00';
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor(s % 3600 / 60);
+  const r = s % 60;
+  if (h > 0) return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+  return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+}
+
+function durabilityClass(p) {
+  if (p < 0.20) return 'crit';
+  if (p < 0.45) return 'warn';
+  return '';
+}
+
+function sumStats(equipment) {
+  const t = { attack: 0, armor: 0, hp: 0, crit: 0, block: 0 };
+  Object.values(equipment).forEach((it) => {
+    if (!it) return;
+    Object.entries(it.stats).forEach(([k, v]) => {t[k] = (t[k] || 0) + v;});
+  });
+  return t;
+}
+
+// =====================================================================
+// SHARED ATOMS
+// =====================================================================
+
+function Bar({ kind = '', value, max, height = 6 }) {
+  const pct = Math.max(0, Math.min(1, value / max));
+  const cls = kind === 'dur' ? `bar dur ${durabilityClass(pct)}` : `bar ${kind}`;
+  return (
+    <div className={cls} style={{ height }}>
+      <i style={{ width: `${pct * 100}%` }}></i>
+    </div>);
+
+}
+
+function Tag({ rarity, children }) {
+  return <span className={`tag rare-${rarity}`}>{children || RARITY[rarity].label}</span>;
+}
+
+function StatChip({ label, value, tone }) {
+  return (
+    <div className={`stat-chip ${tone || ''}`}>
+      <span className="lbl">{label}</span>
+      <span className="val">{value}</span>
+    </div>);
+
+}
+
+function splitCoin(total) {
+  const n = Math.max(0, Math.floor(total));
+  return {
+    gold:   Math.floor(n / 10000),
+    silver: Math.floor((n % 10000) / 100),
+    copper: n % 100,
+  };
+}
+
+function CurrencyChip({ total }) {
+  const t = useT();
+  const c = splitCoin(total);
+  const show = [];
+  if (c.gold > 0)   show.push({ k: 'g', v: c.gold,   cls: 'gold' });
+  if (c.silver > 0 || c.gold > 0) show.push({ k: 's', v: c.silver, cls: 'silver' });
+  show.push({ k: 'c', v: c.copper, cls: 'copper' });
+  return (
+    <div className="currency-chip" title={t('gold')}>
+      {show.map((p, i) => (
+        <span key={p.k} className="coin-pair">
+          <span className={`coin coin-${p.cls}`}></span>
+          <span className="coin-val">{p.v}</span>
+          <span className="coin-suf">{t('coin' + p.cls.charAt(0).toUpperCase() + p.cls.slice(1))}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function PlaceholderHero({ label, tier }) {
+  return (
+    <div className={`dungeon-hero tier-${tier}`}>
+      <span className="ph-label">{label}</span>
+      <span className="tier-tag">T{tier}</span>
+    </div>);
+
+}
+
+function Portrait({ level, label = 'Hero portrait' }) {
+  return (
+    <div className="portrait">
+      <div className="lvl-badge"><span className="lbl">Level</span>{level}</div>
+      <span className="ph-label">{label}</span>
+    </div>);
+
+}
+
+function EquipmentSlot({ slot, item, onClick }) {
+  const t = useT();
+  if (!item) {
+    return (
+      <div className="slot empty" onClick={onClick}>
+        <span className="slot-glyph" style={{ color: 'var(--text-mute)' }}>{slot.glyph}</span>
+        <span className="slot-name">{t(slot.nameKey)}</span>
+      </div>);
+
+  }
+  const durPct = item.durability / item.dmax;
+  return (
+    <div className="slot" onClick={onClick} title={item.name}>
+      <span className="slot-rare" style={{ background: RARITY[item.rarity].color }}></span>
+      <div className="slot-dur"><i style={{ width: `${durPct * 100}%`, background: durPct < 0.20 ? 'var(--blood)' : durPct < 0.45 ? 'var(--ember)' : 'var(--moss)' }}></i></div>
+      <span className="slot-glyph">{slot.glyph}</span>
+      <span className="slot-name">{t(slot.nameKey)}</span>
+    </div>);
+
+}
+
+// =====================================================================
+// SIDEBAR
+// =====================================================================
+
+function Sidebar({ screen, setScreen, expedition, hero }) {
+  const t = useT();
+  const items = [
+  { id: 'hero', labelKey: 'navHero', glyph: '✦', section: 0 },
+  { id: 'dungeons', labelKey: 'navDungeons', glyph: '⌬', section: 0 },
+  { id: 'expedition', labelKey: 'navExpedition', glyph: '◷', section: 0, badge: expedition && !expedition.done ? '●' : null },
+  { id: 'inventory', labelKey: 'navInventory', glyph: '◊', section: 1 },
+  { id: 'smithy', labelKey: 'navSmithy', glyph: '⚒', section: 1 },
+  { id: 'codex', labelKey: 'navCodex', glyph: '☰', section: 1 },
+  { id: 'settings', labelKey: 'navSettings', glyph: '⚙', section: 1 }];
+
+  return (
+    <aside className="sidebar">
+      <div className="brand">
+        <div className="brand-mark"></div>
+        <div>
+          <div className="brand-name">{t('brandName')}</div>
+        </div>
+      </div>
+
+      <div className="nav-section-label">{t('navSecAdventure')}</div>
+      {items.filter((i) => i.section === 0).map((i) =>
+      <div key={i.id} className={`nav-item ${screen === i.id ? 'active' : ''}`} onClick={() => setScreen(i.id)}>
+          <span className="nav-glyph">{i.glyph}</span>
+          <span>{t(i.labelKey)}</span>
+          {i.badge && <span className="nav-badge" style={{ padding: '0 6px' }}>{i.badge}</span>}
+        </div>
+      )}
+
+      <div className="nav-section-label">{t('navSecHero')}</div>
+      {items.filter((i) => i.section === 1).map((i) =>
+      <div key={i.id} className={`nav-item ${screen === i.id ? 'active' : ''}`} onClick={() => setScreen(i.id)}>
+          <span className="nav-glyph">{i.glyph}</span>
+          <span>{t(i.labelKey)}</span>
+        </div>
+      )}
+
+      <div className="sidebar-footer">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+          <div className="avatar-sm"></div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t(hero.nameKey)}</div>
+            <div className="mono" style={{ fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{t(hero.classKey)} · {t('lv')} {hero.level}</div>
+          </div>
+        </div>
+        <div className="sidebar-version mono">{t('brandSub')}</div>
+      </div>
+    </aside>);
+
+}
+
+// =====================================================================
+// HERO SCREEN
+// =====================================================================
+
+function HeroScreen({ hero, equipment, inventory, expedition, now, setSelectedItem, setScreen, onStart, onClaim }) {
+  const t = useT();
+  const stats = sumStats(equipment);
+  const cp = (stats.attack || 0) * 6 + (stats.armor || 0) * 4 + (stats.hp || 0) * 2 + (stats.crit || 0) * 3 + hero.level * 10;
+  const activeDungeon = expedition ? DUNGEONS.find((d) => d.id === expedition.dungeonId) : null;
+  const ATTR_KEY = { str: 'str', dex: 'dex', vit: 'vit', will: 'will' };
+
+  return (
+    <div className="dashboard">
+      {/* === LEFT: Character Panel === */}
+      <div className="card character-card">
+        <div className="card-h">
+          <div>
+            <div className="card-title">{t('character')}</div>
+            <div className="card-sub mono">{t('characterSub')}</div>
+          </div>
+        </div>
+        <div className="card-body">
+          <Portrait level={hero.level} />
+            <div style={{ marginTop: 16, textAlign: 'center' }}>
+            <div className="serif" style={{ fontSize: 18, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.2 }}>{t(hero.nameKey)}</div>
+            <div className="mono" style={{ fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text-dim)', marginTop: 4 }}>
+              <span style={{ color: 'var(--primary-bright)' }}>{t(hero.classKey)}</span> · {t('lv')} {hero.level}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 20 }}>
+            <BarBlock label={t('experience')} cur={hero.xp} max={hero.xpMax} kind="xp" />
+            <BarBlock label={t('vitality')} cur={hero.hp} max={hero.hpMax} kind="hp" />
+          </div>
+
+          <div className="divider"></div>
+
+          <div className="card-sub mono" style={{ marginBottom: 10 }}>{t('combatStats')}</div>
+          <div className="stat-list" style={{ gridTemplateColumns: '1fr 1fr' }}>
+            <div className="sl-row"><span className="lbl">{t('stPower')}</span><span className="val" style={{ color: 'var(--primary-bright)' }}>{cp}</span></div>
+            <div className="sl-row"><span className="lbl">{t('stAttack')}</span><span className="val">{stats.attack || 0}</span></div>
+            <div className="sl-row"><span className="lbl">{t('stDefense')}</span><span className="val">{stats.armor || 0}</span></div>
+            <div className="sl-row"><span className="lbl">{t('stCrit')}</span><span className="val">{stats.crit || 0}%</span></div>
+            <div className="sl-row"><span className="lbl">{t('stBlock')}</span><span className="val">{stats.block || 0}%</span></div>
+            <div className="sl-row"><span className="lbl">{t('stEvasion')}</span><span className="val">12%</span></div>
+          </div>
+
+          <div className="divider"></div>
+
+          <div className="card-sub mono" style={{ marginBottom: 10 }}>{t('attributes')} <span style={{ color: 'var(--warning)' }}>· {t('unspent', { n: 3 })}</span></div>
+          <div className="attr-grid">
+            {Object.entries(hero.base).map(([k, v]) =>
+            <div key={k} className="attr-pill">
+                <span className="mono">{t(ATTR_KEY[k])}</span>
+                <span className="serif">{v}</span>
+                <button className="attr-btn">+</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* === CENTER: Main Content === */}
+      <div className="col">
+        {expedition && activeDungeon &&
+        <ActiveExpeditionStrip expedition={expedition} dungeon={activeDungeon} now={now} onOpen={() => setScreen('expedition')} onClaim={onClaim} />
+        }
+
+        <div className="card">
+          <div className="card-h">
+            <div>
+              <div className="card-title">{t('equipment')}</div>
+              <div className="card-sub mono">{t('equipSub')}</div>
+            </div>
+            <Tag rarity="rare">{t('powerN', { n: cp })}</Tag>
+          </div>
+          <div className="card-body">
+            <div className="equipment-layout">
+              <EquipmentSlot slot={SLOTS[0]} item={equipment.head} onClick={() => equipment.head && setSelectedItem(equipment.head)} />
+              <EquipmentSlot slot={SLOTS[8]} item={equipment.amulet} onClick={() => equipment.amulet && setSelectedItem(equipment.amulet)} />
+              <EquipmentSlot slot={SLOTS[5]} item={equipment.main} onClick={() => equipment.main && setSelectedItem(equipment.main)} />
+              <EquipmentSlot slot={SLOTS[1]} item={equipment.chest} onClick={() => equipment.chest && setSelectedItem(equipment.chest)} />
+              <EquipmentSlot slot={SLOTS[6]} item={equipment.off} onClick={() => equipment.off && setSelectedItem(equipment.off)} />
+              <EquipmentSlot slot={SLOTS[2]} item={equipment.hands} onClick={() => equipment.hands && setSelectedItem(equipment.hands)} />
+              <EquipmentSlot slot={SLOTS[7]} item={equipment.ring} onClick={() => equipment.ring && setSelectedItem(equipment.ring)} />
+              <EquipmentSlot slot={SLOTS[3]} item={equipment.legs} onClick={() => equipment.legs && setSelectedItem(equipment.legs)} />
+              <div></div>
+              <EquipmentSlot slot={SLOTS[4]} item={equipment.feet} onClick={() => equipment.feet && setSelectedItem(equipment.feet)} />
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-h">
+            <div>
+              <div className="card-title">{t('quickExp')}</div>
+              <div className="card-sub mono">{expedition ? t('heroAway') : t('sendOnRun')}</div>
+            </div>
+            <button className="btn" onClick={() => setScreen('dungeons')} style={{ padding: '8px 12px', fontSize: 12, whiteSpace: 'nowrap' }}>{t('allArrow')}</button>
+          </div>
+          <div className="card-body">
+            <div className="quick-dungeons">
+              {DUNGEONS.slice(0, 3).map((d) =>
+              <div key={d.id} className={`quick-d ${d.locked ? 'locked' : ''}`} onClick={() => !d.locked && !expedition && onStart(d)}>
+                  <div className={`quick-d-art tier-${d.tier}`}></div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="serif" style={{ fontSize: 15, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{t(d.nameKey)}</div>
+                    <div className="mono" style={{ fontSize: 11, color: 'var(--text-mute)', marginTop: 4 }}>
+                      {t('lvReq', { n: d.lvl })} · {d.durationMin}m · {d.xp} XP · {t('lootPct', { n: Math.round(d.itemChance * 100) })}
+                    </div>
+                  </div>
+                  <button className="btn primary" disabled={!!expedition || d.locked} style={{ padding: '8px 14px' }}>
+                    {d.locked ? t('locked') : t('run')}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* === RIGHT: Inventory Quick Panel === */}
+      <div className="card inventory-card">
+        <div className="card-h">
+          <div>
+            <div className="card-title">{t('inventory')}</div>
+            <div className="card-sub mono">{t('invSub', { n: inventory.length })}</div>
+          </div>
+          <button className="btn" style={{ padding: '6px 10px', fontSize: 12 }} onClick={() => setScreen('inventory')}>↗</button>
+        </div>
+        <div className="card-body">
+          <div className="inv-grid">
+            {Array.from({ length: 24 }).map((_, i) => {
+              const item = inventory[i];
+              if (!item) return <div key={i} className="inv-cell empty"></div>;
+              const pct = item.durability / item.dmax;
+              return (
+                <div key={i} className="inv-cell" style={{ borderColor: RARITY[item.rarity].color, boxShadow: `inset 0 0 14px ${RARITY[item.rarity].glow}` }} onClick={() => setSelectedItem(item)} title={item.name}>
+                  <div className="inv-icon"></div>
+                  {pct < 0.20 && <div className="broken-tag">!</div>}
+                  <div className="inv-dur"><i style={{ width: `${pct * 100}%`, background: pct < 0.20 ? 'var(--error)' : pct < 0.45 ? 'var(--warning)' : 'var(--success)' }}></i></div>
+                </div>);
+
+            })}
+          </div>
+
+          <div className="divider"></div>
+
+          <div className="card-sub mono" style={{ marginBottom: 10 }}>{t('recentJournal')}</div>
+          <div>
+            <div className="log-line loot"><span className="t">02:14</span><span className="m">{t('j2')}</span></div>
+            <div className="log-line"><span className="t">02:14</span><span className="m">{t('j3')}</span></div>
+            <div className="log-line dmg"><span className="t">02:13</span><span className="m">{t('j4')}</span></div>
+            <div className="log-line crit"><span className="t">02:11</span><span className="m">{t('j5')}</span></div>
+          </div>
+        </div>
+      </div>
+    </div>);
+
+}
+
+function BarBlock({ label, cur, max, kind }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6, gap: 8 }}>
+        <span className="mono" style={{ fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-mute)', whiteSpace: 'nowrap' }}>{label}</span>
+        <span className="mono" style={{ fontSize: 11, color: 'var(--bone)', whiteSpace: 'nowrap' }}>{cur} / {max}</span>
+      </div>
+      <Bar kind={kind} value={cur} max={max} height={8} />
+    </div>);
+
+}
+
+function ActiveExpeditionStrip({ expedition, dungeon, now, onOpen, onClaim }) {
+  const t = useT();
+  const total = expedition.duration;
+  const elapsed = Math.max(0, Math.min(total, now - expedition.startedAt));
+  const remaining = Math.max(0, total - elapsed);
+  const progress = total > 0 ? Math.max(0, Math.min(1, elapsed / total)) : 0;
+  const done = remaining === 0;
+  return (
+    <div className="card active-strip" style={{ borderColor: done ? 'var(--warning)' : 'var(--primary)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '16px 20px' }}>
+        <div className={`dungeon-hero tier-${dungeon.tier}`} style={{ width: 90, height: 90, minWidth: 90, borderRadius: 10, padding: 0 }}></div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="mono" style={{ fontSize: 10, letterSpacing: '0.20em', textTransform: 'uppercase', color: done ? 'var(--warning)' : 'var(--primary-bright)' }}>
+            {done ? t('awaitsReward') : t('expInProgress')}
+          </div>
+          <div className="serif" style={{ fontSize: 22, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginTop: 2 }}>{t(dungeon.nameKey)}</div>
+          <div style={{ marginTop: 10 }}>
+            <div className="bar" style={{ height: 8 }}>
+              <i style={{ width: `${progress * 100}%`, background: done ? 'var(--warning)' : 'linear-gradient(90deg, var(--primary-deep), var(--primary-bright))', transition: 'width 1s linear' }}></i>
+            </div>
+            <div className="mono" style={{ fontSize: 11, color: 'var(--text-mute)', marginTop: 6, display: 'flex', justifyContent: 'space-between' }}>
+              <span>{t('pctComplete', { n: Math.round(progress * 100) })}</span>
+              <span style={{ color: 'var(--bone)' }}>{t('leftTime', { t: formatTime(remaining) })}</span>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {done ?
+          <button className="btn primary" onClick={onClaim}>{t('claimReward')}</button> :
+
+          <button className="btn" onClick={onOpen}>{t('view')}</button>
+          }
+        </div>
+      </div>
+    </div>);
+
+}
+
+// =====================================================================
+// DUNGEONS SCREEN
+// =====================================================================
+
+function DungeonsScreen({ hero, expedition, onStart }) {
+  const t = useT();
+  return (
+    <div className="col">
+      <div className="grid-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', display: 'grid' }}>
+        {DUNGEONS.map((d) => {
+          const locked = d.locked;
+          const isActive = expedition && expedition.dungeonId === d.id && !expedition.done;
+          return (
+            <div key={d.id} className={`dungeon ${locked ? 'locked' : ''} ${isActive ? 'active' : ''}`} onClick={() => !locked && !isActive && onStart(d)}>
+              <PlaceholderHero label={t(d.nameKey)} tier={d.tier} />
+              <div className="dungeon-body">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                  <h3>{t(d.nameKey)}</h3>
+                  <span className="mono" style={{ fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.12em', whiteSpace: 'nowrap', paddingTop: 6, flexShrink: 0 }}>{t('lvReq', { n: d.lvl })}</span>
+                </div>
+                <p>{t(d.descKey)}</p>
+                <div className="dungeon-meta">
+                  <span>⏱ <b>{d.durationMin}m</b></span>
+                  <span>XP <b>{d.xp}</b></span>
+                  <span>◈ <b>{d.gold}</b></span>
+                  <span>{t('lootPct', { n: Math.round(d.itemChance * 100) })}</span>
+                </div>
+                <div className="dungeon-cta">
+                  {locked ?
+                  <button className="btn" disabled style={{ width: '100%' }}>{t('lockedLv', { n: d.lvl })}</button> :
+                  isActive ?
+                  <button className="btn ghost" style={{ width: '100%', borderColor: 'var(--primary)' }}>{t('inProgress')}</button> :
+
+                  <button className="btn primary" style={{ width: '100%' }} disabled={expedition && !expedition.done}>
+                      {expedition && !expedition.done ? t('heroBusy') : t('sendHero')}
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>);
+
+        })}
+      </div>
+    </div>);
+
+}
+
+// =====================================================================
+// EXPEDITION SCREEN
+// =====================================================================
+
+function TimerRing({ progress, remaining, total }) {
+  const t = useT();
+  const r = 96;
+  const c = 2 * Math.PI * r;
+  const offset = c * (1 - progress);
+  return (
+    <div className="timer-ring">
+      <svg viewBox="0 0 220 220" width="220" height="220">
+        <circle cx="110" cy="110" r={r} fill="none" stroke="var(--bg-2)" strokeWidth="6" />
+        <circle cx="110" cy="110" r={r} fill="none" stroke="var(--primary)" strokeWidth="6"
+        strokeLinecap="round" strokeDasharray={c} strokeDashoffset={offset}
+        style={{ transition: 'stroke-dashoffset 1s linear', filter: 'drop-shadow(0 0 8px rgba(59,130,246,0.5))' }} />
+      </svg>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div className="digits">{formatTime(remaining)}</div>
+        <div className="label">{t('timeRemaining')}</div>
+      </div>
+    </div>);
+
+}
+
+function ExpeditionScreen({ expedition, dungeon, now, onClaim, onAbort, onStart }) {
+  const t = useT();
+  if (!expedition) {
+    return (
+      <div className="card">
+        <div className="card-body" style={{ textAlign: 'center', padding: '60px 40px' }}>
+          <div className="serif" style={{ fontSize: 28, marginBottom: 8, color: 'var(--text-dim)' }}>{t('waitsAtGate')}</div>
+          <div style={{ color: 'var(--text-mute)', marginBottom: 22 }}>{t('noActiveExp')}</div>
+          <button className="btn primary lg" onClick={() => onStart()}>{t('openDungeons')}</button>
+        </div>
+      </div>);
+
+  }
+
+  const total = expedition.duration;
+  const elapsed = Math.max(0, Math.min(total, now - expedition.startedAt));
+  const remaining = Math.max(0, total - elapsed);
+  const progress = total > 0 ? Math.max(0, Math.min(1, elapsed / total)) : 0;
+  const done = remaining === 0;
+
+  return (
+    <div className="col">
+      <div className="grid-2" style={{ gridTemplateColumns: '380px 1fr' }}>
+        <div className="card">
+          <div className="card-h">
+            <div>
+              <div className="card-title">{t(dungeon.nameKey)}</div>
+              <div className="card-sub mono">{t('tierExp', { n: dungeon.tier })}</div>
+            </div>
+            <Tag rarity={dungeon.tier >= 4 ? 'legendary' : dungeon.tier >= 3 ? 'epic' : dungeon.tier >= 2 ? 'rare' : 'uncommon'}>
+              T{dungeon.tier}
+            </Tag>
+          </div>
+          <div className="card-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
+            <TimerRing progress={progress} remaining={remaining} total={total} />
+            <div className="mono" style={{ fontSize: 11, color: 'var(--text-mute)', letterSpacing: '0.18em', textTransform: 'uppercase' }}>
+              {done ? t('awaitsReward').replace('◆ ', '') : t('pctCompleteShort', { n: Math.round(progress * 100) })}
+            </div>
+            <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+              {done ?
+              <button className="btn primary lg" style={{ flex: 1 }} onClick={onClaim}>{t('claimReward')}</button> :
+
+              <>
+                  <button className="btn ghost danger" style={{ flex: 1 }} onClick={onAbort}>{t('recallHero')}</button>
+                  <button className="btn" style={{ flex: 1 }} disabled>{t('awaiting')}</button>
+                </>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-h">
+            <div>
+              <div className="card-title">{t('liveChronicle')}</div>
+              <div className="card-sub mono">{t('eventsStream')}</div>
+            </div>
+            <div className="mono" style={{ fontSize: 11, color: 'var(--text-mute)' }}>
+              {t('elapsedLabel')} <span style={{ color: 'var(--bone)' }}>{formatTime(elapsed)}</span> / {formatTime(total)}
+            </div>
+          </div>
+          <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            <ChronicleFeed startedAt={expedition.startedAt} now={now} duration={total} dungeon={dungeon} />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid-3">
+        <div className="card">
+          <div className="card-body">
+            <div className="mono" style={{ fontSize: 10, letterSpacing: '0.20em', textTransform: 'uppercase', color: 'var(--text-mute)' }}>{t('estReward')}</div>
+            <div className="serif" style={{ fontSize: 28, fontWeight: 500, marginTop: 6 }}>{t('xpN', { n: dungeon.xp })}</div>
+            <div className="mono" style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 4 }}>{t('rewardSub', { gold: dungeon.gold, pct: Math.round(dungeon.itemChance * 100) })}</div>
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-body">
+            <div className="mono" style={{ fontSize: 10, letterSpacing: '0.20em', textTransform: 'uppercase', color: 'var(--text-mute)' }}>{t('survival')}</div>
+            <div className="serif" style={{ fontSize: 28, fontWeight: 500, marginTop: 6, color: 'var(--success)' }}>94%</div>
+            <div className="mono" style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 4 }}>{t('survivalSub')}</div>
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-body">
+            <div className="mono" style={{ fontSize: 10, letterSpacing: '0.20em', textTransform: 'uppercase', color: 'var(--text-mute)' }}>{t('equipWear')}</div>
+            <div className="serif" style={{ fontSize: 28, fontWeight: 500, marginTop: 6, color: 'var(--primary-bright)' }}>{t('wearVal')}</div>
+            <div className="mono" style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 4 }}>{t('wearSub')}</div>
+          </div>
+        </div>
+      </div>
+    </div>);
+
+}
+
+function ChronicleFeed({ startedAt, now, duration, dungeon }) {
+  const t = useT();
+  const elapsed = Math.min(duration, now - startedAt);
+  const events = useMemo(() => buildEvents(duration, dungeon), [duration, dungeon.id]);
+  const visible = events.filter((e) => e.at <= elapsed);
+  return (
+    <div>
+      {visible.length === 0 &&
+      <div className="log-line"><span className="t mono">00:00</span><span className="m">{t('chroIntro')}</span></div>
+      }
+      {visible.slice().reverse().map((e, i) =>
+      <div key={i} className={`log-line ${e.kind || ''}`}>
+          <span className="t">{formatTime(e.at)}</span>
+          <span className="m">{t(e.key)}</span>
+        </div>
+      )}
+    </div>);
+
+}
+
+function buildEvents(duration, dungeon) {
+  const seed = dungeon.id.charCodeAt(1);
+  const rand = (n) => Math.abs(Math.sin(seed * 9.7 + n * 3.1)) % 1;
+  const pool = [
+  { kind: '', key: 'ev1' },
+  { kind: '', key: 'ev2' },
+  { kind: 'crit', key: 'ev3' },
+  { kind: 'dmg', key: 'ev4' },
+  { kind: 'loot', key: 'ev5' },
+  { kind: '', key: 'ev6' },
+  { kind: 'crit', key: 'ev7' },
+  { kind: 'loot', key: 'ev8' },
+  { kind: 'dmg', key: 'ev9' },
+  { kind: '', key: 'ev10' }];
+
+  const n = Math.min(pool.length, Math.max(4, Math.floor(duration / 1000 / 6)));
+  return Array.from({ length: n }, (_, i) => ({
+    ...pool[Math.floor(rand(i) * pool.length)],
+    at: Math.floor((i + 1) * (duration / (n + 1)))
+  }));
+}
+
+// =====================================================================
+// INVENTORY SCREEN
+// =====================================================================
+
+function InventoryScreen({ equipment, inventory, setSelectedItem, onRepairAll, hero }) {
+  const t = useT();
+  const allItems = [...Object.values(equipment).filter(Boolean).map((i) => ({ ...i, equipped: true })), ...inventory.map((i) => ({ ...i, equipped: false }))];
+  const needRepair = allItems.filter((i) => i.durability / i.dmax < 0.5);
+  const totalRepairCost = needRepair.reduce((s, i) => s + Math.round((i.dmax - i.durability) * 2.5), 0);
+  const free = Math.max(0, 24 - allItems.length);
+
+  return (
+    <div className="col">
+      <div className="grid-3" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+        <div className="card">
+          <div className="card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div className="mono" style={{ fontSize: 10, letterSpacing: '0.20em', textTransform: 'uppercase', color: 'var(--text-mute)' }}>{t('pack')}</div>
+              <div className="serif" style={{ fontSize: 26, fontWeight: 500 }}>{t('invCount', { a: allItems.length, b: 24 })}</div>
+            </div>
+            <div className="mono" style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('invFree', { n: free })}</div>
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div className="mono" style={{ fontSize: 10, letterSpacing: '0.20em', textTransform: 'uppercase', color: 'var(--text-mute)' }}>{t('needsRepair')}</div>
+              <div className="serif" style={{ fontSize: 26, fontWeight: 500, color: needRepair.length ? 'var(--primary-bright)' : 'var(--text-dim)' }}>{t('itemsN', { n: needRepair.length })}</div>
+            </div>
+            <div className="mono" style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('cost', { n: totalRepairCost })}</div>
+          </div>
+        </div>
+        <div className="card" style={{ background: 'linear-gradient(180deg, rgba(59,130,246,0.12), var(--bg-2))' }}>
+          <div className="card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <div className="mono" style={{ fontSize: 10, letterSpacing: '0.20em', textTransform: 'uppercase', color: 'var(--text-mute)' }}>{t('quickAction')}</div>
+              <div className="serif" style={{ fontSize: 18, fontWeight: 500 }}>{t('repairEntirePack')}</div>
+            </div>
+            <button className="btn primary" onClick={onRepairAll} disabled={needRepair.length === 0 || hero.gold < totalRepairCost}>{t('repairAll')}</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid-2" style={{ gridTemplateColumns: '1fr 1fr' }}>
+        <div className="card">
+          <div className="card-h">
+            <div className="card-title">{t('equipped')}</div>
+            <div className="card-sub mono">{t('inUse')}</div>
+          </div>
+          <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {Object.values(equipment).filter(Boolean).map((it, i) =>
+            <ItemRow key={i} item={it} equipped onClick={() => setSelectedItem(it)} />
+            )}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-h">
+            <div className="card-title">{t('packStored')}</div>
+            <div className="card-sub mono">{t('storedItems')}</div>
+          </div>
+          <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {inventory.map((it) =>
+            <ItemRow key={it.id} item={it} onClick={() => setSelectedItem(it)} />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>);
+
+}
+
+function ItemRow({ item, equipped, onClick }) {
+  const t = useT();
+  const pct = item.durability / item.dmax;
+  return (
+    <div className="item-row" onClick={onClick}>
+      <div className="item-ph" style={{ borderColor: RARITY[item.rarity].color }}></div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+          <div className="name" style={{ color: RARITY[item.rarity].color }}>{item.name}</div>
+          {equipped && <span className="mono" style={{ fontSize: 9, color: 'var(--success)', letterSpacing: '0.15em' }}>{t('equippedTag')}</span>}
+        </div>
+        <div className="sub" style={{ marginBottom: 6 }}>{t(slotKey(item.slot))} · {t(RARITY[item.rarity].labelKey)}</div>
+        <Bar kind="dur" value={item.durability} max={item.dmax} height={4} />
+      </div>
+      <div className="mono" style={{ fontSize: 11, color: 'var(--text-mute)', minWidth: 50, textAlign: 'right' }}>
+        {item.durability}/{item.dmax}
+      </div>
+    </div>);
+
+}
+
+// =====================================================================
+// ITEM DETAIL MODAL
+// =====================================================================
+
+function ItemModal({ item, onClose, onRepair, onEquip, hero }) {
+  const t = useT();
+  if (!item) return null;
+  const pct = item.durability / item.dmax;
+  const repairCost = Math.round((item.dmax - item.durability) * 2.5);
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--line-soft)', display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+          <div style={{ width: 80, height: 80, borderRadius: 4, background: 'repeating-linear-gradient(45deg, var(--bg-3) 0 6px, var(--bg-2) 6px 12px)', border: `1px solid ${RARITY[item.rarity].color}` }}></div>
+          <div style={{ flex: 1 }}>
+            <Tag rarity={item.rarity}>{t(RARITY[item.rarity].labelKey)}</Tag>
+            <div className="serif" style={{ fontSize: 26, fontWeight: 600, marginTop: 6, color: RARITY[item.rarity].color, letterSpacing: '0.03em' }}>{item.name}</div>
+            <div className="mono" style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text-mute)' }}>{t('forgedIn', { slot: t(slotKey(item.slot)) })}</div>
+          </div>
+          <button className="btn ghost" onClick={onClose} style={{ padding: '4px 10px', fontSize: 18 }}>×</button>
+        </div>
+        <div style={{ padding: 24 }}>
+          <div className="stat-list" style={{ gridTemplateColumns: '1fr', marginBottom: 18 }}>
+            {Object.entries(item.stats).map(([k, v]) =>
+            <div key={k} className="sl-row">
+                <span className="lbl" style={{ textTransform: 'capitalize' }}>{translateStat(t, k)}</span>
+                <span className="val">+{v}</span>
+              </div>
+            )}
+          </div>
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <span className="mono" style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text-mute)' }}>{t('durability')}</span>
+              <span className="mono" style={{ fontSize: 11, color: 'var(--bone)' }}>{item.durability} / {item.dmax}</span>
+            </div>
+            <Bar kind="dur" value={item.durability} max={item.dmax} height={8} />
+            {pct < 0.20 && <div className="mono" style={{ fontSize: 11, color: 'var(--error)', marginTop: 6 }}>{t('criticalWear')}</div>}
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="btn" style={{ flex: 1 }} onClick={onRepair} disabled={item.durability >= item.dmax || hero.gold < repairCost}>
+              {t('repairBtn', { n: repairCost })}
+            </button>
+            <button className="btn primary" style={{ flex: 1 }} onClick={onEquip} disabled={!onEquip}>{onEquip ? t('equip') : '—'}</button>
+          </div>
+        </div>
+      </div>
+    </div>);
+
+}
+
+function translateStat(t, key) {
+  const map = { attack: 'stAttack', armor: 'armor', hp: 'bonusHp', crit: 'stCrit', block: 'stBlock', will: 'willFull' };
+  return map[key] ? t(map[key]) : key;
+}
+
+// =====================================================================
+// REWARD MODAL
+// =====================================================================
+
+function RewardModal({ reward, onClose }) {
+  const t = useT();
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div style={{ padding: '28px 24px', textAlign: 'center', borderBottom: '1px solid var(--line-soft)' }}>
+          <div className="mono" style={{ fontSize: 10, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--primary-bright)' }}>{t('expComplete')}</div>
+          <div className="serif" style={{ fontSize: 30, fontWeight: 600, marginTop: 8, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{t('heroReturns')}</div>
+          <div style={{ color: 'var(--text-dim)', marginTop: 4, fontSize: 13 }}>{t('fromThe', { name: t(reward.dungeon.nameKey) })}</div>
+        </div>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 16px', background: 'var(--bg-3)', borderRadius: 10, border: '1px solid var(--line-soft)' }}>
+            <span style={{ color: 'var(--text-dim)' }}>{t('experienceLong')}</span>
+            <span className="mono" style={{ color: 'var(--primary-bright)', fontSize: 16, fontWeight: 600 }}>+{reward.xp} XP</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 16px', background: 'var(--bg-3)', borderRadius: 10, border: '1px solid var(--line-soft)' }}>
+            <span style={{ color: 'var(--text-dim)' }}>{t('goldLong')}</span>
+            <span className="mono" style={{ color: 'var(--gold)', fontSize: 16, fontWeight: 600 }}>+◈ {reward.gold}</span>
+          </div>
+          {reward.item &&
+          <div style={{ padding: '14px 16px', background: 'var(--bg-3)', borderRadius: 10, border: `1px solid ${RARITY[reward.item.rarity].color}` }}>
+              <div className="mono" style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text-mute)', marginBottom: 6 }}>{t('itemDrop')}</div>
+              <div className="serif" style={{ fontSize: 20, color: RARITY[reward.item.rarity].color }}>{reward.item.name}</div>
+              <div className="mono" style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t(RARITY[reward.item.rarity].labelKey)} · {t(slotKey(reward.item.slot))}</div>
+            </div>
+          }
+          <button className="btn primary lg" onClick={onClose} style={{ marginTop: 8 }}>{t('acceptSpoils')}</button>
+        </div>
+      </div>
+    </div>);
+
+}
+
+// =====================================================================
+// SMITHY (simple placeholder screen)
+// =====================================================================
+
+function SmithyScreen({ equipment, hero, onRepairAll }) {
+  const t = useT();
+  const items = Object.values(equipment).filter(Boolean);
+  const totalRepairCost = items.reduce((s, i) => s + Math.round((i.dmax - i.durability) * 2.5), 0);
+  return (
+    <div className="col">
+      <div className="card">
+        <div className="card-h">
+          <div>
+            <div className="card-title">{t('smithyTitle')}</div>
+            <div className="card-sub mono">{t('smithySub')}</div>
+          </div>
+          <div className="mono" style={{ fontSize: 12, color: 'var(--text-dim)' }}>{t('total')}: <span style={{ color: 'var(--gold)' }}>◈ {totalRepairCost}</span></div>
+        </div>
+        <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {items.map((it, i) =>
+          <ItemRow key={i} item={it} equipped />
+          )}
+          <button className="btn primary lg" style={{ marginTop: 8 }} onClick={onRepairAll} disabled={totalRepairCost === 0 || hero.gold < totalRepairCost}>
+            {t('repairAllGear', { n: totalRepairCost })}
+          </button>
+        </div>
+      </div>
+    </div>);
+
+}
+
+// =====================================================================
+// CODEX (placeholder)
+// =====================================================================
+
+function CodexScreen() {
+  const t = useT();
+  return (
+    <div className="card">
+      <div className="card-body" style={{ padding: 40 }}>
+        <div className="serif" style={{ fontSize: 26, fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('codexTitle')}</div>
+        <div style={{ color: 'var(--text-dim)', maxWidth: 600, lineHeight: 1.7 }}>
+          {t('codexBody')}
+        </div>
+        <div className="divider"></div>
+        <div className="mono" style={{ fontSize: 11, color: 'var(--text-mute)' }}>{t('codexComing')}<span style={{ color: 'var(--primary-bright)' }}>05_admin_and_balance.md</span></div>
+      </div>
+    </div>);
+
+}
+
+// =====================================================================
+// SETTINGS
+// =====================================================================
+
+function SettingsScreen({ hero }) {
+  const t = useT();
+  const lang = useContext(LangContext);
+  const setLang = useContext(LangSetContext);
+  return (
+    <div className="col settings-grid">
+      <div className="card">
+        <div className="card-h">
+          <div>
+            <div className="card-title">{t('settingsLanguage')}</div>
+            <div className="card-sub mono">{t('settingsLanguageSub')}</div>
+          </div>
+        </div>
+        <div className="card-body">
+          <div className="lang-cards">
+            <button
+              className={`lang-card ${lang === 'en' ? 'active' : ''}`}
+              onClick={() => setLang('en')}>
+              <div className="lang-card-code">EN</div>
+              <div className="lang-card-name">English</div>
+              {lang === 'en' && <div className="lang-card-check">✓</div>}
+            </button>
+            <button
+              className={`lang-card ${lang === 'ru' ? 'active' : ''}`}
+              onClick={() => setLang('ru')}>
+              <div className="lang-card-code">RU</div>
+              <div className="lang-card-name">Русский</div>
+              {lang === 'ru' && <div className="lang-card-check">✓</div>}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid-2">
+        <div className="card">
+          <div className="card-h">
+            <div>
+              <div className="card-title">{t('settingsAppearance')}</div>
+              <div className="card-sub mono">{t('settingsAppearanceSub')}</div>
+            </div>
+          </div>
+          <div className="card-body">
+            <div className="setting-row">
+              <div>
+                <div style={{ fontSize: 13, color: 'var(--text)' }}>{t('settingsTheme')}</div>
+                <div className="mono" style={{ fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 2 }}>{t('settingsThemeDark')}</div>
+              </div>
+              <div className="seg-toggle">
+                <button className="seg-opt active">{t('settingsThemeDark').split(' ')[0]}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-h">
+            <div>
+              <div className="card-title">{t('settingsSound')}</div>
+              <div className="card-sub mono">{t('settingsSoundSub')}</div>
+            </div>
+          </div>
+          <div className="card-body">
+            <div className="setting-row" style={{ alignItems: 'flex-start' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, color: 'var(--text)' }}>{t('settingsSoundMaster')}</div>
+                <div className="mono" style={{ fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 2 }}>72%</div>
+                <div className="bar" style={{ height: 6, marginTop: 8 }}><i style={{ width: '72%', background: 'linear-gradient(90deg, var(--primary-deep), var(--primary-bright))' }}></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-h">
+          <div>
+            <div className="card-title">{t('settingsAccount')}</div>
+            <div className="card-sub mono">{t('settingsAccountSub')}</div>
+          </div>
+        </div>
+        <div className="card-body">
+          <div className="setting-row">
+            <div>
+              <div className="mono" style={{ fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.18em', textTransform: 'uppercase' }}>{t('settingsCurrentHero')}</div>
+              <div className="serif" style={{ fontSize: 18, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginTop: 4 }}>{t(hero.nameKey)}</div>
+              <div className="mono" style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{t(hero.classKey)} · {t('lv')} {hero.level}</div>
+            </div>
+            <div>
+              <div className="mono" style={{ fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.18em', textTransform: 'uppercase', textAlign: 'right' }}>{t('settingsVersion')}</div>
+              <div className="mono" style={{ fontSize: 13, color: 'var(--bone)', marginTop: 4 }}>{t('brandSub')}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =====================================================================
+// ROOT APP
+// =====================================================================
+
+function AppInner() {
+  const t = useT();
+  const [screen, setScreen] = useState('hero');
+  const [hero, setHero] = useState(INITIAL_HERO);
+  const [equipment, setEquipment] = useState(INITIAL_EQUIPMENT);
+  const [inventory, setInventory] = useState(INVENTORY);
+  const [expedition, setExpedition] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [reward, setReward] = useState(null);
+  const [now, setNow] = useState(Date.now());
+  const [toast, setToast] = useState(null);
+
+  // Tick
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (toast) {
+      const id = setTimeout(() => setToast(null), 2400);
+      return () => clearTimeout(id);
+    }
+  }, [toast]);
+
+  const activeDungeon = expedition ? DUNGEONS.find((d) => d.id === expedition.dungeonId) : null;
+
+  function startExpedition(d) {
+    const demoMs = d.durationMin * 1000; // 1m → 1s demo speed
+    const nowT = Date.now();
+    setNow(nowT);
+    setExpedition({ dungeonId: d.id, startedAt: nowT, duration: demoMs, done: false });
+    setScreen('expedition');
+    setToast(t('toastDeparts', { name: t(d.nameKey) }));
+  }
+
+  function abortExpedition() {
+    setExpedition(null);
+    setToast(t('toastRecalled'));
+  }
+
+  function claimReward() {
+    const d = activeDungeon;
+    const gotItem = Math.random() < d.itemChance;
+    const itemPool = [
+    { name: 'Veylforged Spaulders', slot: 'chest', rarity: 'rare', durability: 100, dmax: 130, stats: { armor: 18, hp: 18 } },
+    { name: 'Choirbone Circlet', slot: 'head', rarity: 'epic', durability: 100, dmax: 120, stats: { armor: 10, crit: 6, will: 4 } },
+    { name: 'Ember-Edged Talon', slot: 'main', rarity: 'epic', durability: 100, dmax: 160, stats: { attack: 42, crit: 12 } },
+    { name: 'Pact-Iron Ring', slot: 'ring', rarity: 'uncommon', durability: 100, dmax: 100, stats: { attack: 4, hp: 6 } }];
+
+    const item = gotItem ? { ...itemPool[Math.floor(Math.random() * itemPool.length)], id: 'r' + Date.now() } : null;
+
+    setReward({ xp: d.xp, gold: d.gold, item, dungeon: d });
+    setHero((h) => ({
+      ...h,
+      xp: Math.min(h.xpMax, h.xp + d.xp),
+      gold: h.gold + d.gold
+    }));
+    if (item) setInventory((inv) => [item, ...inv]);
+    setEquipment((eq) => {
+      const next = { ...eq };
+      Object.keys(next).forEach((k) => {
+        if (next[k]) next[k] = { ...next[k], durability: Math.max(0, next[k].durability - 8) };
+      });
+      return next;
+    });
+    setExpedition(null);
+  }
+
+  function repairItem(item) {
+    const cost = Math.round((item.dmax - item.durability) * 2.5);
+    if (hero.gold < cost) return;
+    setHero((h) => ({ ...h, gold: h.gold - cost }));
+    const repaired = { ...item, durability: item.dmax };
+    if (equipment[item.slot] && equipment[item.slot].name === item.name) {
+      setEquipment((eq) => ({ ...eq, [item.slot]: repaired }));
+    } else {
+      setInventory((inv) => inv.map((i) => i.id === item.id ? repaired : i));
+    }
+    setSelectedItem(repaired);
+    setToast(t('toastRepaired', { name: item.name, n: cost }));
+  }
+
+  function repairAll() {
+    const all = [...Object.values(equipment).filter(Boolean), ...inventory];
+    const total = all.reduce((s, i) => s + Math.round((i.dmax - i.durability) * 2.5), 0);
+    if (hero.gold < total) return;
+    setHero((h) => ({ ...h, gold: h.gold - total }));
+    setEquipment((eq) => {
+      const next = { ...eq };
+      Object.keys(next).forEach((k) => {if (next[k]) next[k] = { ...next[k], durability: next[k].dmax };});
+      return next;
+    });
+    setInventory((inv) => inv.map((i) => ({ ...i, durability: i.dmax })));
+    setToast(t('toastAllRepaired', { n: total }));
+  }
+
+  function equipFromInventory(item) {
+    const current = equipment[item.slot];
+    setEquipment((eq) => ({ ...eq, [item.slot]: item }));
+    setInventory((inv) => {
+      const filtered = inv.filter((i) => i.id !== item.id);
+      return current ? [{ ...current, id: 'eq' + Date.now() }, ...filtered] : filtered;
+    });
+    setSelectedItem(null);
+    setToast(t('toastEquipped', { name: item.name }));
+  }
+
+  const titles = {
+    hero: { kicker: t('titleHeroK'), title: t('titleHero') },
+    dungeons: { kicker: t('titleDungeonsK'), title: t('titleDungeons') },
+    expedition: { kicker: t('titleExpK'), title: expedition ? t(activeDungeon.nameKey) : t('titleNoExp') },
+    inventory: { kicker: t('titleInvK'), title: t('titleInv') },
+    smithy: { kicker: t('titleSmithyK'), title: t('titleSmithy') },
+    codex: { kicker: t('titleCodexK'), title: t('titleCodex') },
+    settings: { kicker: t('titleSettingsK'), title: t('titleSettings') }
+  };
+
+  return (
+    <div className="app">
+      <Sidebar screen={screen} setScreen={setScreen} expedition={expedition} hero={hero} />
+
+      <main className="main" data-screen-label={`${screen}`}>
+        <div className="topbar">
+          <div className="topbar-left">
+            <div className="kicker">{titles[screen].kicker}</div>
+            <h1>{titles[screen].title}</h1>
+          </div>
+          <div className="topbar-right">
+            <StatChip label={t('lv')} value={hero.level} />
+            <CurrencyChip total={hero.gold} />
+            <StatChip label={t('shards')} value={hero.shards} tone="ember" />
+          </div>
+        </div>
+
+        {screen === 'hero' && <HeroScreen hero={hero} equipment={equipment} inventory={inventory} expedition={expedition} now={now} setSelectedItem={setSelectedItem} setScreen={setScreen} onStart={startExpedition} onClaim={claimReward} />}
+        {screen === 'dungeons' && <DungeonsScreen hero={hero} expedition={expedition} onStart={startExpedition} />}
+        {screen === 'expedition' && <ExpeditionScreen expedition={expedition} dungeon={activeDungeon} now={now} onClaim={claimReward} onAbort={abortExpedition} onStart={() => setScreen('dungeons')} />}
+        {screen === 'inventory' && <InventoryScreen equipment={equipment} inventory={inventory} setSelectedItem={setSelectedItem} onRepairAll={repairAll} hero={hero} />}
+        {screen === 'smithy' && <SmithyScreen equipment={equipment} hero={hero} onRepairAll={repairAll} />}
+        {screen === 'codex' && <CodexScreen />}
+        {screen === 'settings' && <SettingsScreen hero={hero} />}
+      </main>
+
+      {selectedItem &&
+      <ItemModal
+        item={selectedItem}
+        hero={hero}
+        onClose={() => setSelectedItem(null)}
+        onRepair={() => repairItem(selectedItem)}
+        onEquip={inventory.find((i) => i.id === selectedItem.id) ? () => equipFromInventory(selectedItem) : null} />
+
+      }
+
+      {reward && <RewardModal reward={reward} onClose={() => setReward(null)} />}
+
+      {toast && <div className="toast">{toast}</div>}
+    </div>);
+
+}
+
+function App() {
+  const [lang, setLang] = useState(() => {
+    try {return localStorage.getItem('ashreach.lang') || 'ru';} catch {return 'ru';}
+  });
+  useEffect(() => {try {localStorage.setItem('ashreach.lang', lang);} catch {}}, [lang]);
+  return (
+    <LangContext.Provider value={lang}>
+      <LangSetContext.Provider value={setLang}>
+        <AppInner />
+      </LangSetContext.Provider>
+    </LangContext.Provider>);
+
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
