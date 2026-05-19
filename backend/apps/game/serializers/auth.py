@@ -5,10 +5,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from apps.game.i18n import message
 from apps.game.models import User
 
-from .common import serializer_locale
+from .common import media_payload, serializer_locale
 
 
-def token_response(user):
+def token_response(user, context=None):
     """Формирует ответ авторизации с access/refresh токенами и данными пользователя."""
 
     refresh = RefreshToken.for_user(user)
@@ -19,6 +19,7 @@ def token_response(user):
             "id": user.id,
             "email": user.email,
             "has_character": hasattr(user, "character"),
+            "avatar": media_payload(user.avatar_media, context),
         },
     }
 

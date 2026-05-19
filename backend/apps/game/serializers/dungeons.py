@@ -54,7 +54,7 @@ class DungeonLocationSerializer(serializers.ModelSerializer):
     def get_media(self, obj):
         """Возвращает набор URL медиа для подземелья."""
 
-        return media_payload(obj.media)
+        return media_payload(obj.media, self.context)
 
     def get_rewards_preview(self, obj):
         """Возвращает диапазоны возможных наград за успех."""

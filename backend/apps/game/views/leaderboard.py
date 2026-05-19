@@ -20,4 +20,11 @@ class LeaderboardView(APIView):
             Character.objects.select_related("character_class", "avatar_media")
             .order_by("-level", "-experience", "created_at")[:100]
         )
-        return Response(LeaderboardItemSerializer.render(items, getattr(request.user, "character", None), locale=request_locale(request)))
+        return Response(
+            LeaderboardItemSerializer.render(
+                items,
+                getattr(request.user, "character", None),
+                locale=request_locale(request),
+                request=request,
+            )
+        )

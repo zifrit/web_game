@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from apps.game.i18n import request_locale, translate
 from apps.game.models import RarityConfig, UserItem
 
@@ -25,14 +27,28 @@ def localized_item_name(item: UserItem, locale: str) -> str:
     return f"{rarity_name} {template_name}".strip()
 
 
-def media_payload(media):
+def _absolute_media_url(url: str, context) -> str:
+    """Преобразует относительный storage URL в абсолютный, не трогая уже абсолютные ссылки."""
+
+    if not url:
+        return ""
+    if urlparse(url).scheme:
+        return url
+    request = context.get("request") if context else None
+    if request:
+        return request.build_absolute_uri(url)
+    return url
+
+
+def media_payload(media, context=None):
     """Преобразует модель медиа в компактный API-словарь URL-адресов."""
 
     if not media:
         return None
     return {
-        "icon_url": media.icon_url,
-        "small_url": media.small_url,
-        "medium_url": media.medium_url,
-        "large_url": media.large_url,
+        "icon_url": _absolute_media_url(media.medium_url, context),
+        "small_url": _absolute_media_url(media.small_url, context),
+        "medium_url": _absolute_media_url(media.medium_url, context),
+        "large_url": _absolute_media_url(media.large_url, context),
+        "original_url": _absolute_media_url(media.original_url, context),
     }

@@ -27,7 +27,15 @@ class InventoryView(APIView):
         except (TypeError, ValueError):
             page_size = 24
         page_size = min(max(page_size, 1), 24)
-        return Response(InventorySerializer.render(character, page=page, page_size=page_size, locale=request_locale(request)))
+        return Response(
+            InventorySerializer.render(
+                character,
+                page=page,
+                page_size=page_size,
+                locale=request_locale(request),
+                request=request,
+            )
+        )
 
 
 class InventoryItemDetailView(APIView):

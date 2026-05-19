@@ -1,10 +1,11 @@
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
+from django.core.files.base import ContentFile
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.game.models import DungeonLocation, DungeonRunClaim, ItemTemplate, UserItem
+from apps.game.models import CharacterClass, DungeonLocation, DungeonRunClaim, ItemTemplate, MediaAsset, UserItem
 
 
 User = get_user_model()
@@ -28,12 +29,36 @@ class MvpApiTests(APITestCase):
         return response.data
 
     def test_register_create_character_and_fetch_profile(self):
-        self.register_and_authenticate()
+        user = self.register_and_authenticate()
+
+        user_avatar = MediaAsset.objects.create(name="User avatar")
+        user_avatar.small.save("user-small.png", ContentFile(b"user-avatar"), save=True)
+        user.avatar_media = user_avatar
+        user.save(update_fields=["avatar_media"])
+
+        login = self.client.post("/api/auth/login", {"email": user.email, "password": "strong_password_123"}, format="json")
+        self.assertEqual(login.status_code, status.HTTP_200_OK)
+        self.assertIn("avatar", login.data["user"])
+        self.assertTrue(login.data["user"]["avatar"]["small_url"])
+
+        me_user = self.client.get("/api/auth/me")
+        self.assertEqual(me_user.status_code, status.HTTP_200_OK)
+        self.assertIn("avatar", me_user.data)
+        self.assertTrue(me_user.data["avatar"]["small_url"])
+
+        class_media = MediaAsset.objects.create(name="Warrior class art")
+        class_media.medium.save("warrior-medium.png", ContentFile(b"medium-art"), save=True)
+        class_media.small.save("warrior-small.png", ContentFile(b"small-art"), save=True)
+        warrior_class = CharacterClass.objects.get(key="warrior")
+        warrior_class.media = class_media
+        warrior_class.save(update_fields=["media"])
 
         classes = self.client.get("/api/character-classes")
         self.assertEqual(classes.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(classes.data), 4)
         self.assertEqual(classes.data[0]["name"], "Warrior")
+        self.assertIn("media", classes.data[0])
+        self.assertTrue(classes.data[0]["media"]["medium_url"])
 
         classes_ru = self.client.get("/api/character-classes", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(classes_ru.status_code, status.HTTP_200_OK)
@@ -42,10 +67,21 @@ class MvpApiTests(APITestCase):
         character = self.create_character()
         self.assertEqual(character["class_key"], "warrior")
 
+        avatar_media = MediaAsset.objects.create(name="Hero avatar")
+        avatar_media.large.save("hero-large.png", ContentFile(b"large-avatar"), save=True)
+        avatar_media.icon.save("hero-icon.png", ContentFile(b"icon-avatar"), save=True)
+        hero = User.objects.get(email="hero@example.com").character
+        hero.avatar_media = avatar_media
+        hero.save(update_fields=["avatar_media"])
+
         me = self.client.get("/api/characters/me")
         self.assertEqual(me.status_code, status.HTTP_200_OK)
         self.assertEqual(me.data["class"]["key"], "warrior")
         self.assertEqual(me.data["class"]["name"], "Warrior")
+        self.assertIn("media", me.data["class"])
+        self.assertTrue(me.data["class"]["media"]["medium_url"])
+        self.assertIn("avatar", me.data)
+        self.assertTrue(me.data["avatar"]["large_url"])
         self.assertGreater(me.data["stats"]["power"], 0)
         self.assertEqual(set(me.data["equipment"].keys()), {"weapon", "helmet", "armor", "boots", "ring"})
 
@@ -103,16 +139,24 @@ class MvpApiTests(APITestCase):
             durability_max=10,
         )
 
+        item_media = MediaAsset.objects.create(name="Sword icon")
+        item_media.icon.save("sword-icon.png", ContentFile(b"icon"), save=True)
+        item_media.large.save("sword-large.png", ContentFile(b"large"), save=True)
+        template.media = item_media
+        template.save(update_fields=["media"])
+
         inventory = self.client.get("/api/inventory")
         self.assertEqual(inventory.status_code, status.HTTP_200_OK)
         self.assertEqual(inventory.data["items_count"], 1)
         self.assertIsNone(inventory.data["slots_limit"])
         self.assertIsNone(inventory.data["free_slots"])
         self.assertEqual(inventory.data["items"][0]["name"], "Common Rusty Sword")
+        self.assertTrue(inventory.data["items"][0]["icon_url"])
 
         item_detail_ru = self.client.get(f"/api/inventory/items/{item.id}", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(item_detail_ru.status_code, status.HTTP_200_OK)
         self.assertEqual(item_detail_ru.data["name"], "Обычный Ржавый меч")
+        self.assertTrue(item_detail_ru.data["media"]["large_url"])
 
         equip = self.client.post(f"/api/inventory/items/{item.id}/equip", {}, format="json")
         self.assertEqual(equip.status_code, status.HTTP_200_OK, equip.data)
@@ -177,23 +221,35 @@ class MvpApiTests(APITestCase):
         self.assertEqual(second_page.data["pagination"]["has_next"], False)
 
     def test_leaderboard_level_response(self):
-        self.register_and_authenticate()
+        user = self.register_and_authenticate()
         self.create_character()
+        avatar = MediaAsset.objects.create(name="Leaderboard avatar")
+        avatar.icon.save("board-icon.png", ContentFile(b"icon"), save=True)
+        user.character.avatar_media = avatar
+        user.character.save(update_fields=["avatar_media"])
 
         response = self.client.get("/api/leaderboard?type=level")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["type"], "level")
         self.assertEqual(response.data["items"][0]["rank"], 1)
         self.assertEqual(response.data["items"][0]["class"]["name"], "Warrior")
+        self.assertTrue(response.data["items"][0]["avatar"]["icon_url"])
 
     def test_dungeons_and_validation_are_localized(self):
         self.register_and_authenticate("locale@example.com")
         self.create_character()
 
+        dungeon_media = MediaAsset.objects.create(name="Old forest art")
+        dungeon_media.medium.save("forest-medium.png", ContentFile(b"forest"), save=True)
+        location = DungeonLocation.objects.get(name="Старый лес")
+        location.media = dungeon_media
+        location.save(update_fields=["media"])
+
         dungeons = self.client.get("/api/dungeons")
         self.assertEqual(dungeons.status_code, status.HTTP_200_OK)
         self.assertEqual(dungeons.data[0]["name"], "Old Forest")
         self.assertEqual(dungeons.data[0]["description"], "A safe starting location.")
+        self.assertTrue(dungeons.data[0]["media"]["medium_url"])
 
         dungeons_ru = self.client.get("/api/dungeons", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(dungeons_ru.status_code, status.HTTP_200_OK)

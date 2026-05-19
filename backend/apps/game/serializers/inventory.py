@@ -26,7 +26,8 @@ class UserItemSummarySerializer(serializers.ModelSerializer):
     def get_icon_url(self, obj):
         """Возвращает URL иконки шаблона предмета."""
 
-        return obj.template.media.icon_url if obj.template.media else ""
+        payload = media_payload(obj.template.media, self.context)
+        return payload["icon_url"] if payload else ""
 
 
 class UserItemDetailSerializer(serializers.ModelSerializer):
@@ -81,19 +82,20 @@ class UserItemDetailSerializer(serializers.ModelSerializer):
     def get_media(self, obj):
         """Возвращает набор URL медиа для шаблона предмета."""
 
-        return media_payload(obj.template.media)
+        return media_payload(obj.template.media, self.context)
 
 
 class InventorySerializer:
     """Рендер полного ответа инвентаря с экипировкой и пагинацией."""
 
     @staticmethod
-    def render(character, page=1, page_size=24, locale=DEFAULT_LOCALE):
+    def render(character, page=1, page_size=24, locale=DEFAULT_LOCALE, request=None):
         """Собирает экипировку, предметы текущей страницы и метаданные пагинации."""
 
+        context = {"locale": locale, "request": request}
         equipment = {slot: None for slot in ["weapon", "helmet", "armor", "boots", "ring"]}
         for item in character.equipped_items.all():
-            equipment[item.slot] = UserItemSummarySerializer(item, context={"locale": locale}).data
+            equipment[item.slot] = UserItemSummarySerializer(item, context=context).data
         items_qs = UserItem.objects.filter(owner_user=character.user).select_related("template__media")
         items_count = items_qs.count()
         offset = (page - 1) * page_size
@@ -113,5 +115,5 @@ class InventorySerializer:
                 "has_next": page < total_pages,
                 "has_previous": page > 1,
             },
-            "items": UserItemSummarySerializer(items, many=True, context={"locale": locale}).data,
+            "items": UserItemSummarySerializer(items, many=True, context=context).data,
         }

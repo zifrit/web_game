@@ -4,7 +4,7 @@ from apps.game.i18n import message
 from apps.game.models import Character, CharacterClass
 from apps.game.services import GameFormulaService
 
-from .common import localized_name, serializer_locale
+from .common import localized_name, media_payload, serializer_locale
 from .inventory import UserItemSummarySerializer
 
 
@@ -13,10 +13,11 @@ class CharacterClassSerializer(serializers.ModelSerializer):
 
     name = serializers.SerializerMethodField()
     start_stats = serializers.SerializerMethodField()
+    media = serializers.SerializerMethodField()
 
     class Meta:
         model = CharacterClass
-        fields = ["key", "name", "start_stats"]
+        fields = ["key", "name", "start_stats", "media"]
 
     def get_start_stats(self, obj):
         """Возвращает стартовые характеристики класса героя одним объектом."""
@@ -33,6 +34,11 @@ class CharacterClassSerializer(serializers.ModelSerializer):
         """Возвращает локализованное название класса героя."""
 
         return localized_name(obj, serializer_locale(self.context))
+
+    def get_media(self, obj):
+        """Возвращает медиа-версии изображения класса героя."""
+
+        return media_payload(obj.media, self.context)
 
 
 class CreateCharacterSerializer(serializers.Serializer):
@@ -102,10 +108,11 @@ class CharacterMeSerializer(serializers.ModelSerializer):
     experience_to_next_level = serializers.SerializerMethodField()
     stats = serializers.SerializerMethodField()
     equipment = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = Character
-        fields = ["id", "name", "class_info", "level", "experience", "experience_to_next_level", "stats", "equipment"]
+        fields = ["id", "name", "avatar", "class_info", "level", "experience", "experience_to_next_level", "stats", "equipment"]
 
     def to_representation(self, instance):
         """Переименовывает class_info в поле class для API-контракта."""
@@ -117,7 +124,11 @@ class CharacterMeSerializer(serializers.ModelSerializer):
     def get_class_info(self, obj):
         """Возвращает ключ и локализованное название класса героя."""
 
-        return {"key": obj.character_class_id, "name": localized_name(obj.character_class, serializer_locale(self.context))}
+        return {
+            "key": obj.character_class_id,
+            "name": localized_name(obj.character_class, serializer_locale(self.context)),
+            "media": media_payload(obj.character_class.media, self.context),
+        }
 
     def get_experience_to_next_level(self, obj):
         """Возвращает количество опыта, нужное для следующего уровня."""
@@ -134,5 +145,10 @@ class CharacterMeSerializer(serializers.ModelSerializer):
 
         equipment = {slot: None for slot in ["weapon", "helmet", "armor", "boots", "ring"]}
         for item in obj.equipped_items.all():
-            equipment[item.slot] = UserItemSummarySerializer(item).data
+            equipment[item.slot] = UserItemSummarySerializer(item, context=self.context).data
         return equipment
+
+    def get_avatar(self, obj):
+        """Возвращает медиа-версии аватара героя."""
+
+        return media_payload(obj.avatar_media, self.context)

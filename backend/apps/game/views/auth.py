@@ -3,7 +3,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.game.serializers import LoginSerializer, RegisterSerializer, token_response
+from apps.game.models import User
+from apps.game.serializers import LoginSerializer, RegisterSerializer, media_payload, token_response
 
 
 class RegisterView(APIView):
@@ -17,7 +18,7 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        return Response(token_response(user), status=status.HTTP_201_CREATED)
+        return Response(token_response(user, context={"request": request}), status=status.HTTP_201_CREATED)
 
 
 class LoginView(APIView):
@@ -30,7 +31,7 @@ class LoginView(APIView):
 
         serializer = LoginSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        return Response(token_response(serializer.validated_data["user"]))
+        return Response(token_response(serializer.validated_data["user"], context={"request": request}))
 
 
 class MeView(APIView):
@@ -39,12 +40,14 @@ class MeView(APIView):
     def get(self, request):
         """Возвращает профиль, баланс и признак наличия созданного героя."""
 
+        user = User.objects.select_related("avatar_media").get(pk=request.user.pk)
         return Response(
             {
-                "id": request.user.id,
-                "email": request.user.email,
-                "money_copper": request.user.money_copper,
-                "has_character": hasattr(request.user, "character"),
+                "id": user.id,
+                "email": user.email,
+                "money_copper": user.money_copper,
+                "has_character": hasattr(user, "character"),
+                "avatar": media_payload(user.avatar_media, {"request": request}),
             }
         )
 

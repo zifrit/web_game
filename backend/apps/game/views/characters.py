@@ -38,7 +38,7 @@ class CharacterMeView(APIView):
         """Возвращает героя с классом, характеристиками и экипировкой."""
 
         character = get_object_or_404(
-            Character.objects.select_related("character_class").prefetch_related("equipped_items__template__media"),
+            Character.objects.select_related("character_class", "character_class__media", "avatar_media").prefetch_related("equipped_items__template__media"),
             user=request.user,
         )
         return Response(CharacterMeSerializer(character, context={"request": request}).data)
