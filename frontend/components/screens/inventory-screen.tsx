@@ -6,6 +6,7 @@ import { useI18n } from "@/components/providers";
 import { ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import type { TranslationKey } from "@/lib/i18n";
+import { bestMediaUrl } from "@/lib/media";
 import type { InventoryCard, ItemDetail } from "@/lib/types";
 
 const INVENTORY_PAGE_SIZE = 24;
@@ -42,6 +43,8 @@ function PackCell({
 }) {
   const color   = item ? rc(item.rarity) : undefined;
   const hasItem = Boolean(item);
+  const iconUrl = item?.icon_url ?? "";
+  const itemName = item?.name ?? "";
   return (
     <button
       type="button"
@@ -56,7 +59,18 @@ function PackCell({
         cursor: "pointer",
       } : {}}
     >
-      {hasItem && <div className="inv-icon" />}
+      {hasItem && (
+        iconUrl ? (
+          <img
+            src={iconUrl}
+            alt={itemName}
+            className="inv-icon"
+            style={{ objectFit: "cover" }}
+          />
+        ) : (
+          <div className="inv-icon" />
+        )
+      )}
       {equipped && <div className="equipped-tag">E</div>}
       {item?.is_broken && <div className="broken-tag">!</div>}
       {hasItem && (
@@ -117,6 +131,7 @@ function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChang
   const item   = itemQ.data;
   const color  = rc(item.rarity);
   const durPct = item.durability.current / item.durability.max;
+  const itemImage = bestMediaUrl(item.media, ["large_url", "medium_url", "small_url", "icon_url", "original_url"]);
 
   return (
     <div className="card animate-fade-in">
@@ -130,7 +145,17 @@ function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChang
           width: 80, height: 80, borderRadius: 4, flexShrink: 0,
           background: "repeating-linear-gradient(45deg, var(--bg-3) 0 6px, var(--bg-2) 6px 12px)",
           border: `1px solid ${color}`,
-        }} />
+          overflow: "hidden",
+          position: "relative",
+        }}>
+          {itemImage && (
+            <img
+              src={itemImage}
+              alt={item.name}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          )}
+        </div>
         <div style={{ flex: 1 }}>
           <span className={`tag rare-${item.rarity.toLowerCase()}`}>{t(`rarity.${item.rarity}` as TranslationKey)}</span>
           <div style={{

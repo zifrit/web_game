@@ -6,6 +6,7 @@ import { useI18n } from "@/components/providers";
 import { ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatDuration } from "@/lib/i18n";
+import { bestMediaUrl } from "@/lib/media";
 import type { DungeonRun } from "@/lib/types";
 
 /* ── Timer hook ── */
@@ -235,6 +236,7 @@ export function DungeonsScreen() {
           const tier       = getTier(dungeon.required_power);
           const isActive   = currentRun.data?.location?.id === dungeon.id && isRunning;
           const disabled   = isRunning || startMutation.isPending;
+          const dungeonImage = bestMediaUrl(dungeon.media, ["large_url", "medium_url", "small_url", "icon_url", "original_url"]);
 
           const durLabel = formatDuration(dungeon.duration_seconds, locale);
 
@@ -246,18 +248,16 @@ export function DungeonsScreen() {
               {/* Artwork placeholder */}
               <div style={{
                 height: 130, position: "relative",
-                background: dungeon.media?.medium_url || dungeon.media?.small_url
-                  ? undefined
-                  : TIER_GRADIENT[tier] ?? TIER_GRADIENT[1],
+                background: dungeonImage ? undefined : TIER_GRADIENT[tier] ?? TIER_GRADIENT[1],
                 borderBottom: "1px solid var(--line-soft)",
                 display: "flex", alignItems: "flex-end", padding: 12,
                 overflow: "hidden",
               }}>
-                {(dungeon.media?.medium_url || dungeon.media?.small_url) && (
+                {dungeonImage && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={dungeon.media.medium_url ?? dungeon.media.small_url}
-                    alt=""
+                    src={dungeonImage}
+                    alt={dungeon.name}
                     style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
                   />
                 )}

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useI18n } from "@/components/providers";
 import { ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
+import { bestMediaUrl } from "@/lib/media";
 
 function rankStyle(rank: number): { borderColor: string; background: string; color: string } {
   if (rank === 1) return { borderColor: "rgba(245,158,11,0.5)", background: "rgba(245,158,11,0.12)", color: "#F59E0B" };
@@ -65,12 +66,13 @@ export function LeaderboardScreen() {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {boardQuery.data?.items.map((entry) => {
               const rs = rankStyle(entry.rank);
+              const avatarUrl = bestMediaUrl(entry.avatar, ["small_url", "icon_url", "medium_url", "large_url", "original_url"]);
               return (
                 <div
                   key={entry.character_id}
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "56px 1fr auto",
+                    gridTemplateColumns: "56px 48px 1fr auto",
                     alignItems: "center",
                     gap: 12,
                     minHeight: 72,
@@ -82,7 +84,7 @@ export function LeaderboardScreen() {
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--line-hover)")}
                   onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--line)")}
-                >
+                  >
                   {/* Rank badge */}
                   <div style={{
                     width: 44, height: 44, display: "grid", placeItems: "center",
@@ -92,6 +94,29 @@ export function LeaderboardScreen() {
                     fontSize: 14, fontWeight: 700,
                   }}>
                     #{entry.rank}
+                  </div>
+
+                  <div style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 10,
+                    overflow: "hidden",
+                    border: "1px solid var(--line)",
+                    background: "repeating-linear-gradient(45deg, var(--bg-3) 0 6px, var(--bg-2) 6px 12px)",
+                    display: "grid",
+                    placeItems: "center",
+                  }}>
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt={entry.character_name}
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    ) : (
+                      <span style={{ color: "var(--text-mute)", fontWeight: 700 }}>
+                        {entry.character_name.slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
                   </div>
 
                   {/* Name + class */}

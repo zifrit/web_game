@@ -10,6 +10,8 @@ import { useI18n, useSession } from "@/components/providers";
 import { ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatStatName } from "@/lib/i18n";
+import { bestMediaUrl } from "@/lib/media";
+import type { CharacterClass } from "@/lib/types";
 
 const characterSchema = (t: ReturnType<typeof useI18n>["t"]) => z.object({
   name:      z.string().min(3, t("validation.characterName")).max(32),
@@ -54,6 +56,9 @@ export function CreateCharacterScreen() {
   });
 
   const selectedKey = form.watch("class_key");
+
+  const classImage = (cls: CharacterClass) =>
+    bestMediaUrl(cls.media, ["large_url", "medium_url", "small_url", "icon_url", "original_url"]);
 
   return (
     <main style={{
@@ -149,6 +154,33 @@ export function CreateCharacterScreen() {
                       boxShadow: selected ? "0 0 0 1px #3B82F6 inset, 0 0 20px rgba(59,130,246,0.20)" : "none",
                     }}
                   >
+                    <div style={{
+                      width: "100%",
+                      aspectRatio: "1 / 1",
+                      borderRadius: 12,
+                      overflow: "hidden",
+                      background: "linear-gradient(180deg, rgba(59,130,246,0.10), rgba(15,23,42,0.85))",
+                      border: "1px solid var(--line)",
+                      marginBottom: 14,
+                      position: "relative",
+                    }}>
+                      {classImage(cls) ? (
+                        <img
+                          src={classImage(cls)}
+                          alt={cls.name}
+                          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: "100%", height: "100%",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          color: "#64748B", fontSize: 12, letterSpacing: "0.12em", textTransform: "uppercase",
+                        }}>
+                          {cls.name}
+                        </div>
+                      )}
+                    </div>
+
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
                       <h2 style={{
                         fontFamily: "var(--font-cinzel, 'Cinzel', serif)",

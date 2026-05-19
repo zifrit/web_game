@@ -14,6 +14,8 @@ import { LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useI18n, useSession } from "@/components/providers";
 import { formatCopper, type TranslationKey } from "@/lib/i18n";
+import { bestMediaUrl } from "@/lib/media";
+import type { MediaAssetUrls } from "@/lib/types";
 
 type Tab = "character" | "dungeons" | "inventory" | "leaderboard" | "settings";
 
@@ -44,6 +46,8 @@ function Sidebar({
   characterName,
   characterClass,
   characterLevel,
+  userAvatar,
+  characterAvatar,
   onLogout,
   t,
 }: {
@@ -52,9 +56,16 @@ function Sidebar({
   characterName?: string;
   characterClass?: string;
   characterLevel?: number;
+  userAvatar?: MediaAssetUrls | null;
+  characterAvatar?: MediaAssetUrls | null;
   onLogout: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
+  const brandAvatarUrl = bestMediaUrl(userAvatar, ["medium_url", "small_url", "icon_url", "large_url", "original_url"]);
+  const footerAvatarUrl =
+    bestMediaUrl(characterAvatar, ["small_url", "icon_url", "medium_url", "large_url", "original_url"]) ||
+    bestMediaUrl(userAvatar, ["small_url", "icon_url", "medium_url", "large_url", "original_url"]);
+
   return (
     <aside style={{
       background: "linear-gradient(180deg, #111827, #0B1020)",
@@ -80,10 +91,19 @@ function Sidebar({
           background: "linear-gradient(135deg, #3B82F6, #2563EB)",
           boxShadow: "inset 0 -10px 16px rgba(15,23,42,0.6), 0 0 24px rgba(59,130,246,0.35)",
           position: "relative",
+          overflow: "hidden",
         }}>
-          <div style={{
-            position: "absolute", inset: 6, border: "1px solid rgba(15,23,42,0.7)", borderRadius: 4,
-          }} />
+          {brandAvatarUrl ? (
+            <img
+              src={brandAvatarUrl}
+              alt="User avatar"
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <div style={{
+              position: "absolute", inset: 6, border: "1px solid rgba(15,23,42,0.7)", borderRadius: 4,
+            }} />
+          )}
         </div>
         <div>
           <div style={{
@@ -148,7 +168,17 @@ function Sidebar({
               width: 36, height: 36, borderRadius: 4, flexShrink: 0,
               background: "repeating-linear-gradient(45deg, #202B44 0 6px, #1A2235 6px 12px)",
               border: "1px solid #2E3B5A",
-            }} />
+              overflow: "hidden",
+              position: "relative",
+            }}>
+              {footerAvatarUrl && (
+                <img
+                  src={footerAvatarUrl}
+                  alt={characterName}
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              )}
+            </div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{
                 fontSize: 13, fontWeight: 500,
@@ -343,6 +373,8 @@ export function RpgClient() {
           characterName={characterQuery.data?.name}
           characterClass={characterQuery.data?.class?.name}
           characterLevel={characterQuery.data?.level}
+          userAvatar={activeUser?.avatar}
+          characterAvatar={characterQuery.data?.avatar}
           onLogout={handleLogout}
           t={t}
         />

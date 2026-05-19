@@ -13,6 +13,7 @@ export type User = {
   email: string;
   money_copper?: number;
   has_character: boolean;
+  avatar?: MediaAssetUrls | null;
 };
 
 export type AuthResponse = {
@@ -21,10 +22,19 @@ export type AuthResponse = {
   user: User;
 };
 
+export type MediaAssetUrls = {
+  original_url?: string;
+  large_url?: string;
+  medium_url?: string;
+  small_url?: string;
+  icon_url?: string;
+};
+
 export type CharacterClass = {
   key: string;
   name: string;
   start_stats: StatBlock;
+  media?: MediaAssetUrls | null;
 };
 
 export type EquipmentSlot = "weapon" | "helmet" | "armor" | "boots" | "ring";
@@ -32,9 +42,11 @@ export type EquipmentSlot = "weapon" | "helmet" | "armor" | "boots" | "ring";
 export type Character = {
   id: number;
   name: string;
+  avatar?: MediaAssetUrls | null;
   class?: {
     key: string;
     name: string;
+    media?: MediaAssetUrls | null;
   };
   class_key?: string;
   level: number;
@@ -52,10 +64,7 @@ export type Dungeon = {
   required_power: number;
   success_chance: number;
   item_drop_chance: number;
-  media?: {
-    small_url?: string;
-    medium_url?: string;
-  };
+  media?: MediaAssetUrls | null;
   rewards_preview?: {
     experience?: RangeValue;
     money_copper?: RangeValue;
@@ -157,11 +166,7 @@ export type ItemDetail = {
   is_equipped: boolean;
   is_broken: boolean;
   can_equip: boolean;
-  media?: {
-    icon_url?: string;
-    small_url?: string;
-    medium_url?: string;
-  };
+  media?: MediaAssetUrls | null;
 };
 
 export type RepairPreview = {
@@ -187,10 +192,7 @@ export type Leaderboard = {
       name: string;
     };
     level: number;
-    avatar?: {
-      icon_url?: string;
-      small_url?: string;
-    };
+    avatar?: MediaAssetUrls | null;
   }>;
   my_rank?: {
     rank: number;

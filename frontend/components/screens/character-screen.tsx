@@ -6,7 +6,8 @@ import { useI18n } from "@/components/providers";
 import { ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatDuration, type Locale, type TranslationKey } from "@/lib/i18n";
-import type { EquipmentSlot, InventoryCard } from "@/lib/types";
+import { bestMediaUrl } from "@/lib/media";
+import type { Dungeon, EquipmentSlot, InventoryCard } from "@/lib/types";
 
 /* ── Rarity helpers ── */
 const RARITY_COLOR: Record<string, string> = {
@@ -49,6 +50,7 @@ function SlotCell({
   label,
   glyph,
   rarity,
+  iconUrl,
   broken,
   canDrop,
   dropActive,
@@ -62,6 +64,7 @@ function SlotCell({
   label: string;
   glyph: string;
   rarity?: string;
+  iconUrl?: string;
   broken?: boolean;
   canDrop?: boolean;
   dropActive?: boolean;
@@ -92,6 +95,20 @@ function SlotCell({
     >
       {hasItem && (
         <>
+          {iconUrl && (
+            <img
+              src={iconUrl}
+              alt={label}
+              style={{
+                position: "absolute",
+                inset: 10,
+                width: "calc(100% - 20px)",
+                height: "calc(100% - 20px)",
+                objectFit: "contain",
+                pointerEvents: "none",
+              }}
+            />
+          )}
           <div className="slot-rare" style={{ background: color }} />
           <div className="slot-dur">
             <i style={{ width: `${durPct * 100}%`, background: durPct < 0.20 ? "var(--blood)" : durPct < 0.45 ? "var(--warning)" : "var(--moss)" }} />
@@ -129,6 +146,8 @@ function InvCell({
   const broken = item?.is_broken;
   const color   = rarity ? rc(rarity) : undefined;
   const hasItem = Boolean(rarity);
+  const iconUrl = item?.icon_url ?? "";
+  const itemName = item?.name ?? "";
   return (
     <div
       className={`inv-cell${hasItem ? "" : " empty"}${hasItem && !broken ? " draggable" : ""}`}
@@ -138,7 +157,18 @@ function InvCell({
       style={hasItem ? { borderColor: color, boxShadow: `inset 0 0 14px ${rg(rarity)}` } : {}}
       title={item ? `${item.slot} item #${item.id}` : undefined}
     >
-      {hasItem && <div className="inv-icon" />}
+      {hasItem && (
+        iconUrl ? (
+          <img
+            src={iconUrl}
+            alt={itemName}
+            className="inv-icon"
+            style={{ objectFit: "cover" }}
+          />
+        ) : (
+          <div className="inv-icon" />
+        )
+      )}
       {hasItem && broken && <div className="broken-tag">!</div>}
       {hasItem && (
         <div className="inv-dur">
@@ -153,7 +183,7 @@ function InvCell({
 function QuickDungeonRow({
   dungeon, canRun, onRun, isPending, locale, runLabel,
 }: {
-  dungeon: { id: number; name: string; required_power: number; duration_seconds: number; item_drop_chance: number; rewards_preview?: { experience?: { min: number; max: number } } };
+  dungeon: Pick<Dungeon, "id" | "name" | "required_power" | "duration_seconds" | "item_drop_chance" | "rewards_preview" | "media">;
   canRun: boolean;
   onRun: (id: number) => void;
   isPending: boolean;
@@ -170,10 +200,19 @@ function QuickDungeonRow({
   };
 
   const durLabel = formatDuration(dungeon.duration_seconds, locale);
+  const dungeonImage = bestMediaUrl(dungeon.media, ["medium_url", "small_url", "icon_url", "large_url", "original_url"]);
 
   return (
     <div className="quick-d" onClick={() => canRun && !isPending && onRun(dungeon.id)}>
-      <div className="quick-d-art" style={{ background: artGradients[tier] }} />
+      <div className="quick-d-art" style={{ background: dungeonImage ? undefined : artGradients[tier], overflow: "hidden", position: "relative" }}>
+        {dungeonImage && (
+          <img
+            src={dungeonImage}
+            alt={dungeon.name}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        )}
+      </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
@@ -404,6 +443,9 @@ export function CharacterScreen({
   }
 
   const character = characterQuery.data;
+  const portraitUrl =
+    bestMediaUrl(character.avatar, ["large_url", "medium_url", "small_url", "icon_url", "original_url"]) ||
+    bestMediaUrl(character.class?.media, ["large_url", "medium_url", "small_url", "icon_url", "original_url"]);
   const xpMax = character.experience_to_next_level ?? 1000;
   const xp    = character.experience;
   const hpMax = character.stats?.health ?? 220;
@@ -492,12 +534,25 @@ export function CharacterScreen({
         <div className="card-body">
 
           {/* Portrait */}
-          <div className="portrait" style={{ maxHeight: 220 }}>
+          <div className="portrait" style={{ maxHeight: 220, overflow: "hidden", position: "relative" }}>
+            {portraitUrl && (
+              <img
+                src={portraitUrl}
+                alt={character.name}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+            )}
             <div className="lvl-badge">
               <span className="lbl">{t("common.level")}</span>
               {character.level}
             </div>
-            <span className="ph-label">{t("character.portrait")}</span>
+            {!portraitUrl && <span className="ph-label">{t("character.portrait")}</span>}
           </div>
 
           {/* Name + class */}
@@ -592,6 +647,7 @@ export function CharacterScreen({
                     label={t(cell.label)}
                     glyph={cell.glyph}
                     rarity={item?.rarity}
+                    iconUrl={item?.icon_url}
                     broken={item?.is_broken}
                     canDrop={dragState?.item.slot === cell.slot}
                     draggable={Boolean(item)}
