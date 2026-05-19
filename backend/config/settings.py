@@ -8,7 +8,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-secret-key")
 DEBUG = os.getenv("DJANGO_DEBUG", "1") == "1"
-ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if host.strip()]
+POLZA_AI_API_KEY = os.getenv("POLZA_AI_API_KEY")
+ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0,backend").split(",") if host.strip()]
 if DEBUG and "testserver" not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append("testserver")
 
@@ -21,6 +22,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "corsheaders",
     "rest_framework",
+    "storages",
     "rest_framework_simplejwt.token_blacklist",
     "apps.game",
 ]
@@ -90,7 +92,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CORS_ALLOWED_ORIGINS = [
     origin.strip()
-    for origin in os.getenv("DJANGO_CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+    for origin in os.getenv(
+        "DJANGO_CORS_ALLOWED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000,http://0.0.0.0:3000",
+    ).split(",")
     if origin.strip()
 ]
 

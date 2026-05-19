@@ -33,7 +33,7 @@ services:
              python manage.py seed_game &&
              python manage.py runserver 0.0.0.0:8000"
     env_file:
-      - .env.example
+      - .env
     environment:
       DATABASE_URL: postgres://web_game:web_game@postgres:5432/web_game
       REDIS_URL: redis://redis:6379/0

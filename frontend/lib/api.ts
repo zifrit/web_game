@@ -11,6 +11,7 @@ export type ApiUser = {
   email: string;
   money_copper?: number;
   has_character: boolean;
+  avatar?: AppTypes.MediaAssetUrls | null;
 };
 
 export type AuthPayload = Tokens & { user: ApiUser };
@@ -116,8 +117,36 @@ export type RepairPreview = {
   can_repair: boolean;
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
 let activeLocale: Locale = "en";
+
+function defaultApiBase() {
+  if (typeof window === "undefined") {
+    return process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
+  }
+
+  const configured = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (configured) {
+    try {
+      const url = new URL(configured);
+      const currentHost = window.location.hostname;
+      if (["localhost", "127.0.0.1", "0.0.0.0"].includes(url.hostname) && ["localhost", "127.0.0.1", "0.0.0.0"].includes(currentHost)) {
+        url.hostname = currentHost;
+        return url.toString().replace(/\/$/, "");
+      }
+      return configured.replace(/\/$/, "");
+    } catch {
+      return configured.replace(/\/$/, "");
+    }
+  }
+
+  const protocol = window.location.protocol;
+  const host = window.location.hostname;
+  return `${protocol}//${host}:8000/api`;
+}
+
+function apiBase() {
+  return defaultApiBase();
+}
 
 export function setApiLocale(locale: Locale) {
   activeLocale = locale;
@@ -164,7 +193,7 @@ export function clearTokens() {
 }
 
 async function refreshAccessToken(tokens: Tokens): Promise<Tokens> {
-  const response = await fetch(`${API_BASE}/auth/refresh`, {
+  const response = await fetch(`${apiBase()}/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Accept-Language": activeLocale },
     body: JSON.stringify({ refresh: tokens.refresh_token }),
@@ -185,7 +214,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}, retry
   headers.set("Content-Type", "application/json");
   headers.set("Accept-Language", activeLocale);
   if (tokens?.access_token) headers.set("Authorization", `Bearer ${tokens.access_token}`);
-  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const response = await fetch(`${apiBase()}${path}`, { ...options, headers });
   if (response.status === 401 && retry && tokens?.refresh_token) {
     const next = await refreshAccessToken(tokens);
     return apiFetch<T>(path, {
