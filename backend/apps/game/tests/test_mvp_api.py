@@ -162,6 +162,14 @@ class MvpApiTests(APITestCase):
         self.assertEqual(equip.status_code, status.HTTP_200_OK, equip.data)
         self.assertEqual(equip.data["equipped_slot"], "weapon")
 
+        character_response = self.client.get("/api/characters/me")
+        self.assertEqual(character_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(character_response.data["equipment"]["weapon"]["durability"], {"current": 5, "max": 10})
+
+        equipped_inventory = self.client.get("/api/inventory")
+        self.assertEqual(equipped_inventory.status_code, status.HTTP_200_OK)
+        self.assertEqual(equipped_inventory.data["equipped"]["weapon"]["durability"], {"current": 5, "max": 10})
+
         item.durability_current = 0
         item.save(update_fields=["durability_current"])
         location = DungeonLocation.objects.first()

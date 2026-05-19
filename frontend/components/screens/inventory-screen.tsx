@@ -65,7 +65,6 @@ function PackCell({
             src={iconUrl}
             alt={itemName}
             className="inv-icon"
-            style={{ objectFit: "cover" }}
           />
         ) : (
           <div className="inv-icon" />
@@ -73,11 +72,6 @@ function PackCell({
       )}
       {equipped && <div className="equipped-tag">E</div>}
       {item?.is_broken && <div className="broken-tag">!</div>}
-      {hasItem && (
-        <div className="inv-dur">
-          <i style={{ width: "78%", background: "var(--success)" }} />
-        </div>
-      )}
     </button>
   );
 }
@@ -138,11 +132,11 @@ function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChang
       {/* Header */}
       <div style={{
         padding: "20px 24px", borderBottom: "1px solid var(--line-soft)",
-        display: "flex", alignItems: "flex-start", gap: 16,
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 14,
       }}>
         {/* Item icon placeholder */}
         <div style={{
-          width: 80, height: 80, borderRadius: 4, flexShrink: 0,
+          width: "min(320px, 100%)", aspectRatio: "1", borderRadius: 4, flexShrink: 0,
           background: "repeating-linear-gradient(45deg, var(--bg-3) 0 6px, var(--bg-2) 6px 12px)",
           border: `1px solid ${color}`,
           overflow: "hidden",
@@ -156,7 +150,7 @@ function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChang
             />
           )}
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ width: "100%", textAlign: "center" }}>
           <span className={`tag rare-${item.rarity.toLowerCase()}`}>{t(`rarity.${item.rarity}` as TranslationKey)}</span>
           <div style={{
             fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
@@ -173,7 +167,7 @@ function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChang
           </div>
           {item.is_equipped && (
             <span className="mono" style={{
-              display: "inline-flex", marginTop: 6,
+              display: "inline-flex", marginTop: 8,
               background: "rgba(34,197,94,0.15)", padding: "2px 8px",
               borderRadius: 2, fontSize: 9, letterSpacing: "0.15em",
               color: "var(--success)",
@@ -410,7 +404,7 @@ export function InventoryScreen() {
               onScroll={handlePackScroll}
               style={{ maxHeight: 760, overflowY: "auto", paddingRight: 4 }}
             >
-              <div className="inv-grid">
+              <div className="inv-grid inventory-pack-grid">
                 {packCells.map((item, i) => {
                   return (
                     <PackCell

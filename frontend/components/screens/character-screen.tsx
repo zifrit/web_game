@@ -27,16 +27,37 @@ const RARITY_GLOW: Record<string, string> = {
 function rc(rarity?: string) { return RARITY_COLOR[(rarity ?? "common").toLowerCase()] ?? RARITY_COLOR.common; }
 function rg(rarity?: string) { return RARITY_GLOW[(rarity ?? "common").toLowerCase()]  ?? RARITY_GLOW.common;  }
 
+function setStableDragImage(event: DragEvent<HTMLDivElement>) {
+  const node = event.currentTarget;
+  const rect = node.getBoundingClientRect();
+  const ghost = node.cloneNode(true) as HTMLElement;
+
+  ghost.style.position = "fixed";
+  ghost.style.top = "-1000px";
+  ghost.style.left = "-1000px";
+  ghost.style.width = `${rect.width}px`;
+  ghost.style.height = `${rect.height}px`;
+  ghost.style.pointerEvents = "none";
+  ghost.style.opacity = "0.95";
+  ghost.style.transform = "translateZ(0)";
+  ghost.style.zIndex = "-1";
+
+  document.body.appendChild(ghost);
+  event.dataTransfer.setDragImage(ghost, rect.width / 2, rect.height / 2);
+  window.setTimeout(() => ghost.remove(), 0);
+}
+
 const EQUIPMENT_SLOTS: Array<{
   slot: EquipmentSlot;
   label: TranslationKey;
   glyph: string;
+  row: "top" | "bottom";
 }> = [
-  { slot: "weapon", label: "slot.weapon", glyph: "W" },
-  { slot: "helmet", label: "slot.helmet", glyph: "H" },
-  { slot: "armor", label: "slot.armor", glyph: "A" },
-  { slot: "boots", label: "slot.boots", glyph: "B" },
-  { slot: "ring", label: "slot.ring", glyph: "R" },
+  { slot: "helmet", label: "slot.helmet", glyph: "H", row: "top" },
+  { slot: "armor", label: "slot.armor", glyph: "A", row: "top" },
+  { slot: "weapon", label: "slot.weapon", glyph: "W", row: "bottom" },
+  { slot: "ring", label: "slot.ring", glyph: "R", row: "bottom" },
+  { slot: "boots", label: "slot.boots", glyph: "B", row: "bottom" },
 ];
 const INVENTORY_PAGE_SIZE = 24;
 
@@ -52,6 +73,7 @@ function SlotCell({
   rarity,
   iconUrl,
   broken,
+  durability,
   canDrop,
   dropActive,
   draggable,
@@ -66,6 +88,7 @@ function SlotCell({
   rarity?: string;
   iconUrl?: string;
   broken?: boolean;
+  durability?: InventoryCard["durability"];
   canDrop?: boolean;
   dropActive?: boolean;
   draggable?: boolean;
@@ -77,18 +100,17 @@ function SlotCell({
 }) {
   const color   = rarity ? rc(rarity) : undefined;
   const hasItem = Boolean(rarity);
-  const durPct  = 0.78; // placeholder until backend sends durability per slot
 
   return (
     <div
-      className={`slot${draggable ? " draggable" : ""}${dropActive ? (canDrop ? " drop-ok" : " drop-blocked") : ""}`}
+      className={`slot${hasItem ? " filled" : ""}${draggable ? " draggable" : ""}${dropActive ? (canDrop ? " drop-ok" : " drop-blocked") : ""}`}
       draggable={draggable}
       onDragEnd={onDragEnd}
       onDragLeave={onDragLeave}
       onDragOver={onDragOver}
       onDragStart={onDragStart}
       onDrop={onDrop}
-      style={hasItem ? {
+      style={hasItem && !dropActive ? {
         borderColor: color + "80",
         boxShadow: `0 0 14px ${rg(rarity)}`,
       } : {}}
@@ -99,20 +121,27 @@ function SlotCell({
             <img
               src={iconUrl}
               alt={label}
+              loading="eager"
+              decoding="async"
+              draggable={false}
               style={{
                 position: "absolute",
-                inset: 10,
-                width: "calc(100% - 20px)",
-                height: "calc(100% - 20px)",
-                objectFit: "contain",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                backfaceVisibility: "hidden",
                 pointerEvents: "none",
+                transform: "translateZ(0)",
               }}
             />
           )}
           <div className="slot-rare" style={{ background: color }} />
-          <div className="slot-dur">
-            <i style={{ width: `${durPct * 100}%`, background: durPct < 0.20 ? "var(--blood)" : durPct < 0.45 ? "var(--warning)" : "var(--moss)" }} />
-          </div>
+          {durability && (
+            <span className="slot-durability-number">
+              {durability.current}/{durability.max}
+            </span>
+          )}
         </>
       )}
       <span className="slot-glyph" style={{ color: hasItem ? (color ?? "var(--text)") : "var(--text-mute)" }}>
@@ -163,18 +192,15 @@ function InvCell({
             src={iconUrl}
             alt={itemName}
             className="inv-icon"
-            style={{ objectFit: "cover" }}
+            loading="eager"
+            decoding="async"
+            draggable={false}
           />
         ) : (
           <div className="inv-icon" />
         )
       )}
       {hasItem && broken && <div className="broken-tag">!</div>}
-      {hasItem && (
-        <div className="inv-dur">
-          <i style={{ width: "78%", background: "var(--success)" }} />
-        </div>
-      )}
     </div>
   );
 }
@@ -431,6 +457,31 @@ export function CharacterScreen({
     },
   });
 
+  const visibleIconKey = Array.from(
+    new Set([
+      ...Object.values(characterQuery.data?.equipment ?? {}).map((item) => item?.icon_url),
+      ...(inventoryQuery.data?.items ?? []).map((item) => item.icon_url),
+    ].filter((url): url is string => Boolean(url)))
+  ).join("\n");
+
+  useEffect(() => {
+    if (!visibleIconKey || typeof window === "undefined") return;
+
+    const preloadedImages = visibleIconKey.split("\n").map((url) => {
+      const image = new window.Image();
+      image.decoding = "async";
+      image.src = url;
+      return image;
+    });
+
+    return () => {
+      preloadedImages.forEach((image) => {
+        image.onload = null;
+        image.onerror = null;
+      });
+    };
+  }, [visibleIconKey]);
+
   if (characterQuery.isLoading) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 256 }}>
@@ -488,6 +539,7 @@ export function CharacterScreen({
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", String(item.id));
     event.dataTransfer.setData("application/x-rpg-drag-source", source);
+    setStableDragImage(event);
   };
 
   const handleSlotDrop = (slot: EquipmentSlot, event: DragEvent<HTMLDivElement>) => {
@@ -627,9 +679,6 @@ export function CharacterScreen({
               <div className="card-title">{t("equipment.title")}</div>
               <div className="card-sub">{t("equipment.slots")}</div>
             </div>
-            <span className="tag rare-rare" style={{ fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)" }}>
-              {t("common.power")} {cp}
-            </span>
           </div>
           <div className="card-body">
             <ErrorNotice message={
@@ -649,6 +698,7 @@ export function CharacterScreen({
                     rarity={item?.rarity}
                     iconUrl={item?.icon_url}
                     broken={item?.is_broken}
+                    durability={item?.durability}
                     canDrop={dragState?.item.slot === cell.slot}
                     draggable={Boolean(item)}
                     dropActive={dropActive}

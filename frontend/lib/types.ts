@@ -131,6 +131,10 @@ export type InventoryCard = {
   icon_url?: string;
   slot: EquipmentSlot;
   rarity: string;
+  durability?: {
+    current: number;
+    max: number;
+  };
   is_broken: boolean;
 };
 

@@ -75,6 +75,7 @@ export type ItemSummary = {
   icon_url: string;
   slot: string;
   rarity: string;
+  durability?: { current: number; max: number };
   is_broken: boolean;
 };
 

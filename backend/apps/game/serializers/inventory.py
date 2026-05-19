@@ -12,11 +12,12 @@ class UserItemSummarySerializer(serializers.ModelSerializer):
 
     name = serializers.SerializerMethodField()
     icon_url = serializers.SerializerMethodField()
+    durability = serializers.SerializerMethodField()
     is_broken = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = UserItem
-        fields = ["id", "name", "icon_url", "slot", "rarity", "is_broken"]
+        fields = ["id", "name", "icon_url", "slot", "rarity", "durability", "is_broken"]
 
     def get_name(self, obj):
         """Возвращает локализованное название предмета с учётом редкости."""
@@ -28,6 +29,11 @@ class UserItemSummarySerializer(serializers.ModelSerializer):
 
         payload = media_payload(obj.template.media, self.context)
         return payload["icon_url"] if payload else ""
+
+    def get_durability(self, obj):
+        """Возвращает текущую и максимальную прочность предмета."""
+
+        return {"current": obj.durability_current, "max": obj.durability_max}
 
 
 class UserItemDetailSerializer(serializers.ModelSerializer):
