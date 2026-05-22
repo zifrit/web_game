@@ -1,0 +1,40 @@
+# Architecture
+
+Проект - monorepo с backend, frontend и Docker stack.
+
+## Backend
+
+- `backend/config/` - Django settings, root urls, Celery app, WSGI/ASGI.
+- `backend/apps/game/` - активный backend-домен MVP.
+- `backend/apps/game/urls.py` - единый файл API routes под `/api/`.
+- `backend/apps/game/models/` - доменные модели, разбитые по файлам.
+- `backend/apps/game/serializers/` - DRF serializers/renderers по доменам.
+- `backend/apps/game/views/` - DRF API views по доменам.
+- `backend/apps/game/services.py` - центральное место для формул, транзакций и
+  game-domain operations.
+- `backend/apps/game/tasks.py` - Celery tasks.
+- `backend/apps/game/management/commands/seed_game.py` - seed data.
+
+`apps.game.models`, `apps.game.serializers` и `apps.game.views` являются
+package-директориями. Их `__init__.py` реэкспортируют публичные классы для
+compatibility imports.
+
+## Frontend
+
+- `frontend/app/page.tsx` - Next entry для основного приложения.
+- `frontend/components/rpg-client.tsx` - главный клиентский shell, nav и выбор
+  экранов.
+- `frontend/components/screens/` - игровые экраны.
+- `frontend/components/providers.tsx` - session и locale providers.
+- `frontend/lib/api.ts` - API client, token storage, compatibility facade.
+- `frontend/lib/types.ts` - shared API types.
+- `frontend/lib/i18n.ts` - dictionaries и formatting helpers.
+
+UI должен оставаться настоящим игровым интерфейсом, не landing page.
+
+## Runtime
+
+`docker-compose.yml` поднимает PostgreSQL, Redis, backend, frontend,
+Celery worker и Celery beat. Public URLs локально: frontend `localhost:3000`,
+backend API `localhost:8000/api`, admin `localhost:8000/admin`.
+
