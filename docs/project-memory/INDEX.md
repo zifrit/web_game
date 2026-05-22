@@ -11,6 +11,7 @@ source_of_truth:
   - backend/apps/game/urls.py
   - frontend/app/page.tsx
   - frontend/components/rpg-client.tsx
+  - docker-compose.yml
 last_verified: 2026-05-22
 verified_from:
   - AGENTS.md
@@ -51,6 +52,8 @@ verified_from:
   [curated/frontend-rules.md](curated/frontend-rules.md)
 - Какие gotchas нужно проверить перед изменениями:
   [curated/gotchas.md](curated/gotchas.md)
+- Какие правила git hygiene, security и handoff важны:
+  [curated/working-rules.md](curated/working-rules.md)
 - Нужен список публичных API routes:
   [inventories/api-routes.md](inventories/api-routes.md)
 - Нужна карта backend modules, models, services, serializers, views и tasks:
@@ -59,6 +62,8 @@ verified_from:
   [inventories/frontend-inventory.md](inventories/frontend-inventory.md)
 - Нужны runtime, Docker Compose, settings, Celery и dependency facts:
   [inventories/runtime-and-config.md](inventories/runtime-and-config.md)
+- Нужны команды локального запуска и prior smoke facts:
+  [inventories/local-run.md](inventories/local-run.md)
 - Нужны команды проверки и smoke checks:
   [inventories/verification.md](inventories/verification.md)
 
@@ -87,4 +92,3 @@ verified_from:
   целиком.
 - Секреты и `.env` / `.env.*` файлы не читаются, не индексируются и не
   пересказываются.
-

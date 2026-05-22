@@ -26,7 +26,8 @@
 
 - Начинай с `curated/overview.md`, если нужен общий контекст.
 - Открывай `curated/architecture.md`, чтобы найти домен или entrypoint.
+- Открывай `curated/working-rules.md`, чтобы проверить git/security/handoff
+  правила перед изменениями.
 - Проверяй `inventories/`, когда нужен точный список API routes, модулей,
   экранов, runtime-сервисов или verification-команд.
 - Перед изменениями сверяйся с `curated/gotchas.md`.
-
