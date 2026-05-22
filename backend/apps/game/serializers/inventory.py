@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from apps.game.i18n import DEFAULT_LOCALE
 from apps.game.models import UserItem
-from apps.game.services import InventoryService
+from apps.game.services import GameFormulaService, InventoryService
 
 from .common import localized_item_name, media_payload, serializer_locale
 
@@ -95,13 +95,37 @@ class InventorySerializer:
     """Рендер полного ответа инвентаря с экипировкой и пагинацией."""
 
     @staticmethod
+    def render_equipment(character, context):
+        """Собирает экипировку героя по слотам."""
+
+        equipment = {slot: None for slot in ["weapon", "helmet", "armor", "boots", "ring"]}
+        for item in character.equipped_items.all():
+            equipment[item.slot] = UserItemSummarySerializer(item, context=context).data
+        return equipment
+
+    @staticmethod
+    def render_mutation_response(character, item, replaced_item=None, locale=DEFAULT_LOCALE, request=None):
+        """Возвращает состояние экипировки после equip/unequip без полной страницы inventory."""
+
+        context = {"locale": locale, "request": request}
+        stats = GameFormulaService.character_stats(character)
+        return {
+            "success": True,
+            "item": UserItemSummarySerializer(item, context=context).data,
+            "equipped_slot": item.slot,
+            "item_id": item.id,
+            "replaced_item": UserItemSummarySerializer(replaced_item, context=context).data if replaced_item else None,
+            "equipment": InventorySerializer.render_equipment(character, context),
+            "stats": stats,
+            "equipment_summary": InventoryService.equipment_summary(character),
+            "new_power": stats["power"],
+        }
+
+    @staticmethod
     def render(character, page=1, page_size=24, locale=DEFAULT_LOCALE, request=None):
         """Собирает экипировку, предметы текущей страницы и метаданные пагинации."""
 
         context = {"locale": locale, "request": request}
-        equipment = {slot: None for slot in ["weapon", "helmet", "armor", "boots", "ring"]}
-        for item in character.equipped_items.all():
-            equipment[item.slot] = UserItemSummarySerializer(item, context=context).data
         items_qs = UserItem.objects.filter(owner_user=character.user).select_related("template__media")
         items_count = items_qs.count()
         offset = (page - 1) * page_size
@@ -109,7 +133,7 @@ class InventorySerializer:
         total_pages = (items_count + page_size - 1) // page_size
         return {
             "equipment_summary": InventoryService.equipment_summary(character),
-            "equipped": equipment,
+            "equipped": InventorySerializer.render_equipment(character, context),
             "items_count": items_count,
             "slots_limit": None,
             "free_slots": None,

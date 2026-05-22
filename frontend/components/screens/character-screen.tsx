@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState, type DragEvent } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { useI18n } from "@/components/providers";
 import { ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatDuration, type Locale, type TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
-import type { Dungeon, EquipmentSlot, InventoryCard } from "@/lib/types";
+import type { Character, Dungeon, EquipmentSlot, Inventory, InventoryCard, InventoryMutationResponse } from "@/lib/types";
 
 /* ── Rarity helpers ── */
 const RARITY_COLOR: Record<string, string> = {
@@ -65,6 +65,37 @@ type DragState = {
   item: InventoryCard;
   source: "inventory" | "equipment";
 };
+
+function addUniqueItem(items: InventoryCard[], item: InventoryCard) {
+  return items.some((candidate) => candidate.id === item.id) ? items : [...items, item];
+}
+
+function mergeInventoryMutation(data: Inventory, result: InventoryMutationResponse) {
+  const items = addUniqueItem(data.items, result.item);
+  const withReplacement = result.replaced_item ? addUniqueItem(items, result.replaced_item) : items;
+  return {
+    ...data,
+    equipment_summary: result.equipment_summary,
+    equipped: result.equipment,
+    items: withReplacement,
+  };
+}
+
+function mergeInfiniteInventoryMutation(data: InfiniteData<Inventory>, result: InventoryMutationResponse) {
+  return {
+    ...data,
+    pages: data.pages.map((page) => mergeInventoryMutation(page, result)),
+  };
+}
+
+function packItemCount(items: InventoryCard[], equipment: InventoryMutationResponse["equipment"]) {
+  const equippedIds = new Set(
+    Object.values(equipment)
+      .map((item) => item?.id)
+      .filter((id): id is number => typeof id === "number")
+  );
+  return items.filter((item) => !equippedIds.has(item.id)).length;
+}
 
 /* ── Equipment Slot Cell ── */
 function SlotCell({
@@ -427,33 +458,76 @@ export function CharacterScreen({
     },
   });
 
+  const patchInventoryCaches = (result: InventoryMutationResponse) => {
+    queryClient.setQueryData<Character>(["character"], (current) => current ? ({
+      ...current,
+      equipment: result.equipment,
+      stats: result.stats,
+    }) : current);
+    queryClient.setQueryData<Inventory>(["inventory"], (current) => current ? mergeInventoryMutation(current, result) : current);
+    queryClient.setQueriesData<InfiniteData<Inventory>>(
+      {
+        predicate: (query) => (
+          query.queryKey[0] === "inventory" &&
+          Array.isArray((query.state.data as { pages?: unknown[] } | undefined)?.pages)
+        ),
+      },
+      (current) => current ? mergeInfiniteInventoryMutation(current, result) : current
+    );
+  };
+
+  const ensureMiniInventoryFilled = async (result: InventoryMutationResponse) => {
+    let current = queryClient.getQueryData<Inventory>(["inventory"]);
+    if (!current) return;
+
+    while (packItemCount(current.items, result.equipment) < INVENTORY_PAGE_SIZE) {
+      const pageSize = current.pagination.page_size || INVENTORY_PAGE_SIZE;
+      const nextPage = Math.floor(current.items.length / pageSize) + 1;
+      if (nextPage > current.pagination.total_pages) return;
+
+      const nextInventory = await api.inventory(nextPage, pageSize);
+      const existingIds = new Set(current.items.map((item) => item.id));
+      const additions: InventoryCard[] = [];
+      for (const item of nextInventory.items) {
+        if (existingIds.has(item.id)) continue;
+        additions.push(item);
+        existingIds.add(item.id);
+        if (packItemCount([...current.items, ...additions], result.equipment) >= INVENTORY_PAGE_SIZE) break;
+      }
+      if (additions.length === 0) return;
+
+      queryClient.setQueryData<Inventory>(["inventory"], (cached) => cached ? ({
+        ...cached,
+        pagination: nextInventory.pagination,
+        items: [...cached.items, ...additions],
+      }) : cached);
+      current = queryClient.getQueryData<Inventory>(["inventory"]);
+      if (!current) return;
+    }
+  };
+
+  const applyInventoryMutation = async (result: InventoryMutationResponse, shouldFillMiniInventory = false) => {
+    setDragState(null);
+    setDragOverSlot(null);
+    setInventoryDropActive(false);
+    setDropError(null);
+    patchInventoryCaches(result);
+    if (shouldFillMiniInventory) {
+      await ensureMiniInventoryFilled(result);
+    }
+  };
+
   const equipMutation = useMutation({
     mutationFn: (itemId: number) => api.equip(itemId),
-    onSuccess: async () => {
-      setDragState(null);
-      setDragOverSlot(null);
-      setInventoryDropActive(false);
-      setDropError(null);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["character"] }),
-        queryClient.invalidateQueries({ queryKey: ["inventory"] }),
-        queryClient.invalidateQueries({ queryKey: ["me"] }),
-      ]);
+    onSuccess: async (result) => {
+      await applyInventoryMutation(result, !result.replaced_item);
     },
   });
 
   const unequipMutation = useMutation({
     mutationFn: (itemId: number) => api.unequip(itemId),
-    onSuccess: async () => {
-      setDragState(null);
-      setDragOverSlot(null);
-      setInventoryDropActive(false);
-      setDropError(null);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["character"] }),
-        queryClient.invalidateQueries({ queryKey: ["inventory"] }),
-        queryClient.invalidateQueries({ queryKey: ["me"] }),
-      ]);
+    onSuccess: async (result) => {
+      await applyInventoryMutation(result);
     },
   });
 
@@ -512,7 +586,7 @@ export function CharacterScreen({
   );
   const packItems = invItems.filter((item) => !equippedItemIds.has(item.id));
   const packCells = Array.from(
-    { length: Math.max(INVENTORY_PAGE_SIZE, packItems.length) },
+    { length: INVENTORY_PAGE_SIZE },
     (_, i) => packItems[i],
   );
 

@@ -155,6 +155,18 @@ export type Inventory = {
   items: InventoryCard[];
 };
 
+export type InventoryMutationResponse = {
+  success: boolean;
+  item: InventoryCard;
+  equipped_slot: EquipmentSlot;
+  item_id: number;
+  replaced_item: InventoryCard | null;
+  equipment: Record<EquipmentSlot, InventoryCard | null>;
+  stats: StatBlock;
+  equipment_summary: StatBlock;
+  new_power: number;
+};
+
 export type ItemDetail = {
   id: number;
   name: string;

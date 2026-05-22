@@ -161,6 +161,11 @@ class MvpApiTests(APITestCase):
         equip = self.client.post(f"/api/inventory/items/{item.id}/equip", {}, format="json")
         self.assertEqual(equip.status_code, status.HTTP_200_OK, equip.data)
         self.assertEqual(equip.data["equipped_slot"], "weapon")
+        self.assertEqual(equip.data["item"]["id"], item.id)
+        self.assertIsNone(equip.data["replaced_item"])
+        self.assertEqual(equip.data["equipment"]["weapon"]["id"], item.id)
+        self.assertEqual(equip.data["equipment_summary"]["attack"], 5.0)
+        self.assertEqual(equip.data["stats"]["power"], equip.data["new_power"])
 
         character_response = self.client.get("/api/characters/me")
         self.assertEqual(character_response.status_code, status.HTTP_200_OK)
@@ -191,8 +196,31 @@ class MvpApiTests(APITestCase):
         self.assertEqual(repair.data["durability"]["current"], 10)
         self.assertEqual(repair.data["remaining_money_copper"], 400)
 
-        unequip = self.client.post(f"/api/inventory/items/{item.id}/unequip", {}, format="json")
+        replacement = UserItem.objects.create(
+            owner_user=user,
+            source_character=character,
+            template=template,
+            name="Новый меч",
+            slot=template.slot,
+            item_type=template.item_type,
+            rarity="common",
+            item_level=1,
+            stats={"attack": 7},
+            durability_current=10,
+            durability_max=10,
+        )
+        replace = self.client.post(f"/api/inventory/items/{replacement.id}/equip", {}, format="json")
+        self.assertEqual(replace.status_code, status.HTTP_200_OK, replace.data)
+        self.assertEqual(replace.data["item"]["id"], replacement.id)
+        self.assertEqual(replace.data["replaced_item"]["id"], item.id)
+        self.assertEqual(replace.data["equipment"]["weapon"]["id"], replacement.id)
+        self.assertEqual(replace.data["stats"]["power"], replace.data["new_power"])
+
+        unequip = self.client.post(f"/api/inventory/items/{replacement.id}/unequip", {}, format="json")
         self.assertEqual(unequip.status_code, status.HTTP_200_OK)
+        self.assertEqual(unequip.data["item"]["id"], replacement.id)
+        self.assertIsNone(unequip.data["equipment"]["weapon"])
+        self.assertEqual(unequip.data["stats"]["power"], unequip.data["new_power"])
 
     def test_inventory_is_paginated_by_twenty_four_items(self):
         user = self.register_and_authenticate("pack@example.com")

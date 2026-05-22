@@ -82,8 +82,18 @@ class InventoryItemEquipView(APIView):
     def post(self, request, item_id):
         """Экипирует предмет в соответствующий слот и возвращает новую силу героя."""
 
-        item, new_power = InventoryService.equip(request.user, item_id, locale=request_locale(request))
-        return Response({"success": True, "equipped_slot": item.slot, "item_id": item.id, "new_power": new_power})
+        locale = request_locale(request)
+        item, replaced_item, character = InventoryService.equip(request.user, item_id, locale=locale)
+        character = Character.objects.select_related("character_class", "user").prefetch_related("equipped_items__template__media").get(pk=character.pk)
+        return Response(
+            InventorySerializer.render_mutation_response(
+                character,
+                item,
+                replaced_item=replaced_item,
+                locale=locale,
+                request=request,
+            )
+        )
 
 
 class InventoryItemUnequipView(APIView):
@@ -92,5 +102,7 @@ class InventoryItemUnequipView(APIView):
     def post(self, request, item_id):
         """Снимает предмет, если он экипирован текущим героем, и возвращает новую силу."""
 
-        new_power = InventoryService.unequip(request.user, item_id, locale=request_locale(request))
-        return Response({"success": True, "new_power": new_power})
+        locale = request_locale(request)
+        item, character = InventoryService.unequip(request.user, item_id, locale=locale)
+        character = Character.objects.select_related("character_class", "user").prefetch_related("equipped_items__template__media").get(pk=character.pk)
+        return Response(InventorySerializer.render_mutation_response(character, item, locale=locale, request=request))

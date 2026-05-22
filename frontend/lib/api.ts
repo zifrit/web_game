@@ -308,10 +308,10 @@ export const api = {
     return apiFetch(`/inventory/items/${itemId}/repair`, { method: "POST" });
   },
   equip(itemId: number) {
-    return apiFetch(`/inventory/items/${itemId}/equip`, { method: "POST" });
+    return apiFetch<AppTypes.InventoryMutationResponse>(`/inventory/items/${itemId}/equip`, { method: "POST" });
   },
   unequip(itemId: number) {
-    return apiFetch(`/inventory/items/${itemId}/unequip`, { method: "POST" });
+    return apiFetch<AppTypes.InventoryMutationResponse>(`/inventory/items/${itemId}/unequip`, { method: "POST" });
   },
   leaderboard() {
     return apiFetch<AppTypes.Leaderboard>("/leaderboard?type=level");

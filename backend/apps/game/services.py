@@ -542,8 +542,8 @@ class InventoryService:
 
     @staticmethod
     @transaction.atomic
-    def equip(user, item_id: int, locale=DEFAULT_LOCALE) -> tuple[UserItem, float]:
-        """Транзакционно экипирует предмет, снимая прежний предмет из того же слота."""
+    def equip(user, item_id: int, locale=DEFAULT_LOCALE) -> tuple[UserItem, UserItem | None, Character]:
+        """Транзакционно экипирует предмет и возвращает снятый предмет слота."""
 
         character = DungeonRunService._get_character(user, locale)
         character = Character.objects.select_for_update().select_related("character_class").get(pk=character.pk)
@@ -553,23 +553,33 @@ class InventoryService:
         if not item_allowed_for_character(item, character):
             raise serializers.ValidationError(message("class_not_allowed", locale))
 
-        UserItem.objects.filter(equipped_character=character, slot=item.slot).exclude(pk=item.pk).update(equipped_character=None)
+        replaced_item = (
+            UserItem.objects.select_for_update()
+            .select_related("template")
+            .filter(equipped_character=character, slot=item.slot)
+            .exclude(pk=item.pk)
+            .first()
+        )
+        if replaced_item:
+            replaced_item.equipped_character = None
+            replaced_item.save(update_fields=["equipped_character", "updated_at"])
+
         item.equipped_character = character
         try:
             item.save(update_fields=["equipped_character", "updated_at"])
         except IntegrityError as exc:
             raise serializers.ValidationError(message("equip_failed", locale)) from exc
-        return item, GameFormulaService.character_stats(character)["power"]
+        return item, replaced_item, character
 
     @staticmethod
     @transaction.atomic
-    def unequip(user, item_id: int, locale=DEFAULT_LOCALE) -> float:
-        """Транзакционно снимает предмет с героя и возвращает новую силу героя."""
+    def unequip(user, item_id: int, locale=DEFAULT_LOCALE) -> tuple[UserItem, Character]:
+        """Транзакционно снимает предмет с героя и возвращает предмет с героем."""
 
         character = DungeonRunService._get_character(user, locale)
-        item = UserItem.objects.select_for_update().get(pk=item_id, owner_user=user)
+        item = UserItem.objects.select_for_update().select_related("template").get(pk=item_id, owner_user=user)
         if item.equipped_character_id == character.id:
             item.equipped_character = None
             item.save(update_fields=["equipped_character", "updated_at"])
         character = Character.objects.select_related("character_class").get(pk=character.pk)
-        return GameFormulaService.character_stats(character)["power"]
+        return item, character
