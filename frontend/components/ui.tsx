@@ -235,6 +235,215 @@ export function RarityLabel({ rarity }: { rarity: string }) {
 }
 
 /* ─────────────────────────────────────────
+   Skeleton primitives
+───────────────────────────────────────── */
+
+/** Generic shimmer block. Pass className for shape/size. */
+export function Skeleton({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return <div className={clsx("skeleton", className)} style={style} />;
+}
+
+/** One or several lines of skeleton text. */
+export function SkeletonText({
+  lines = 1,
+  widths,
+  className,
+}: {
+  lines?: number;
+  widths?: (string | number)[];
+  className?: string;
+}) {
+  return (
+    <div className={clsx("flex flex-col gap-2", className)}>
+      {Array.from({ length: lines }).map((_, i) => (
+        <Skeleton
+          key={i}
+          style={{
+            height: 12,
+            width: widths?.[i] ?? (i === lines - 1 && lines > 1 ? "60%" : "100%"),
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ── CharacterScreen skeleton ── */
+export function CharacterScreenSkeleton() {
+  return (
+    <div className="dashboard animate-fade-in">
+
+      {/* LEFT: character panel */}
+      <div className="card">
+        <div className="card-h">
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+            <Skeleton style={{ height: 18, width: "60%" }} />
+            <Skeleton style={{ height: 10, width: "40%" }} />
+          </div>
+        </div>
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Portrait */}
+          <Skeleton className="skeleton-portrait" style={{ width: "100%" }} />
+          {/* Name + class */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+            <Skeleton style={{ height: 18, width: "55%" }} />
+            <Skeleton style={{ height: 10, width: "70%" }} />
+          </div>
+          {/* XP + HP bars */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {[0, 1].map((i) => (
+              <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <Skeleton style={{ height: 10, width: 60 }} />
+                  <Skeleton style={{ height: 10, width: 50 }} />
+                </div>
+                <Skeleton style={{ height: 8, width: "100%", borderRadius: 100 }} />
+              </div>
+            ))}
+          </div>
+          <div className="divider" />
+          {/* Stats grid */}
+          <div className="stat-list" style={{ gridTemplateColumns: "1fr 1fr" }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="sl-row">
+                <Skeleton style={{ height: 10, width: 50 }} />
+                <Skeleton style={{ height: 12, width: 30 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* CENTER: equipment + quick dungeons */}
+      <div className="col">
+        <div className="card">
+          <div className="card-h">
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <Skeleton style={{ height: 18, width: 130 }} />
+              <Skeleton style={{ height: 10, width: 90 }} />
+            </div>
+          </div>
+          <div className="card-body">
+            <div className="equipment-layout">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="skeleton-slot" />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-h">
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+              <Skeleton style={{ height: 18, width: 140 }} />
+              <Skeleton style={{ height: 10, width: 100 }} />
+            </div>
+            <Skeleton style={{ height: 32, width: 64, borderRadius: 10 }} />
+          </div>
+          <div className="card-body">
+            <div className="quick-dungeons">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="quick-d" style={{ cursor: "default" }}>
+                  <Skeleton style={{ width: 64, height: 64, borderRadius: 8, flexShrink: 0 }} />
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                    <Skeleton style={{ height: 14, width: "55%" }} />
+                    <Skeleton style={{ height: 10, width: "80%" }} />
+                  </div>
+                  <Skeleton style={{ height: 34, width: 60, borderRadius: 10 }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* RIGHT: inventory mini-grid */}
+      <div className="card">
+        <div className="card-h">
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+            <Skeleton style={{ height: 18, width: 90 }} />
+            <Skeleton style={{ height: 10, width: 130 }} />
+          </div>
+          <Skeleton style={{ height: 28, width: 28, borderRadius: 8 }} />
+        </div>
+        <div className="card-body">
+          <div className="inv-grid">
+            {Array.from({ length: 24 }).map((_, i) => (
+              <Skeleton key={i} className="skeleton-inv" />
+            ))}
+          </div>
+          <div className="divider" />
+          {[0, 1].map((i) => (
+            <div key={i} className="log-line">
+              <Skeleton style={{ height: 10, width: 40 }} />
+              <Skeleton style={{ height: 10, flex: 1 }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── InventoryScreen skeleton ── */
+export function InventoryScreenSkeleton() {
+  return (
+    <div className="col animate-fade-in">
+      {/* Top stat cards */}
+      <div className="grid-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="card">
+            <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <Skeleton style={{ height: 10, width: 80 }} />
+              <Skeleton style={{ height: 26, width: "50%" }} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="inventory-main-layout">
+        {/* Pack grid */}
+        <div className="card">
+          <div className="card-h">
+            <Skeleton style={{ height: 18, width: 100 }} />
+            <Skeleton style={{ height: 10, width: 80 }} />
+          </div>
+          <div className="card-body">
+            <div className="inv-grid inventory-pack-grid">
+              {Array.from({ length: 24 }).map((_, i) => (
+                <Skeleton key={i} className="skeleton-inv" style={{ width: 102 }} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Detail pane placeholder */}
+        <aside className="inventory-detail-pane">
+          <div style={{
+            borderRadius: 14, border: "1px dashed var(--line)",
+            background: "rgba(17,24,39,0.6)", padding: 24,
+            display: "flex", flexDirection: "column", gap: 14,
+          }}>
+            <Skeleton style={{ height: 14, width: "50%", margin: "0 auto" }} />
+            <Skeleton style={{ height: 11, width: "80%", margin: "0 auto" }} />
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+/* ── Sidebar avatar skeleton ── */
+export function SidebarAvatarSkeleton({ size = 36 }: { size?: number }) {
+  return (
+    <Skeleton
+      className="skeleton-avatar"
+      style={{ width: size, height: size, borderRadius: 8 }}
+    />
+  );
+}
+
+/* ─────────────────────────────────────────
    Helpers
 ───────────────────────────────────────── */
 export function formatCopper(value?: number) {

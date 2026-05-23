@@ -855,6 +855,48 @@ button, input, select, textarea { font: inherit; }
   .auth-panel { padding: 20px; }
 }
 
+/* ── Skeleton / shimmer loading ── */
+@keyframes skeleton-shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-2) 25%,
+    var(--bg-3) 50%,
+    var(--bg-2) 75%
+  );
+  background-size: 1200px 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+/* Slot-shaped skeleton (square, same border-radius as .slot) */
+.skeleton-slot {
+  aspect-ratio: 1;
+  border-radius: 10px;
+}
+
+/* Portrait-shaped skeleton */
+.skeleton-portrait {
+  aspect-ratio: 3/4;
+  border-radius: 4px;
+}
+
+/* Avatar circle skeleton (sidebar) */
+.skeleton-avatar {
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+/* Inventory cell skeleton */
+.skeleton-inv {
+  aspect-ratio: 1;
+  border-radius: 8px;
+}
+
 /* ── Misc layout helpers ── */
 .row { display: flex; gap: 18px; }
 .col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }

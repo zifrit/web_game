@@ -10,7 +10,7 @@ import { DungeonsScreen } from "@/components/screens/dungeons-screen";
 import { InventoryScreen } from "@/components/screens/inventory-screen";
 import { LeaderboardScreen } from "@/components/screens/leaderboard-screen";
 import { SettingsScreen } from "@/components/screens/settings-screen";
-import { LoadingLine } from "@/components/ui";
+import { LoadingLine, Skeleton } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useI18n, useSession } from "@/components/providers";
 import { formatCopper, type TranslationKey } from "@/lib/i18n";
@@ -48,6 +48,7 @@ function Sidebar({
   characterLevel,
   userAvatar,
   characterAvatar,
+  isLoadingCharacter,
   onLogout,
   t,
 }: {
@@ -58,6 +59,7 @@ function Sidebar({
   characterLevel?: number;
   userAvatar?: MediaAssetUrls | null;
   characterAvatar?: MediaAssetUrls | null;
+  isLoadingCharacter?: boolean;
   onLogout: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
@@ -99,6 +101,9 @@ function Sidebar({
               alt="User avatar"
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
             />
+          ) : userAvatar ? (
+            /* Avatar object exists but URL still resolving — show shimmer over the blue square */
+            <div className="skeleton" style={{ position: "absolute", inset: 0, borderRadius: 0, opacity: 0.45 }} />
           ) : (
             <div style={{
               position: "absolute", inset: 6, border: "1px solid rgba(15,23,42,0.7)", borderRadius: 4,
@@ -162,35 +167,49 @@ function Sidebar({
         marginTop: "auto", paddingTop: 18, borderTop: "1px solid #243150",
         display: "flex", flexDirection: "column", gap: 12,
       }}>
-        {characterName && (
+        {(characterName || isLoadingCharacter) && (
           <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 4, flexShrink: 0,
-              background: "repeating-linear-gradient(45deg, #202B44 0 6px, #1A2235 6px 12px)",
-              border: "1px solid #2E3B5A",
-              overflow: "hidden",
-              position: "relative",
-            }}>
-              {footerAvatarUrl && (
-                <img
-                  src={footerAvatarUrl}
-                  alt={characterName}
-                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              )}
-            </div>
-            <div style={{ minWidth: 0, flex: 1 }}>
+            {/* Avatar: skeleton while loading, then real avatar or placeholder */}
+            {isLoadingCharacter && !characterName ? (
+              <Skeleton style={{ width: 36, height: 36, borderRadius: 4, flexShrink: 0 }} />
+            ) : (
               <div style={{
-                fontSize: 13, fontWeight: 500,
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                color: "#E5E7EB",
-              }}>{characterName}</div>
-              <div style={{
-                fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
-                fontSize: 10, color: "#64748B", letterSpacing: "0.12em", textTransform: "uppercase",
+                width: 36, height: 36, borderRadius: 4, flexShrink: 0,
+                background: "repeating-linear-gradient(45deg, #202B44 0 6px, #1A2235 6px 12px)",
+                border: "1px solid #2E3B5A",
+                overflow: "hidden",
+                position: "relative",
               }}>
-                {characterClass ?? "—"} · {t("common.levelShort")} {characterLevel ?? "—"}
+                {footerAvatarUrl && (
+                  <img
+                    src={footerAvatarUrl}
+                    alt={characterName}
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                )}
               </div>
+            )}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              {isLoadingCharacter && !characterName ? (
+                <>
+                  <Skeleton style={{ height: 12, width: "70%", marginBottom: 6 }} />
+                  <Skeleton style={{ height: 9, width: "90%" }} />
+                </>
+              ) : (
+                <>
+                  <div style={{
+                    fontSize: 13, fontWeight: 500,
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                    color: "#E5E7EB",
+                  }}>{characterName}</div>
+                  <div style={{
+                    fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                    fontSize: 10, color: "#64748B", letterSpacing: "0.12em", textTransform: "uppercase",
+                  }}>
+                    {characterClass ?? "—"} · {t("common.levelShort")} {characterLevel ?? "—"}
+                  </div>
+                </>
+              )}
             </div>
             <button
               onClick={onLogout}
@@ -375,6 +394,7 @@ export function RpgClient() {
           characterLevel={characterQuery.data?.level}
           userAvatar={activeUser?.avatar}
           characterAvatar={characterQuery.data?.avatar}
+          isLoadingCharacter={characterQuery.isLoading}
           onLogout={handleLogout}
           t={t}
         />

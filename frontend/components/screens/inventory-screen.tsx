@@ -3,7 +3,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type UIEvent } from "react";
 import { useI18n } from "@/components/providers";
-import { ErrorNotice, LoadingLine } from "@/components/ui";
+import { ErrorNotice, InventoryScreenSkeleton, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import type { TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
@@ -325,6 +325,10 @@ export function InventoryScreen() {
     }
   }, [selectedId, invQ.isLoading, invQ.isFetching, items]);
 
+  if (invQ.isLoading) {
+    return <InventoryScreenSkeleton />;
+  }
+
   return (
     <div className="col animate-fade-in">
 
@@ -390,7 +394,6 @@ export function InventoryScreen() {
       </div>
 
       <ErrorNotice message={(invQ.error as Error | null)?.message} />
-      {invQ.isLoading && <LoadingLine label={t("inventory.loading")} />}
 
       {/* ── Pack grid + selected item detail ── */}
       <div className="inventory-main-layout">

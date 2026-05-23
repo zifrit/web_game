@@ -3,7 +3,7 @@
 import { useEffect, useState, type DragEvent } from "react";
 import { useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { useI18n } from "@/components/providers";
-import { ErrorNotice, LoadingLine } from "@/components/ui";
+import { CharacterScreenSkeleton, ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatDuration, type Locale, type TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
@@ -557,11 +557,7 @@ export function CharacterScreen({
   }, [visibleIconKey]);
 
   if (characterQuery.isLoading) {
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 256 }}>
-        <LoadingLine label={t("character.loadingHero")} />
-      </div>
-    );
+    return <CharacterScreenSkeleton />;
   }
   if (characterQuery.error || !characterQuery.data) {
     return <ErrorNotice message={(characterQuery.error as Error | null)?.message ?? t("character.failedLoad")} />;
