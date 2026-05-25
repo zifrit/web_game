@@ -1,4 +1,4 @@
-from .auth import LoginView, LogoutView, MeView, RegisterView
+from .auth import IconAssetsView, LoginView, LogoutView, MeView, RegisterView, UserAvatarUpdateView
 from .characters import CharacterClassListView, CharacterCreateView, CharacterMeView
 from .dungeons import (
     DungeonLocationDetailView,
@@ -28,6 +28,7 @@ __all__ = [
     "DungeonRunCurrentView",
     "DungeonRunHistoryView",
     "DungeonRunStartView",
+    "IconAssetsView",
     "InventoryItemDetailView",
     "InventoryItemEquipView",
     "InventoryItemRepairPreviewView",
@@ -39,4 +40,5 @@ __all__ = [
     "LogoutView",
     "MeView",
     "RegisterView",
+    "UserAvatarUpdateView",
 ]

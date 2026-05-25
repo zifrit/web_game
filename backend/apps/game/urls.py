@@ -10,6 +10,7 @@ from .views import (
     DungeonRunCurrentView,
     DungeonRunHistoryView,
     DungeonRunStartView,
+    IconAssetsView,
     InventoryItemDetailView,
     InventoryItemEquipView,
     InventoryItemRepairPreviewView,
@@ -21,6 +22,7 @@ from .views import (
     LogoutView,
     MeView,
     RegisterView,
+    UserAvatarUpdateView,
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -46,4 +48,6 @@ urlpatterns = [
     path("inventory/items/<int:item_id>/equip", InventoryItemEquipView.as_view(), name="inventory_item_equip"),
     path("inventory/items/<int:item_id>/unequip", InventoryItemUnequipView.as_view(), name="inventory_item_unequip"),
     path("leaderboard", LeaderboardView.as_view(), name="leaderboard"),
+    path("media/icons", IconAssetsView.as_view(), name="media_icons"),
+    path("auth/me/avatar", UserAvatarUpdateView.as_view(), name="auth_me_avatar"),
 ]

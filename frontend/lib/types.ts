@@ -28,6 +28,11 @@ export type MediaAssetUrls = {
   small_url?: string;
 };
 
+export type IconAsset = MediaAssetUrls & {
+  id: number;
+  name: string;
+};
+
 export type CharacterClass = {
   key: string;
   name: string;

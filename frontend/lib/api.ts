@@ -316,4 +316,13 @@ export const api = {
   leaderboard() {
     return apiFetch<AppTypes.Leaderboard>("/leaderboard?type=level");
   },
+  iconAssets() {
+    return apiFetch<AppTypes.IconAsset[]>("/media/icons");
+  },
+  updateAvatar(avatarMediaId: number) {
+    return apiFetch<{ avatar: AppTypes.MediaAssetUrls }>("/auth/me/avatar", {
+      method: "PATCH",
+      body: JSON.stringify({ avatar_media_id: avatarMediaId }),
+    });
+  },
 };
