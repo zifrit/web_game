@@ -19,6 +19,14 @@ import type { MediaAssetUrls } from "@/lib/types";
 
 type Tab = "character" | "dungeons" | "inventory" | "leaderboard" | "settings";
 
+const VALID_TABS: Tab[] = ["character", "dungeons", "inventory", "leaderboard", "settings"];
+
+function getInitialTab(): Tab {
+  if (typeof window === "undefined") return "character";
+  const saved = localStorage.getItem("activeTab") as Tab | null;
+  return saved && VALID_TABS.includes(saved) ? saved : "character";
+}
+
 /* ── nav structure matching the HTML prototype ── */
 const ADVENTURE_NAV: Array<{ key: Tab; labelKey: "nav.character" | "nav.dungeons"; glyph: string }> = [
   { key: "character",   labelKey: "nav.character", glyph: "✦" },
@@ -310,7 +318,11 @@ function Topbar({ meta, title, level, gold }: {
 export function RpgClient() {
   const { accessToken, user, isBooting, logout, setUser } = useSession();
   const { t } = useI18n();
-  const [tab, setTab] = useState<Tab>("character");
+  const [tab, setTabState] = useState<Tab>(getInitialTab);
+  const setTab = (next: Tab) => {
+    setTabState(next);
+    localStorage.setItem("activeTab", next);
+  };
   const queryClient = useQueryClient();
 
   const meQuery = useQuery({
