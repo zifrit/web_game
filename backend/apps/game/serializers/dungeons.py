@@ -34,11 +34,13 @@ class DungeonLocationSerializer(serializers.ModelSerializer):
     def get_success_chance(self, obj):
         """Считает шанс успеха текущего героя в этой локации."""
 
-        character = self.context.get("character")
-        if not character:
-            return None
-        power = GameFormulaService.character_stats(character)["power"]
-        return GameFormulaService.success_chance(power, obj.required_power)
+        character_power = self.context.get("character_power")
+        if character_power is None:
+            character = self.context.get("character")
+            if not character:
+                return None
+            character_power = GameFormulaService.character_stats(character)["power"]
+        return GameFormulaService.success_chance(character_power, obj.required_power)
 
     def get_name(self, obj):
         """Возвращает локализованное название подземелья."""
@@ -124,6 +126,7 @@ class ClaimResponseSerializer:
     def render(result, locale=DEFAULT_LOCALE):
         """Преобразует результат claim в публичный API-ответ."""
 
+        item_context: dict = {}
         return {
             "id": result.run.id,
             "status": result.run.status,
@@ -132,7 +135,7 @@ class ClaimResponseSerializer:
                 "experience": result.claim.experience_claimed,
                 "money_copper": result.claim.money_claimed_copper,
                 "items": [
-                    {"id": item.id, "name": localized_item_name(item, locale), "rarity": item.rarity, "item_level": item.item_level}
+                    {"id": item.id, "name": localized_item_name(item, locale, item_context), "rarity": item.rarity, "item_level": item.item_level}
                     for item in result.items
                 ],
                 "durability_loss": result.run.durability_loss or 0,

@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.game.i18n import request_locale
-from apps.game.models import DungeonLocation, DungeonRun, DungeonRunStatus
+from apps.game.models import Character, DungeonLocation, DungeonRun, DungeonRunStatus
 from apps.game.serializers import (
     ClaimResponseSerializer,
     DungeonLocationSerializer,
@@ -12,7 +12,7 @@ from apps.game.serializers import (
     DungeonRunSerializer,
     DungeonRunStartSerializer,
 )
-from apps.game.services import DungeonRunService
+from apps.game.services import DungeonRunService, GameFormulaService
 
 
 class DungeonLocationListView(APIView):
@@ -21,9 +21,15 @@ class DungeonLocationListView(APIView):
     def get(self, request):
         """Возвращает активные локации с расчётным шансом успеха для героя."""
 
-        character = getattr(request.user, "character", None)
+        character = None
+        character_power = None
+        try:
+            character = Character.objects.select_related("character_class").prefetch_related("equipped_items").get(user=request.user)
+            character_power = GameFormulaService.character_stats(character)["power"]
+        except Character.DoesNotExist:
+            pass
         locations = DungeonLocation.objects.filter(is_active=True).select_related("media")
-        return Response(DungeonLocationSerializer(locations, many=True, context={"request": request, "character": character}).data)
+        return Response(DungeonLocationSerializer(locations, many=True, context={"request": request, "character": character, "character_power": character_power}).data)
 
 
 class DungeonLocationDetailView(APIView):
@@ -32,9 +38,15 @@ class DungeonLocationDetailView(APIView):
     def get(self, request, pk):
         """Возвращает одну активную локацию подземелья по идентификатору."""
 
-        character = getattr(request.user, "character", None)
+        character = None
+        character_power = None
+        try:
+            character = Character.objects.select_related("character_class").prefetch_related("equipped_items").get(user=request.user)
+            character_power = GameFormulaService.character_stats(character)["power"]
+        except Character.DoesNotExist:
+            pass
         location = get_object_or_404(DungeonLocation.objects.select_related("media"), pk=pk, is_active=True)
-        return Response(DungeonLocationSerializer(location, context={"request": request, "character": character}).data)
+        return Response(DungeonLocationSerializer(location, context={"request": request, "character": character, "character_power": character_power}).data)
 
 
 class DungeonRunStartView(APIView):
@@ -47,7 +59,6 @@ class DungeonRunStartView(APIView):
         serializer.is_valid(raise_exception=True)
         locale = request_locale(request)
         run = DungeonRunService.start_run(request.user, serializer.validated_data["location_id"], locale=locale)
-        run = DungeonRun.objects.select_related("location").get(pk=run.pk)
         return Response(DungeonRunSerializer(run, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
 
@@ -57,13 +68,10 @@ class DungeonRunCurrentView(APIView):
     def get(self, request):
         """Возвращает активный забег и при необходимости завершает его на лету."""
 
-        character = getattr(request.user, "character", None)
-        if not character:
-            return Response({"current_run": None})
         run = (
             DungeonRun.objects.select_related("location", "character", "character__character_class")
             .filter(
-                character=character,
+                character__user=request.user,
                 status__in=[
                     DungeonRunStatus.IN_PROGRESS,
                     DungeonRunStatus.SUCCESS_WAITING_CLAIM,
@@ -97,12 +105,9 @@ class DungeonRunHistoryView(APIView):
     def get(self, request):
         """Возвращает последние завершённые забеги без активных прохождений."""
 
-        character = getattr(request.user, "character", None)
-        if not character:
-            return Response([])
         limit = min(int(request.query_params.get("limit", 20)), 100)
         runs = (
-            DungeonRun.objects.filter(character=character)
+            DungeonRun.objects.filter(character__user=request.user)
             .select_related("location", "claim")
             .exclude(status=DungeonRunStatus.IN_PROGRESS)
             .order_by("-started_at")[:limit]

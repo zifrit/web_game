@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import F, Q, Value
+from django.db.models.functions import Greatest
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -230,7 +231,7 @@ class LootGenerationService:
         templates = ItemTemplate.objects.filter(
             is_active=True,
             template_locations__location=location,
-        )
+        ).distinct()
         templates = [template for template in templates if item_allowed_for_character(template, character)]
         if not templates:
             return None
@@ -306,7 +307,7 @@ class DungeonRunService:
         """Транзакционно запускает новый забег героя в выбранную локацию."""
 
         character = cls._get_character(user, locale)
-        character = Character.objects.select_for_update().select_related("character_class").get(pk=character.pk)
+        character = Character.objects.select_for_update().select_related("character_class").prefetch_related("equipped_items").get(pk=character.pk)
         if DungeonRun.objects.filter(character=character, status=DungeonRunStatus.IN_PROGRESS).exists():
             raise serializers.ValidationError(message("active_run_exists", locale))
         if character.equipped_items.filter(durability_current=0).exists():
@@ -447,9 +448,10 @@ class DungeonRunService:
 
         if loss <= 0:
             return
-        for item in character.equipped_items.select_for_update():
-            item.durability_current = max(0, item.durability_current - loss)
-            item.save(update_fields=["durability_current", "updated_at"])
+        character.equipped_items.filter(durability_current__gt=0).update(
+            durability_current=Greatest(F("durability_current") - loss, Value(0)),
+            updated_at=timezone.now(),
+        )
 
     @classmethod
     def complete_due_runs(cls, limit: int = 100) -> int:

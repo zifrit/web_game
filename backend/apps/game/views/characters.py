@@ -15,7 +15,7 @@ class CharacterClassListView(APIView):
     def get(self, request):
         """Возвращает активные классы героев в порядке сортировки."""
 
-        classes = CharacterClass.objects.filter(is_active=True).order_by("sort_order", "key")
+        classes = CharacterClass.objects.filter(is_active=True).select_related("media").order_by("sort_order", "key")
         return Response(CharacterClassSerializer(classes, many=True, context={"request": request}).data)
 
 

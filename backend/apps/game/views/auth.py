@@ -40,7 +40,7 @@ class MeView(APIView):
     def get(self, request):
         """Возвращает профиль, баланс и признак наличия созданного героя."""
 
-        user = User.objects.select_related("avatar_media").get(pk=request.user.pk)
+        user = User.objects.select_related("avatar_media", "character").get(pk=request.user.pk)
         return Response(
             {
                 "id": user.id,
@@ -76,7 +76,7 @@ class IconAssetsView(APIView):
     def get(self, request):
         """Возвращает все медиа-ассеты с типом ICONS."""
 
-        assets = MediaAsset.objects.filter(asset_type=MediaAsset.AssetType.ICONS).order_by("name", "pk")
+        assets = MediaAsset.objects.filter(asset_type=MediaAsset.AssetType.ICONS).only("id", "name", "large", "medium", "small").order_by("name", "pk")
         ctx = {"request": request}
         return Response([
             {"id": a.pk, "name": a.name, **media_payload(a, ctx)}

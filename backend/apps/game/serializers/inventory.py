@@ -22,7 +22,7 @@ class UserItemSummarySerializer(serializers.ModelSerializer):
     def get_name(self, obj):
         """Возвращает локализованное название предмета с учётом редкости."""
 
-        return localized_item_name(obj, serializer_locale(self.context))
+        return localized_item_name(obj, serializer_locale(self.context), self.context)
 
     def get_media(self, obj):
         """Возвращает медиа-версии шаблона предмета."""
@@ -70,7 +70,7 @@ class UserItemDetailSerializer(serializers.ModelSerializer):
     def get_name(self, obj):
         """Возвращает локализованное название предмета."""
 
-        return localized_item_name(obj, serializer_locale(self.context))
+        return localized_item_name(obj, serializer_locale(self.context), self.context)
 
     def get_is_equipped(self, obj):
         """Показывает, экипирован ли предмет текущим героем."""
