@@ -12,7 +12,7 @@ source_of_truth:
   - frontend/app/page.tsx
   - frontend/components/rpg-client.tsx
   - docker-compose.yml
-last_verified: 2026-05-22
+last_verified: 2026-05-25
 verified_from:
   - AGENTS.md
   - README.md
@@ -21,7 +21,12 @@ verified_from:
   - backend/config/urls.py
   - backend/apps/game/urls.py
   - backend/apps/game/tasks.py
+  - backend/apps/game/models/base.py
+  - backend/apps/game/serializers/common.py
+  - backend/apps/game/serializers/inventory.py
   - frontend/lib/api.ts
+  - frontend/lib/media.ts
+  - frontend/lib/types.ts
   - frontend/components/rpg-client.tsx
   - docker-compose.yml
 ---

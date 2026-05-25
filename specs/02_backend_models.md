@@ -20,12 +20,12 @@ updated_at
 
 ```text
 id
-original_url
-large_url
-medium_url
-small_url
-thumbnail_url
-icon_url
+name
+asset_type nullable choices(characters, custom, icons, weapons, dungeons)
+original
+large
+medium
+small
 created_at
 updated_at
 ```

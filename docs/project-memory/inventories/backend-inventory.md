@@ -1,6 +1,6 @@
 # Backend Inventory
 
-Updated from code inspection on 2026-05-22.
+Updated from code inspection on 2026-05-25.
 
 ## Entrypoints
 
@@ -13,7 +13,8 @@ Updated from code inspection on 2026-05-22.
 
 ## Models
 
-- `base.py` - `TimestampedModel`, `MediaAsset`.
+- `base.py` - `TimestampedModel`, `MediaAsset` with nullable `asset_type` and
+  `original`/`large`/`medium`/`small` files.
 - `users.py` - `UserManager`, custom `User`.
 - `characters.py` - `CharacterClass`, `Character`.
 - `config.py` - `RarityConfig`, `EquipmentSlotConfig`, `GameConfig`.
@@ -47,6 +48,10 @@ Serializer domains:
 - `leaderboard.py`
 - `common.py`
 
+Media API payloads are built in `common.py` and expose only `large_url`,
+`medium_url`, `small_url`. Inventory item summaries expose `media` instead of
+legacy `icon_url`.
+
 View domains:
 
 - `auth.py`
@@ -70,4 +75,3 @@ View domains:
 
 - Task: `apps.game.tasks.complete_due_dungeon_runs`.
 - Implementation delegates to `DungeonRunService.complete_due_runs(limit=100)`.
-

@@ -1,6 +1,6 @@
 # Frontend Inventory
 
-Updated from code inspection on 2026-05-22.
+Updated from code inspection on 2026-05-25.
 
 ## Entrypoints
 
@@ -31,7 +31,15 @@ Updated from code inspection on 2026-05-22.
 - `frontend/lib/api.ts` - API client, token storage, refresh flow, facade.
 - `frontend/lib/types.ts` - API/domain TypeScript types.
 - `frontend/lib/i18n.ts` - locale dictionaries, formatting, storage.
-- `frontend/lib/media.ts` - media URL selection helper.
+- `frontend/lib/media.ts` - media URL selection helper for `large_url`,
+  `medium_url`, `small_url`.
+
+## Media usage
+
+- Large: dungeons screen artwork, character portrait, item detail artwork.
+- Medium: equipment slots, inventory item list, create-character class cards.
+- Small: character mini-inventory, quick dungeon rows, sidebar avatar,
+  leaderboard avatar.
 
 ## API facade methods
 
@@ -47,4 +55,3 @@ Updated from code inspection on 2026-05-22.
 - `npm run build`
 - `npm run start`
 - `npm run lint`
-

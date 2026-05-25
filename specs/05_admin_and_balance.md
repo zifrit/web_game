@@ -125,12 +125,12 @@ stat_caps
 Управление:
 
 ```text
-original_url
-large_url
-medium_url
-small_url
-thumbnail_url
-icon_url
+name
+asset_type
+original
+large
+medium
+small
 ```
 
 ### 2.8 Dungeon Runs

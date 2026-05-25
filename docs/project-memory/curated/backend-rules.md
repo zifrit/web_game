@@ -38,3 +38,10 @@ start dungeon run требуют явных transactional boundaries там, г�
 - Broken equipped items остаются equipped, не дают stats, блокируют start new
   dungeon runs и не могут быть equipped again до ремонта.
 
+## Media assets
+
+- `MediaAsset` хранит `original`, `large`, `medium`, `small`; старые `icon` и
+  `thumbnail` удалены из активной модели.
+- Публичный media payload возвращает только `large_url`, `medium_url`,
+  `small_url`; `original_url` остается внутренним/админским URL.
+- Краткие предметы inventory/equipment возвращают `media`, а не `icon_url`.

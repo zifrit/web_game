@@ -37,3 +37,14 @@
   игровые формулы, rewards, economy или server-authoritative results.
 - Inventory должен показывать минимум 24 cells и догружать следующие страницы,
   если `pagination.has_next` true.
+
+## Media sizing
+
+- Frontend media contract содержит только `large_url`, `medium_url`,
+  `small_url`; не использовать `icon_url`, `thumbnail_url`, `original_url`.
+- `large` используется для dungeon artwork на вкладке dungeons, портрета героя
+  и детальной карточки предмета.
+- `medium` используется для предметов в equipment slots, списка inventory и
+  карточек классов при создании персонажа.
+- `small` используется для мини-инвентаря героя, quick dungeon rows, sidebar
+  avatar и leaderboard avatar.

@@ -212,8 +212,9 @@ Response:
     "success_chance": 100,
     "item_drop_chance": 10,
     "media": {
-      "small_url": "...",
-      "medium_url": "..."
+      "large_url": "...",
+      "medium_url": "...",
+      "small_url": "..."
     },
     "rewards_preview": {
       "experience": { "min": 5, "max": 8 },
@@ -411,7 +412,11 @@ Response:
   "equipped": {
     "weapon": {
       "id": 1001,
-      "icon_url": "...",
+      "media": {
+        "large_url": "...",
+        "medium_url": "...",
+        "small_url": "..."
+      },
       "rarity": "rare",
       "is_broken": false
     },
@@ -423,7 +428,11 @@ Response:
   "items": [
     {
       "id": 1002,
-      "icon_url": "...",
+      "media": {
+        "large_url": "...",
+        "medium_url": "...",
+        "small_url": "..."
+      },
       "rarity": "common",
       "is_broken": true
     }
@@ -459,9 +468,9 @@ Response:
   "is_broken": false,
   "can_equip": true,
   "media": {
-    "icon_url": "...",
-    "small_url": "...",
-    "medium_url": "..."
+    "large_url": "...",
+    "medium_url": "...",
+    "small_url": "..."
   }
 }
 ```
@@ -568,7 +577,8 @@ Response:
       },
       "level": 8,
       "avatar": {
-        "icon_url": "...",
+        "large_url": "...",
+        "medium_url": "...",
         "small_url": "..."
       }
     }
