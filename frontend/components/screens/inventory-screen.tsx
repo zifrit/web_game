@@ -1,13 +1,13 @@
 "use client";
 
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { useEffect, useState, type UIEvent } from "react";
 import { useI18n } from "@/components/providers";
 import { ErrorNotice, InventoryScreenSkeleton, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import type { TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
-import type { InventoryCard, ItemDetail } from "@/lib/types";
+import type { Character, Inventory, InventoryCard, InventoryMutationResponse, ItemDetail } from "@/lib/types";
 
 const INVENTORY_PAGE_SIZE = 24;
 
@@ -43,7 +43,7 @@ function PackCell({
 }) {
   const color   = item ? rc(item.rarity) : undefined;
   const hasItem = Boolean(item);
-  const iconUrl = item?.icon_url ?? "";
+  const iconUrl = bestMediaUrl(item?.media, ["medium_url", "small_url", "large_url"]);
   const itemName = item?.name ?? "";
   return (
     <button
@@ -76,6 +76,31 @@ function PackCell({
   );
 }
 
+/* ── helpers (inventory-screen) ── */
+function addUniqueInvItem(items: InventoryCard[], item: InventoryCard): InventoryCard[] {
+  return items.some((c) => c.id === item.id) ? items : [...items, item];
+}
+
+function patchInfiniteInventory(
+  data: InfiniteData<Inventory>,
+  result: InventoryMutationResponse,
+): InfiniteData<Inventory> {
+  return {
+    ...data,
+    pages: data.pages.map((page, idx) => {
+      // Добавляем item и replaced_item только в первую страницу (они уже могут быть там)
+      let items = addUniqueInvItem(page.items, result.item);
+      if (result.replaced_item) items = addUniqueInvItem(items, result.replaced_item);
+      return {
+        ...page,
+        equipment_summary: result.equipment_summary,
+        equipped: result.equipment,
+        items: idx === 0 ? items : page.items,
+      };
+    }),
+  };
+}
+
 /* ── Item Detail Panel ── */
 function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChanged: () => void }) {
   const [showRepair, setShowRepair] = useState(false);
@@ -89,19 +114,54 @@ function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChang
     enabled: !!(itemId && showRepair),
   });
 
-  const invalidate = async () => {
+  const applyEquipResult = (result: InventoryMutationResponse) => {
+    // Патчим character кеш
+    queryClient.setQueryData<Character>(["character"], (current) =>
+      current ? { ...current, equipment: result.equipment, stats: result.stats } : current,
+    );
+    // Патчим infinite inventory кеш (inventory-screen использует InfiniteQuery)
+    queryClient.setQueriesData<InfiniteData<Inventory>>(
+      {
+        predicate: (query) =>
+          query.queryKey[0] === "inventory" &&
+          Array.isArray((query.state.data as { pages?: unknown[] } | undefined)?.pages),
+      },
+      (current) => (current ? patchInfiniteInventory(current, result) : current),
+    );
+    // Патчим plain inventory кеш (character-screen использует useQuery)
+    queryClient.setQueryData<Inventory>(["inventory"], (current) =>
+      current
+        ? {
+            ...current,
+            equipment_summary: result.equipment_summary,
+            equipped: result.equipment,
+            items: result.replaced_item
+              ? addUniqueInvItem(addUniqueInvItem(current.items, result.item), result.replaced_item)
+              : addUniqueInvItem(current.items, result.item),
+          }
+        : current,
+    );
+    // Инвалидируем детальную карточку предмета (статус is_equipped мог измениться)
+    void queryClient.invalidateQueries({ queryKey: ["inventory-item", itemId] });
+    setShowRepair(false);
+    onChanged();
+  };
+
+  const invalidateAfterRepair = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["inventory"] }),
       queryClient.invalidateQueries({ queryKey: ["inventory-item", itemId] }),
-      queryClient.invalidateQueries({ queryKey: ["character"] }),
       queryClient.invalidateQueries({ queryKey: ["me"] }),
     ]);
     setShowRepair(false);
     onChanged();
   };
 
-  const equipM  = useMutation({ mutationFn: (item: ItemDetail) => item.is_equipped ? api.unequip(item.id) : api.equip(item.id), onSuccess: invalidate });
-  const repairM = useMutation({ mutationFn: (id: number) => api.repair(id), onSuccess: invalidate });
+  const equipM  = useMutation({
+    mutationFn: (item: ItemDetail) => item.is_equipped ? api.unequip(item.id) : api.equip(item.id),
+    onSuccess: applyEquipResult,
+  });
+  const repairM = useMutation({ mutationFn: (id: number) => api.repair(id), onSuccess: invalidateAfterRepair });
 
   if (!itemId) return (
     <div style={{
@@ -125,7 +185,7 @@ function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChang
   const item   = itemQ.data;
   const color  = rc(item.rarity);
   const durPct = item.durability.current / item.durability.max;
-  const itemImage = bestMediaUrl(item.media, ["large_url", "medium_url", "small_url", "icon_url", "original_url"]);
+  const itemImage = bestMediaUrl(item.media, ["large_url", "medium_url", "small_url"]);
 
   return (
     <div className="card animate-fade-in">
@@ -137,7 +197,7 @@ function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChang
         {/* Item icon placeholder */}
         <div style={{
           width: "min(320px, 100%)", aspectRatio: "1", borderRadius: 4, flexShrink: 0,
-          background: "repeating-linear-gradient(45deg, var(--bg-3) 0 6px, var(--bg-2) 6px 12px)",
+          background: "var(--bg-3)",
           border: `1px solid ${color}`,
           overflow: "hidden",
           position: "relative",

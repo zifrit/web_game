@@ -72,7 +72,7 @@ export type CurrentRun =
 export type ItemSummary = {
   id: number;
   name?: string;
-  icon_url: string;
+  media?: AppTypes.MediaAssetUrls | null;
   slot: string;
   rarity: string;
   durability?: { current: number; max: number };

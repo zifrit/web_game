@@ -33,7 +33,7 @@ function formatTime(secs: number) {
 }
 
 /* ── Active run banner ── */
-function ActiveRunBanner({ run }: { run: DungeonRun }) {
+function ActiveRunBanner({ run, imageUrl }: { run: DungeonRun; imageUrl?: string }) {
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const remaining   = useRemainingSeconds(run);
@@ -72,12 +72,22 @@ function ActiveRunBanner({ run }: { run: DungeonRun }) {
       marginBottom: 0,
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "16px 20px", flexWrap: "wrap" }}>
-        {/* Dungeon art placeholder */}
+        {/* Dungeon art */}
         <div style={{
           width: 90, height: 90, minWidth: 90, borderRadius: 10, flexShrink: 0,
-          background: "linear-gradient(180deg, rgba(59,130,246,0.22), var(--bg-2)), repeating-linear-gradient(135deg, rgba(0,0,0,0.25) 0 6px, transparent 6px 12px)",
+          background: "var(--bg-3)",
           border: "1px solid var(--line-soft)",
-        }} />
+          overflow: "hidden", position: "relative",
+        }}>
+          {imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageUrl}
+              alt={run.location.name}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          )}
+        </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="mono" style={{
@@ -181,10 +191,10 @@ function ActiveRunBanner({ run }: { run: DungeonRun }) {
 
 /* ── Dungeon tier helpers ── */
 const TIER_GRADIENT: Record<number, string> = {
-  1: "linear-gradient(180deg, rgba(34,197,94,0.18), var(--bg-2)), repeating-linear-gradient(135deg, rgba(0,0,0,0.25) 0 6px, transparent 6px 12px)",
-  2: "linear-gradient(180deg, rgba(59,130,246,0.22), var(--bg-2)), repeating-linear-gradient(135deg, rgba(0,0,0,0.25) 0 6px, transparent 6px 12px)",
-  3: "linear-gradient(180deg, rgba(168,85,247,0.25), var(--bg-2)), repeating-linear-gradient(135deg, rgba(0,0,0,0.25) 0 6px, transparent 6px 12px)",
-  4: "linear-gradient(180deg, rgba(245,158,11,0.28), var(--bg-2)), repeating-linear-gradient(135deg, rgba(0,0,0,0.25) 0 6px, transparent 6px 12px)",
+  1: "var(--bg-3)",
+  2: "var(--bg-3)",
+  3: "var(--bg-3)",
+  4: "var(--bg-3)",
 };
 function getTier(required_power: number) {
   if (required_power <= 50)  return 1;
@@ -213,12 +223,18 @@ export function DungeonsScreen() {
 
   const isRunning = currentRun.data?.status === "IN_PROGRESS";
   const hasRun    = Boolean(currentRun.data && currentRun.data.status !== "CLAIMED");
+  const activeRunImage = currentRun.data
+    ? bestMediaUrl(
+        dungeonsQuery.data?.find((dungeon) => dungeon.id === currentRun.data?.location.id)?.media,
+        ["large_url", "medium_url", "small_url"],
+      )
+    : undefined;
 
   return (
     <div className="col animate-fade-in">
 
       {/* Active run banner */}
-      {hasRun && currentRun.data && <ActiveRunBanner run={currentRun.data} />}
+      {hasRun && currentRun.data && <ActiveRunBanner run={currentRun.data} imageUrl={activeRunImage} />}
 
       <ErrorNotice message={
         (dungeonsQuery.error as Error | null)?.message ??
@@ -236,7 +252,7 @@ export function DungeonsScreen() {
           const tier       = getTier(dungeon.required_power);
           const isActive   = currentRun.data?.location?.id === dungeon.id && isRunning;
           const disabled   = isRunning || startMutation.isPending;
-          const dungeonImage = bestMediaUrl(dungeon.media, ["large_url", "medium_url", "small_url", "icon_url", "original_url"]);
+          const dungeonImage = bestMediaUrl(dungeon.media, ["large_url", "medium_url", "small_url"]);
 
           const durLabel = formatDuration(dungeon.duration_seconds, locale);
 
@@ -245,12 +261,11 @@ export function DungeonsScreen() {
               key={dungeon.id}
               className={`dungeon${isActive ? " active" : ""}`}
             >
-              {/* Artwork placeholder */}
+              {/* Artwork */}
               <div style={{
-                height: 130, position: "relative",
+                aspectRatio: "1 / 1", position: "relative",
                 background: dungeonImage ? undefined : TIER_GRADIENT[tier] ?? TIER_GRADIENT[1],
                 borderBottom: "1px solid var(--line-soft)",
-                display: "flex", alignItems: "flex-end", padding: 12,
                 overflow: "hidden",
               }}>
                 {dungeonImage && (
@@ -268,14 +283,6 @@ export function DungeonsScreen() {
                   border: "1px solid var(--line)", borderRadius: 2,
                   color: "var(--text-dim)", letterSpacing: "0.12em",
                 }}>T{tier}</span>
-                <span style={{
-                  fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", fontSize: 9,
-                  letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-mute)",
-                  background: "var(--bg-1)", padding: "3px 6px", borderRadius: 2,
-                  zIndex: 1,
-                }}>
-                  {dungeon.name.toUpperCase()}
-                </span>
               </div>
 
               {/* Body */}

@@ -23,11 +23,9 @@ export type AuthResponse = {
 };
 
 export type MediaAssetUrls = {
-  original_url?: string;
   large_url?: string;
   medium_url?: string;
   small_url?: string;
-  icon_url?: string;
 };
 
 export type CharacterClass = {
@@ -128,7 +126,7 @@ export type ClaimResponse = {
 export type InventoryCard = {
   id: number;
   name?: string;
-  icon_url?: string;
+  media?: MediaAssetUrls | null;
   slot: EquipmentSlot;
   rarity: string;
   durability?: {

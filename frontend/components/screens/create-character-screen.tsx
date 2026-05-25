@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -19,17 +19,8 @@ const characterSchema = (t: ReturnType<typeof useI18n>["t"]) => z.object({
 });
 type CharacterValues = z.infer<ReturnType<typeof characterSchema>>;
 
-const inputStyle: React.CSSProperties = {
-  width: "100%", borderRadius: 8,
-  border: "1px solid #2E3B5A",
-  background: "rgba(11,16,32,0.8)",
-  color: "#E5E7EB", padding: "10px 14px",
-  outline: "none", fontSize: 14,
-  transition: "border-color 150ms ease, box-shadow 150ms ease",
-};
-
 export function CreateCharacterScreen() {
-  const { setUser } = useSession();
+  const { logout, setUser } = useSession();
   const { locale, t } = useI18n();
   const queryClient = useQueryClient();
   const classesQuery = useQuery({ queryKey: ["character-classes"], queryFn: api.characterClasses });
@@ -58,7 +49,12 @@ export function CreateCharacterScreen() {
   const selectedKey = form.watch("class_key");
 
   const classImage = (cls: CharacterClass) =>
-    bestMediaUrl(cls.media, ["large_url", "medium_url", "small_url", "icon_url", "original_url"]);
+    bestMediaUrl(cls.media, ["medium_url", "large_url", "small_url"]);
+
+  const handleBackToAuth = () => {
+    queryClient.clear();
+    void logout();
+  };
 
   return (
     <main style={{
@@ -75,6 +71,15 @@ export function CreateCharacterScreen() {
         {/* Form panel */}
         <div className="card" style={{ padding: 28, alignSelf: "start" }}>
           <div style={{ marginBottom: 24 }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={handleBackToAuth}
+              style={{ padding: "8px 12px", fontSize: 12, marginBottom: 18 }}
+            >
+              <ArrowLeft size={14} />
+              {t("common.back")}
+            </button>
             <div className="mono" style={{
               fontSize: 11, letterSpacing: "0.20em", textTransform: "uppercase",
               color: "#3B82F6", marginBottom: 8,
@@ -103,22 +108,15 @@ export function CreateCharacterScreen() {
               )}
             </label>
 
-            <label style={{ display: "grid", gap: 6, fontSize: 13, color: "#94A3B8" }}>
-              {t("character.class")}
-              <select className="input" {...form.register("class_key")}>
-                {classesQuery.data?.map((cls) => (
-                  <option key={cls.key} value={cls.key}>{cls.name}</option>
-                ))}
-              </select>
-              {form.formState.errors.class_key && (
-                <span style={{ fontSize: 11, color: "#EF4444" }}>{form.formState.errors.class_key.message}</span>
-              )}
-            </label>
+            <input type="hidden" {...form.register("class_key")} />
 
             <ErrorNotice message={
               (mutation.error as Error | null)?.message ??
               (classesQuery.error as Error | null)?.message
             } />
+            {form.formState.errors.class_key && (
+              <span style={{ fontSize: 11, color: "#EF4444" }}>{form.formState.errors.class_key.message}</span>
+            )}
 
             <button
               type="submit"

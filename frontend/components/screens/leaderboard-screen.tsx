@@ -66,7 +66,7 @@ export function LeaderboardScreen() {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {boardQuery.data?.items.map((entry) => {
               const rs = rankStyle(entry.rank);
-              const avatarUrl = bestMediaUrl(entry.avatar, ["small_url", "icon_url", "medium_url", "large_url", "original_url"]);
+              const avatarUrl = bestMediaUrl(entry.avatar, ["small_url", "medium_url", "large_url"]);
               return (
                 <div
                   key={entry.character_id}
@@ -102,7 +102,7 @@ export function LeaderboardScreen() {
                     borderRadius: 10,
                     overflow: "hidden",
                     border: "1px solid var(--line)",
-                    background: "repeating-linear-gradient(45deg, var(--bg-3) 0 6px, var(--bg-2) 6px 12px)",
+                    background: "var(--bg-3)",
                     display: "grid",
                     placeItems: "center",
                   }}>

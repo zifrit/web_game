@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type DragEvent } from "react";
 import { useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { CircleHelp } from "lucide-react";
 import { useI18n } from "@/components/providers";
 import { CharacterScreenSkeleton, ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -206,7 +207,7 @@ function InvCell({
   const broken = item?.is_broken;
   const color   = rarity ? rc(rarity) : undefined;
   const hasItem = Boolean(rarity);
-  const iconUrl = item?.icon_url ?? "";
+  const iconUrl = bestMediaUrl(item?.media, ["small_url", "medium_url", "large_url"]);
   const itemName = item?.name ?? "";
   return (
     <div
@@ -257,7 +258,7 @@ function QuickDungeonRow({
   };
 
   const durLabel = formatDuration(dungeon.duration_seconds, locale);
-  const dungeonImage = bestMediaUrl(dungeon.media, ["medium_url", "small_url", "icon_url", "large_url", "original_url"]);
+  const dungeonImage = bestMediaUrl(dungeon.media, ["small_url", "medium_url", "large_url"]);
 
   return (
     <div className="quick-d" onClick={() => canRun && !isPending && onRun(dungeon.id)}>
@@ -312,9 +313,55 @@ function BarBlock({ label, cur, max, kind }: { label: string; cur: number; max: 
   );
 }
 
+const POWER_WEIGHTS = {
+  attack: 2,
+  defense: 1.7,
+  health: 0.25,
+  critical_chance: 1,
+  evasion: 1,
+} as const;
+
+function PowerHelp({ stats, power }: { stats: Character["stats"]; power: number }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const rows = [
+    { key: "attack", label: t("common.attack"), value: stats?.attack ?? 0, weight: POWER_WEIGHTS.attack },
+    { key: "defense", label: t("common.defense"), value: stats?.defense ?? 0, weight: POWER_WEIGHTS.defense },
+    { key: "health", label: t("common.health"), value: stats?.health ?? 0, weight: POWER_WEIGHTS.health },
+    { key: "critical_chance", label: t("common.crit"), value: stats?.critical_chance ?? 0, weight: POWER_WEIGHTS.critical_chance },
+    { key: "evasion", label: t("common.evasion"), value: stats?.evasion ?? 0, weight: POWER_WEIGHTS.evasion },
+  ];
+
+  return (
+    <span className={`power-help${open ? " open" : ""}`}>
+      <button
+        type="button"
+        className="power-help-btn"
+        aria-label={t("powerHelp.title")}
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <CircleHelp size={14} strokeWidth={2} />
+      </button>
+      <span className="power-help-popover" role="tooltip">
+        <strong>{t("powerHelp.title")}</strong>
+        <span className="power-help-formula">{t("powerHelp.formula")}</span>
+        {rows.map((row) => (
+          <span key={row.key} className="power-help-row">
+            <span>{row.label}</span>
+            <span>{row.value} x {row.weight} = {(row.value * row.weight).toFixed(2)}</span>
+          </span>
+        ))}
+        <span className="power-help-total">{t("powerHelp.total", { value: power.toFixed(2) })}</span>
+      </span>
+    </span>
+  );
+}
+
 /* ── Active expedition strip ── */
-function ActiveExpeditionStrip({ run }: {
+function ActiveExpeditionStrip({ run, imageUrl }: {
   run: NonNullable<Awaited<ReturnType<typeof api.currentRun>>>;
+  imageUrl?: string;
 }) {
   const queryClient = useQueryClient();
   const { t } = useI18n();
@@ -368,10 +415,19 @@ function ActiveExpeditionStrip({ run }: {
       <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "16px 20px" }}>
         <div style={{
           width: 90, height: 90, minWidth: 90, borderRadius: 10,
-          background: "linear-gradient(180deg, rgba(59,130,246,0.22), var(--bg-2)), repeating-linear-gradient(135deg, rgba(0,0,0,0.25) 0 6px, transparent 6px 12px)",
+          background: "var(--bg-3)",
           border: "1px solid var(--line-soft)",
-          flexShrink: 0,
-        }} />
+          flexShrink: 0, overflow: "hidden", position: "relative",
+        }}>
+          {imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageUrl}
+              alt={run.location.name}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          )}
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="mono" style={{
             fontSize: 10, letterSpacing: "0.20em", textTransform: "uppercase",
@@ -481,9 +537,11 @@ export function CharacterScreen({
     if (!current) return;
 
     while (packItemCount(current.items, result.equipment) < INVENTORY_PAGE_SIZE) {
+      // Используем pagination из кеша чтобы не зависеть от длины массива items
+      // (массив может содержать экипированные предметы, что смещает счёт страниц)
+      if (!current.pagination.has_next) return;
       const pageSize = current.pagination.page_size || INVENTORY_PAGE_SIZE;
-      const nextPage = Math.floor(current.items.length / pageSize) + 1;
-      if (nextPage > current.pagination.total_pages) return;
+      const nextPage = current.pagination.page + 1;
 
       const nextInventory = await api.inventory(nextPage, pageSize);
       const existingIds = new Set(current.items.map((item) => item.id));
@@ -533,8 +591,8 @@ export function CharacterScreen({
 
   const visibleIconKey = Array.from(
     new Set([
-      ...Object.values(characterQuery.data?.equipment ?? {}).map((item) => item?.icon_url),
-      ...(inventoryQuery.data?.items ?? []).map((item) => item.icon_url),
+      ...Object.values(characterQuery.data?.equipment ?? {}).map((item) => bestMediaUrl(item?.media, ["medium_url", "small_url", "large_url"])),
+      ...(inventoryQuery.data?.items ?? []).map((item) => bestMediaUrl(item.media, ["small_url", "medium_url", "large_url"])),
     ].filter((url): url is string => Boolean(url)))
   ).join("\n");
 
@@ -565,8 +623,8 @@ export function CharacterScreen({
 
   const character = characterQuery.data;
   const portraitUrl =
-    bestMediaUrl(character.avatar, ["large_url", "medium_url", "small_url", "icon_url", "original_url"]) ||
-    bestMediaUrl(character.class?.media, ["large_url", "medium_url", "small_url", "icon_url", "original_url"]);
+    bestMediaUrl(character.avatar, ["large_url", "medium_url", "small_url"]) ||
+    bestMediaUrl(character.class?.media, ["large_url", "medium_url", "small_url"]);
   const xpMax = character.experience_to_next_level ?? 1000;
   const xp    = character.experience;
   const hpMax = character.stats?.health ?? 220;
@@ -588,13 +646,21 @@ export function CharacterScreen({
 
   const canRun  = !currentRunQuery.data || currentRunQuery.data.status !== "IN_PROGRESS";
   const dungeons = dungeonsQuery.data ?? [];
+  const activeRunImage = currentRunQuery.data
+    ? bestMediaUrl(
+        dungeons.find((dungeon) => dungeon.id === currentRunQuery.data?.location.id)?.media,
+        ["small_url", "medium_url", "large_url"],
+      )
+    : undefined;
 
   // Compute combat power (sum stats)
   const stats = character.stats ?? {};
   const cp = stats.power ?? (
-    (stats.attack ?? 0) * 6 + (stats.defense ?? 0) * 4 +
-    (stats.health ?? 0) * 2 + (stats.critical_chance ?? 0) * 3 +
-    character.level * 10
+    (stats.attack ?? 0) * POWER_WEIGHTS.attack +
+    (stats.defense ?? 0) * POWER_WEIGHTS.defense +
+    (stats.health ?? 0) * POWER_WEIGHTS.health +
+    (stats.critical_chance ?? 0) * POWER_WEIGHTS.critical_chance +
+    (stats.evasion ?? 0) * POWER_WEIGHTS.evasion
   );
 
   const resetDragState = () => {
@@ -656,7 +722,7 @@ export function CharacterScreen({
         <div className="card-body">
 
           {/* Portrait */}
-          <div className="portrait" style={{ maxHeight: 220, overflow: "hidden", position: "relative" }}>
+          <div className="portrait" style={{ overflow: "hidden", position: "relative" }}>
             {portraitUrl && (
               <img
                 src={portraitUrl}
@@ -666,14 +732,9 @@ export function CharacterScreen({
                   inset: 0,
                   width: "100%",
                   height: "100%",
-                  objectFit: "cover",
                 }}
               />
             )}
-            <div className="lvl-badge">
-              <span className="lbl">{t("common.level")}</span>
-              {character.level}
-            </div>
             {!portraitUrl && <span className="ph-label">{t("character.portrait")}</span>}
           </div>
 
@@ -681,13 +742,13 @@ export function CharacterScreen({
           <div style={{ marginTop: 16, textAlign: "center" }}>
             <div style={{
               fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
-              fontSize: 18, fontWeight: 600, textTransform: "uppercase",
+              fontSize: 21, fontWeight: 600, textTransform: "uppercase",
               letterSpacing: "0.04em", lineHeight: 1.2, color: "var(--bone)",
             }}>
               {character.name}
             </div>
             <div className="mono" style={{
-              fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
+              fontSize: 13, letterSpacing: "0.18em", textTransform: "uppercase",
               color: "var(--text-dim)", marginTop: 4,
             }}>
               <span style={{ color: "var(--primary-bright)" }}>{character.class?.name ?? "—"}</span>
@@ -708,7 +769,10 @@ export function CharacterScreen({
           <div className="stat-list" style={{ gridTemplateColumns: "1fr 1fr" }}>
             <div className="sl-row">
               <span className="lbl">{t("common.power")}</span>
-              <span className="val" style={{ color: "var(--primary-bright)" }}>{cp}</span>
+              <span className="val power-value" style={{ color: "var(--primary-bright)" }}>
+                {cp}
+                <PowerHelp stats={stats} power={cp} />
+              </span>
             </div>
             <div className="sl-row">
               <span className="lbl">{t("common.attack")}</span>
@@ -739,7 +803,7 @@ export function CharacterScreen({
 
         {/* Active expedition strip */}
         {currentRunQuery.data && currentRunQuery.data.status !== "CLAIMED" && (
-          <ActiveExpeditionStrip run={currentRunQuery.data} />
+          <ActiveExpeditionStrip run={currentRunQuery.data} imageUrl={activeRunImage} />
         )}
 
         {/* Equipment paperdoll */}
@@ -766,7 +830,7 @@ export function CharacterScreen({
                     label={t(cell.label)}
                     glyph={cell.glyph}
                     rarity={item?.rarity}
-                    iconUrl={item?.icon_url}
+                    iconUrl={bestMediaUrl(item?.media, ["medium_url", "small_url", "large_url"])}
                     broken={item?.is_broken}
                     durability={item?.durability}
                     canDrop={dragState?.item.slot === cell.slot}

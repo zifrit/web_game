@@ -28,6 +28,7 @@ const dictionaries = {
     "common.levelShort": "Lv",
     "common.level": "Level",
     "common.gold": "Gold",
+    "common.money": "Money",
     "common.loading": "Loading",
     "common.power": "Power",
     "common.attack": "Attack",
@@ -47,6 +48,7 @@ const dictionaries = {
     "common.itemLevel": "Item Level",
     "common.equipped": "Equipped",
     "common.confirm": "Confirm",
+    "common.back": "Back",
     "common.repairing": "Repairing...",
     "common.equip": "Equip",
     "common.unequip": "Unequip",
@@ -90,6 +92,9 @@ const dictionaries = {
     "character.order": "Order of the Sallow Crown",
     "character.portrait": "Hero Portrait",
     "character.combatStats": "Combat Stats",
+    "powerHelp.title": "Power calculation",
+    "powerHelp.formula": "Power = attack x 2 + defense x 1.7 + health x 0.25 + crit x 1 + evasion x 1.",
+    "powerHelp.total": "Total: {value}",
     "equipment.title": "Equipment",
     "equipment.slots": "5 equipment slots",
     "equipment.brokenDrop": "Broken items must be repaired before equipping.",
@@ -197,6 +202,7 @@ const dictionaries = {
     "common.levelShort": "Ур",
     "common.level": "Уровень",
     "common.gold": "Золото",
+    "common.money": "Деньги",
     "common.loading": "Загрузка",
     "common.power": "Мощь",
     "common.attack": "Атака",
@@ -216,6 +222,7 @@ const dictionaries = {
     "common.itemLevel": "Уровень предмета",
     "common.equipped": "Экипировано",
     "common.confirm": "Подтвердить",
+    "common.back": "Назад",
     "common.repairing": "Ремонт...",
     "common.equip": "Экипировать",
     "common.unequip": "Снять",
@@ -259,6 +266,9 @@ const dictionaries = {
     "character.order": "Орден Бледной Короны",
     "character.portrait": "Портрет героя",
     "character.combatStats": "Боевые характеристики",
+    "powerHelp.title": "Расчет мощи",
+    "powerHelp.formula": "Мощь = атака x 2 + защита x 1.7 + здоровье x 0.25 + крит x 1 + уклонение x 1.",
+    "powerHelp.total": "Итого: {value}",
     "equipment.title": "Экипировка",
     "equipment.slots": "5 слотов экипировки",
     "equipment.brokenDrop": "Сломанные предметы нужно починить перед экипировкой.",
@@ -376,8 +386,26 @@ export function formatNumber(value: number, locale: Locale) {
   return new Intl.NumberFormat(locale === "ru" ? "ru-RU" : "en-US").format(value);
 }
 
+export function splitCopper(value: number | undefined) {
+  const copperTotal = Math.max(0, Math.floor(value ?? 0));
+  return {
+    gold: Math.floor(copperTotal / 10000),
+    silver: Math.floor((copperTotal % 10000) / 100),
+    copper: copperTotal % 100,
+  };
+}
+
 export function formatCopper(value: number | undefined, locale: Locale) {
-  return `${formatNumber(value ?? 0, locale)} cp`;
+  const parts = splitCopper(value);
+  const labels = locale === "ru"
+    ? { gold: "з", silver: "с", copper: "м" }
+    : { gold: "g", silver: "s", copper: "c" };
+
+  return [
+    `${formatNumber(parts.gold, locale)}${labels.gold}`,
+    `${parts.silver}${labels.silver}`,
+    `${parts.copper}${labels.copper}`,
+  ].join(" ");
 }
 
 export function formatDuration(seconds: number, locale: Locale) {

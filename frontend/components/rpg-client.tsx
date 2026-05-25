@@ -13,7 +13,7 @@ import { SettingsScreen } from "@/components/screens/settings-screen";
 import { LoadingLine, Skeleton } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useI18n, useSession } from "@/components/providers";
-import { formatCopper, type TranslationKey } from "@/lib/i18n";
+import { formatNumber, splitCopper, type TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
 import type { MediaAssetUrls } from "@/lib/types";
 
@@ -63,10 +63,10 @@ function Sidebar({
   onLogout: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
-  const brandAvatarUrl = bestMediaUrl(userAvatar, ["medium_url", "small_url", "icon_url", "large_url", "original_url"]);
+  const brandAvatarUrl = bestMediaUrl(userAvatar, ["small_url", "medium_url", "large_url"]);
   const footerAvatarUrl =
-    bestMediaUrl(characterAvatar, ["small_url", "icon_url", "medium_url", "large_url", "original_url"]) ||
-    bestMediaUrl(userAvatar, ["small_url", "icon_url", "medium_url", "large_url", "original_url"]);
+    bestMediaUrl(characterAvatar, ["small_url", "medium_url", "large_url"]) ||
+    bestMediaUrl(userAvatar, ["small_url", "medium_url", "large_url"]);
 
   return (
     <aside style={{
@@ -175,7 +175,7 @@ function Sidebar({
             ) : (
               <div style={{
                 width: 36, height: 36, borderRadius: 4, flexShrink: 0,
-                background: "repeating-linear-gradient(45deg, #202B44 0 6px, #1A2235 6px 12px)",
+                background: "#202B44",
                 border: "1px solid #2E3B5A",
                 overflow: "hidden",
                 position: "relative",
@@ -274,6 +274,10 @@ function Topbar({ meta, title, level, gold }: {
   gold?: number;
 }) {
   const { locale, t } = useI18n();
+  const money = splitCopper(gold);
+  const moneyLabels = locale === "ru"
+    ? { gold: "з", silver: "с", copper: "м" }
+    : { gold: "g", silver: "s", copper: "c" };
   return (
     <header style={{
       display: "flex", alignItems: "flex-end", justifyContent: "space-between",
@@ -308,12 +312,16 @@ function Topbar({ meta, title, level, gold }: {
         {gold !== undefined && (
           <div style={{
             display: "flex", alignItems: "center", gap: 8,
-            padding: "8px 14px", borderRadius: 10,
+            padding: "10px 17px", borderRadius: 12,
             background: "#1A2235", border: "1px solid #2E3B5A",
-            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", fontSize: 12,
+            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", fontSize: 14,
           }}>
-            <span style={{ color: "#64748B", letterSpacing: "0.12em", textTransform: "uppercase", fontSize: 10 }}>{t("common.gold")}</span>
-            <span style={{ color: "#F59E0B", fontWeight: 600 }}>{formatCopper(gold, locale)}</span>
+            <span style={{ color: "#64748B", letterSpacing: "0.12em", textTransform: "uppercase", fontSize: 12 }}>{t("common.money")}</span>
+            <span style={{ display: "inline-flex", alignItems: "baseline", gap: 7, fontWeight: 700 }}>
+              <span style={{ color: "#FBBF24" }}>{formatNumber(money.gold, locale)}{moneyLabels.gold}</span>
+              <span style={{ color: "#CBD5E1" }}>{money.silver}{moneyLabels.silver}</span>
+              <span style={{ color: "#CD7C45" }}>{money.copper}{moneyLabels.copper}</span>
+            </span>
           </div>
         )}
       </div>
