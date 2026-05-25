@@ -32,6 +32,8 @@ class MvpApiTests(APITestCase):
         user = self.register_and_authenticate()
 
         user_avatar = MediaAsset.objects.create(name="User avatar")
+        self.assertIsNone(user_avatar.asset_type)
+        self.assertEqual(MediaAsset.AssetType.CHARACTERS.label, "Персонажи")
         user_avatar.small.save("user-small.png", ContentFile(b"user-avatar"), save=True)
         user.avatar_media = user_avatar
         user.save(update_fields=["avatar_media"])
@@ -40,11 +42,14 @@ class MvpApiTests(APITestCase):
         self.assertEqual(login.status_code, status.HTTP_200_OK)
         self.assertIn("avatar", login.data["user"])
         self.assertTrue(login.data["user"]["avatar"]["small_url"])
+        self.assertEqual(set(login.data["user"]["avatar"].keys()), {"large_url", "medium_url", "small_url"})
 
         me_user = self.client.get("/api/auth/me")
         self.assertEqual(me_user.status_code, status.HTTP_200_OK)
         self.assertIn("avatar", me_user.data)
         self.assertTrue(me_user.data["avatar"]["small_url"])
+        self.assertNotIn("original_url", me_user.data["avatar"])
+        self.assertNotIn("icon_url", me_user.data["avatar"])
 
         class_media = MediaAsset.objects.create(name="Warrior class art")
         class_media.medium.save("warrior-medium.png", ContentFile(b"medium-art"), save=True)
@@ -59,6 +64,7 @@ class MvpApiTests(APITestCase):
         self.assertEqual(classes.data[0]["name"], "Warrior")
         self.assertIn("media", classes.data[0])
         self.assertTrue(classes.data[0]["media"]["medium_url"])
+        self.assertEqual(set(classes.data[0]["media"].keys()), {"large_url", "medium_url", "small_url"})
 
         classes_ru = self.client.get("/api/character-classes", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(classes_ru.status_code, status.HTTP_200_OK)
@@ -69,7 +75,6 @@ class MvpApiTests(APITestCase):
 
         avatar_media = MediaAsset.objects.create(name="Hero avatar")
         avatar_media.large.save("hero-large.png", ContentFile(b"large-avatar"), save=True)
-        avatar_media.icon.save("hero-icon.png", ContentFile(b"icon-avatar"), save=True)
         hero = User.objects.get(email="hero@example.com").character
         hero.avatar_media = avatar_media
         hero.save(update_fields=["avatar_media"])
@@ -82,6 +87,8 @@ class MvpApiTests(APITestCase):
         self.assertTrue(me.data["class"]["media"]["medium_url"])
         self.assertIn("avatar", me.data)
         self.assertTrue(me.data["avatar"]["large_url"])
+        self.assertNotIn("original_url", me.data["avatar"])
+        self.assertNotIn("icon_url", me.data["avatar"])
         self.assertGreater(me.data["stats"]["power"], 0)
         self.assertEqual(set(me.data["equipment"].keys()), {"weapon", "helmet", "armor", "boots", "ring"})
 
@@ -139,8 +146,9 @@ class MvpApiTests(APITestCase):
             durability_max=10,
         )
 
-        item_media = MediaAsset.objects.create(name="Sword icon")
-        item_media.icon.save("sword-icon.png", ContentFile(b"icon"), save=True)
+        item_media = MediaAsset.objects.create(name="Sword icon", asset_type=MediaAsset.AssetType.WEAPONS)
+        item_media.small.save("sword-small.png", ContentFile(b"small"), save=True)
+        item_media.medium.save("sword-medium.png", ContentFile(b"medium"), save=True)
         item_media.large.save("sword-large.png", ContentFile(b"large"), save=True)
         template.media = item_media
         template.save(update_fields=["media"])
@@ -151,12 +159,15 @@ class MvpApiTests(APITestCase):
         self.assertIsNone(inventory.data["slots_limit"])
         self.assertIsNone(inventory.data["free_slots"])
         self.assertEqual(inventory.data["items"][0]["name"], "Common Rusty Sword")
-        self.assertTrue(inventory.data["items"][0]["icon_url"])
+        self.assertIn("media", inventory.data["items"][0])
+        self.assertTrue(inventory.data["items"][0]["media"]["medium_url"])
+        self.assertNotIn("icon_url", inventory.data["items"][0])
 
         item_detail_ru = self.client.get(f"/api/inventory/items/{item.id}", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(item_detail_ru.status_code, status.HTTP_200_OK)
         self.assertEqual(item_detail_ru.data["name"], "Обычный Ржавый меч")
         self.assertTrue(item_detail_ru.data["media"]["large_url"])
+        self.assertEqual(set(item_detail_ru.data["media"].keys()), {"large_url", "medium_url", "small_url"})
 
         equip = self.client.post(f"/api/inventory/items/{item.id}/equip", {}, format="json")
         self.assertEqual(equip.status_code, status.HTTP_200_OK, equip.data)
@@ -260,7 +271,7 @@ class MvpApiTests(APITestCase):
         user = self.register_and_authenticate()
         self.create_character()
         avatar = MediaAsset.objects.create(name="Leaderboard avatar")
-        avatar.icon.save("board-icon.png", ContentFile(b"icon"), save=True)
+        avatar.small.save("board-small.png", ContentFile(b"small"), save=True)
         user.character.avatar_media = avatar
         user.character.save(update_fields=["avatar_media"])
 
@@ -269,7 +280,8 @@ class MvpApiTests(APITestCase):
         self.assertEqual(response.data["type"], "level")
         self.assertEqual(response.data["items"][0]["rank"], 1)
         self.assertEqual(response.data["items"][0]["class"]["name"], "Warrior")
-        self.assertTrue(response.data["items"][0]["avatar"]["icon_url"])
+        self.assertTrue(response.data["items"][0]["avatar"]["small_url"])
+        self.assertNotIn("icon_url", response.data["items"][0]["avatar"])
 
     def test_dungeons_and_validation_are_localized(self):
         self.register_and_authenticate("locale@example.com")
@@ -286,6 +298,7 @@ class MvpApiTests(APITestCase):
         self.assertEqual(dungeons.data[0]["name"], "Old Forest")
         self.assertEqual(dungeons.data[0]["description"], "A safe starting location.")
         self.assertTrue(dungeons.data[0]["media"]["medium_url"])
+        self.assertNotIn("original_url", dungeons.data[0]["media"])
 
         dungeons_ru = self.client.get("/api/dungeons", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(dungeons_ru.status_code, status.HTTP_200_OK)

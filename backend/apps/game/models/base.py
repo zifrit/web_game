@@ -20,13 +20,19 @@ class TimestampedModel(models.Model):
 class MediaAsset(TimestampedModel):
     """Набор файлов одного медиа-ассета в разных размерах для S3-хранилища."""
 
+    class AssetType(models.TextChoices):
+        CHARACTERS = "characters", "Персонажи"
+        CUSTOM = "custom", "Пользовательские"
+        ICONS = "icons", "Иконки"
+        WEAPONS = "weapons", "Оружие"
+        DUNGEONS = "dungeons", "Данжи"
+
     name = models.CharField("Название", max_length=120, blank=True, default="")
+    asset_type = models.CharField("Тип", max_length=20, choices=AssetType.choices, null=True, blank=True)
     original = models.FileField("Оригинальный файл", upload_to=media_asset_upload_path, blank=True, default="")
-    large = models.FileField("Большой файл", upload_to=media_asset_upload_path, blank=True, default="")
-    medium = models.FileField("Средний файл", upload_to=media_asset_upload_path, blank=True, default="")
-    small = models.FileField("Малый файл", upload_to=media_asset_upload_path, blank=True, default="")
-    thumbnail = models.FileField("Миниатюра", upload_to=media_asset_upload_path, blank=True, default="")
-    icon = models.FileField("Иконка", upload_to=media_asset_upload_path, blank=True, default="")
+    large = models.FileField("Большой файл 512x512", upload_to=media_asset_upload_path, blank=True, default="")
+    medium = models.FileField("Средний файл 256x256", upload_to=media_asset_upload_path, blank=True, default="")
+    small = models.FileField("Малый файл 128x128", upload_to=media_asset_upload_path, blank=True, default="")
 
     class Meta:
         verbose_name = "Медиа-ассет"
@@ -66,18 +72,6 @@ class MediaAsset(TimestampedModel):
         """Возвращает URL малой версии файла."""
 
         return self._file_url(self.small)
-
-    @property
-    def thumbnail_url(self) -> str:
-        """Возвращает URL миниатюры файла."""
-
-        return self._file_url(self.thumbnail)
-
-    @property
-    def icon_url(self) -> str:
-        """Возвращает URL иконки файла."""
-
-        return self._file_url(self.icon)
 
     def __str__(self) -> str:
         """Возвращает название, основной URL ассета или техническое имя записи."""

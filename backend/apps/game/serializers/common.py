@@ -46,9 +46,7 @@ def media_payload(media, context=None):
     if not media:
         return None
     return {
-        "icon_url": _absolute_media_url(media.icon_url, context),
-        "small_url": _absolute_media_url(media.small_url, context),
-        "medium_url": _absolute_media_url(media.medium_url, context),
         "large_url": _absolute_media_url(media.large_url, context),
-        "original_url": _absolute_media_url(media.original_url, context),
+        "medium_url": _absolute_media_url(media.medium_url, context),
+        "small_url": _absolute_media_url(media.small_url, context),
     }
