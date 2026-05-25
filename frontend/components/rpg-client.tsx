@@ -63,10 +63,7 @@ function Sidebar({
   onLogout: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
-  const brandAvatarUrl = bestMediaUrl(userAvatar, ["small_url", "medium_url", "large_url"]);
-  const footerAvatarUrl =
-    bestMediaUrl(characterAvatar, ["small_url", "medium_url", "large_url"]) ||
-    bestMediaUrl(userAvatar, ["small_url", "medium_url", "large_url"]);
+  const footerAvatarUrl = bestMediaUrl(userAvatar, ["small_url", "medium_url", "large_url"]);
 
   return (
     <aside style={{
@@ -88,28 +85,6 @@ function Sidebar({
         display: "flex", alignItems: "center", gap: 10,
         padding: "0 6px 22px", borderBottom: "1px solid #243150", marginBottom: 18,
       }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: 8, flexShrink: 0,
-          background: "linear-gradient(135deg, #3B82F6, #2563EB)",
-          boxShadow: "inset 0 -10px 16px rgba(15,23,42,0.6), 0 0 24px rgba(59,130,246,0.35)",
-          position: "relative",
-          overflow: "hidden",
-        }}>
-          {brandAvatarUrl ? (
-            <img
-              src={brandAvatarUrl}
-              alt="User avatar"
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          ) : userAvatar ? (
-            /* Avatar object exists but URL still resolving — show shimmer over the blue square */
-            <div className="skeleton" style={{ position: "absolute", inset: 0, borderRadius: 0, opacity: 0.45 }} />
-          ) : (
-            <div style={{
-              position: "absolute", inset: 6, border: "1px solid rgba(15,23,42,0.7)", borderRadius: 4,
-            }} />
-          )}
-        </div>
         <div>
           <div style={{
             fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
@@ -171,10 +146,10 @@ function Sidebar({
           <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
             {/* Avatar: skeleton while loading, then real avatar or placeholder */}
             {isLoadingCharacter && !characterName ? (
-              <Skeleton style={{ width: 36, height: 36, borderRadius: 4, flexShrink: 0 }} />
+              <Skeleton style={{ width: 47, height: 47, borderRadius: 6, flexShrink: 0 }} />
             ) : (
               <div style={{
-                width: 36, height: 36, borderRadius: 4, flexShrink: 0,
+                width: 47, height: 47, borderRadius: 6, flexShrink: 0,
                 background: "#202B44",
                 border: "1px solid #2E3B5A",
                 overflow: "hidden",
