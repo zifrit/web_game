@@ -1,6 +1,6 @@
 # Local Run Inventory
 
-Updated from code inspection and project memory consolidation on 2026-05-22.
+Updated from code inspection and project memory consolidation on 2026-05-25.
 
 ## Docker run
 
@@ -30,6 +30,12 @@ Admin user:
 
 ```bash
 docker compose exec backend python manage.py createsuperuser
+```
+
+Generate image assets dry-run:
+
+```bash
+docker compose exec backend python manage.py generate_game_images assets/heroes_prompts.csv --dry-run
 ```
 
 Stop stack:
@@ -69,4 +75,3 @@ npm run dev
   `CLAIMED`, money was credited.
 - Celery Beat sent `complete_due_dungeon_runs`; Celery worker received and
   completed the task.
-

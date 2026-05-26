@@ -45,3 +45,9 @@ start dungeon run требуют явных transactional boundaries там, г�
 - Публичный media payload возвращает только `large_url`, `medium_url`,
   `small_url`; `original_url` остается внутренним/админским URL.
 - Краткие предметы inventory/equipment возвращают `media`, а не `icon_url`.
+- `asset_type=icons` используется для picker аватара пользователя:
+  `GET /api/media/icons` возвращает только ICONS-ассеты, а
+  `PATCH /api/auth/me/avatar` принимает `avatar_media_id` и отклоняет не-icons.
+- Генератор ассетов не пишет в БД: он читает CSV prompts, вызывает Polza.ai,
+  сохраняет `original.webp`, `512x512.webp`, `256x256.webp`, `128x128.webp`
+  в локальный output.

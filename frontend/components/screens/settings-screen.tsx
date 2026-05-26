@@ -50,7 +50,7 @@ export function SettingsScreen() {
   };
 
   return (
-    <div className="col" style={{ maxWidth: 900 }}>
+    <div className="col" style={{ maxWidth: 900, marginLeft: "auto", marginRight: "auto" }}>
 
       {/* Account + Avatar */}
       <div className="card">
@@ -68,10 +68,10 @@ export function SettingsScreen() {
               {t("settings.avatar")}
             </div>
 
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
-              {/* Avatar preview — 96x96 */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+              {/* Avatar preview */}
               <div style={{
-                width: 96, height: 96, minWidth: 96, borderRadius: 14,
+                width: 192, height: 192, minWidth: 192, borderRadius: "50%",
                 overflow: "hidden",
                 border: `2px solid ${currentAvatarUrl ? "var(--primary)" : "var(--line)"}`,
                 background: "var(--bg-2)",
@@ -81,20 +81,20 @@ export function SettingsScreen() {
               }}>
                 {currentAvatarUrl
                   ? <img src={currentAvatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                  : <span style={{ fontSize: 28, color: "var(--text-mute)" }}>?</span>
+                  : <span style={{ fontSize: 56, color: "var(--text-mute)" }}>?</span>
                 }
               </div>
 
               {/* Edit button + sub-label */}
               {!pickerOpen && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 4 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
                   <div className="mono" style={{ fontSize: 11, color: "var(--text-dim)" }}>
                     {t("settings.avatarSub")}
                   </div>
                   <button
                     type="button"
                     className="btn"
-                    style={{ fontSize: 12, padding: "6px 14px", alignSelf: "flex-start" }}
+                    style={{ fontSize: 12, padding: "6px 14px" }}
                     onClick={handleEdit}
                   >
                     {t("settings.avatarEdit")}
@@ -111,9 +111,9 @@ export function SettingsScreen() {
                 </div>
 
                 {iconsQuery.isLoading ? (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(56px, 1fr))", gap: 8, marginBottom: 14 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 112px)", gap: 8, marginBottom: 14 }}>
                     {Array.from({ length: 8 }).map((_, i) => (
-                      <div key={i} style={{ width: 56, height: 56, borderRadius: 10, background: "var(--bg-1)", animation: "shimmer 1.4s infinite" }} />
+                      <div key={i} style={{ width: 112, height: 112, borderRadius: "50%", background: "var(--bg-1)", animation: "shimmer 1.4s infinite" }} />
                     ))}
                   </div>
                 ) : (iconsQuery.data ?? []).length === 0 ? (
@@ -121,7 +121,7 @@ export function SettingsScreen() {
                     {t("settings.avatarEmpty")}
                   </div>
                 ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(56px, 1fr))", gap: 8, marginBottom: 14 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 112px)", gap: 8, marginBottom: 14 }}>
                     {(iconsQuery.data ?? []).map((icon) => {
                       const iconUrl = bestMediaUrl(icon);
                       const isSelected = selectedIconId === icon.id;
@@ -135,10 +135,10 @@ export function SettingsScreen() {
                           style={{
                             appearance: "none", padding: 0,
                             border: `2px solid ${isSelected ? "var(--primary)" : "var(--line)"}`,
-                            borderRadius: 10,
+                            borderRadius: "50%",
                             background: isSelected ? "color-mix(in srgb, var(--primary) 14%, transparent)" : "var(--bg-1)",
                             cursor: "pointer",
-                            width: 56, height: 56,
+                            width: 112, height: 112,
                             overflow: "hidden",
                             transition: "border-color 0.15s, background 0.15s, transform 0.1s",
                             transform: isSelected ? "scale(1.06)" : "scale(1)",

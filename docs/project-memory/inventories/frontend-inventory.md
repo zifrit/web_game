@@ -8,6 +8,7 @@ Updated from code inspection on 2026-05-25.
 - `frontend/app/page.tsx` - renders the main app.
 - `frontend/app/globals.css` - global styling.
 - `frontend/components/rpg-client.tsx` - main client shell, nav, screen routing.
+  It persists selected tab in `localStorage` key `activeTab`.
 
 ## Providers and shared UI
 
@@ -33,6 +34,8 @@ Updated from code inspection on 2026-05-25.
 - `frontend/lib/i18n.ts` - locale dictionaries, formatting, storage.
 - `frontend/lib/media.ts` - media URL selection helper for `large_url`,
   `medium_url`, `small_url`.
+- `frontend/lib/i18n.ts` also owns copper splitting/formatting helpers for
+  topbar money display.
 
 ## Media usage
 
@@ -41,6 +44,13 @@ Updated from code inspection on 2026-05-25.
 - Small: character mini-inventory, quick dungeon rows, sidebar avatar,
   leaderboard avatar.
 
+## Settings and avatar
+
+- Settings screen fetches current user/character and lists icon assets only when
+  avatar picker opens.
+- Avatar save calls `PATCH /api/auth/me/avatar` via `api.updateAvatar()` and
+  patches the `me` TanStack Query cache.
+
 ## API facade methods
 
 - `register`, `login`, `logout`, `me`
@@ -48,6 +58,7 @@ Updated from code inspection on 2026-05-25.
 - `dungeons`, `startRun`, `currentRun`, `claimRun`
 - `inventory`, `item`, `repairPreview`, `repair`, `equip`, `unequip`
 - `leaderboard`
+- `iconAssets`, `updateAvatar`
 
 ## Package scripts
 

@@ -10,6 +10,8 @@ Updated from code inspection on 2026-05-25.
 - `backend/config/urls.py` - `admin/` and `/api/`.
 - `backend/config/celery.py` - Celery app setup.
 - `backend/apps/game/urls.py` - public API routes.
+- `backend/apps/game/image_generation.py` - parsing/resizing/saving helpers for
+  generated image assets.
 
 ## Models
 
@@ -52,6 +54,10 @@ Media API payloads are built in `common.py` and expose only `large_url`,
 `medium_url`, `small_url`. Inventory item summaries expose `media` instead of
 legacy `icon_url`.
 
+Auth views also include avatar media endpoints: `IconAssetsView` lists
+`asset_type=icons` assets and `UserAvatarUpdateView` updates `User.avatar_media`
+only to an icon asset.
+
 View domains:
 
 - `auth.py`
@@ -66,8 +72,13 @@ View domains:
 
 - `backend/apps/game/admin.py` registers game/balance/admin models.
 - `backend/apps/game/management/commands/seed_game.py` seeds MVP data.
-- `backend/apps/game/management/commands/generate_game_images.py` exists for
-  game image generation.
+- `backend/apps/game/management/commands/generate_game_images.py` generates
+  local webp image variants from CSV prompts through Polza.ai; it has dry-run,
+  limit, max-images and retry behavior.
+- `backend/assets/heroes_prompts.csv`, `items_prompts.csv`,
+  `dungeons_prompts.csv` are current prompt feeds; `backend/assets/old/`
+  contains older prompt feeds.
+- `backend/generated_assets/` is ignored local output, not DB seed data.
 - Tests currently include `test_mvp_api.py`, `test_services.py`,
   `test_image_generation.py`.
 

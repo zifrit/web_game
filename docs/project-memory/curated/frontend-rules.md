@@ -6,6 +6,7 @@
 - API base выбирается через `NEXT_PUBLIC_API_BASE_URL` или fallback на текущий
   host с портом `8000`.
 - Tokens хранятся в `localStorage` ключом `rpg_tokens`.
+- Активная вкладка shell хранится в `localStorage` ключом `activeTab`.
 - Locale хранится через helpers в `frontend/lib/i18n.ts`; API получает
   `Accept-Language`.
 - После claim/repair/auth changes инвалидировать relevant TanStack Query data.
@@ -28,7 +29,8 @@
 - settings
 
 `frontend/components/screens/settings-screen.tsx` существует как экран и должен
-считаться частью текущего frontend-состояния, если код его содержит.
+считаться частью текущего frontend-состояния. Он управляет языком и avatar
+picker через `api.iconAssets()` / `api.updateAvatar()`.
 
 ## UI intent
 
@@ -37,6 +39,11 @@
   игровые формулы, rewards, economy или server-authoritative results.
 - Inventory должен показывать минимум 24 cells и догружать следующие страницы,
   если `pagination.has_next` true.
+- Backend возвращает деньги в `money_copper`; frontend разбивает баланс на
+  золото/серебро/медь: `1 gold = 100 silver = 10 000 copper`.
+- Tooltip формулы мощи на Character screen должен соответствовать backend
+  default weights: attack `2`, defense `1.7`, health `0.25`, crit `1`,
+  evasion `1`.
 
 ## Media sizing
 

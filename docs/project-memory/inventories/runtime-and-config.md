@@ -1,6 +1,6 @@
 # Runtime And Config Inventory
 
-Updated from code inspection on 2026-05-22.
+Updated from code inspection on 2026-05-25.
 
 ## Docker Compose services
 
@@ -15,7 +15,8 @@ Source: `docker-compose.yml`.
   on `3000`.
 
 Compose references env files, but project memory must not read or reproduce
-`.env` or `.env.*` contents.
+`.env` or `.env.*` contents. Current compose uses `.env` for backend and an env
+example file for Celery services; only this reference fact is recorded.
 
 ## Backend settings
 
@@ -25,6 +26,8 @@ Source: `backend/config/settings.py`.
 - `AUTH_USER_MODEL = "game.User"`.
 - Default DB fallback is sqlite when `DATABASE_URL` is absent.
 - Celery broker/result backend use `REDIS_URL`.
+- `POLZA_AI_API_KEY` / optional `POLZA_AI_BASE_URL` are read by the image
+  generation command, not by normal app request flow.
 - Beat schedule `complete-dungeon-runs` runs task
   `apps.game.tasks.complete_due_dungeon_runs` every `5.0` seconds.
 - Default storage uses S3 when `AWS_STORAGE_BUCKET_NAME` is present, otherwise
@@ -39,6 +42,5 @@ Backend source: `backend/pyproject.toml`.
 
 Frontend source: `frontend/package.json`.
 
-- Next, React, TypeScript, Tailwind, TanStack Query, React Hook Form, Zod,
-  lucide-react, Zustand.
-
+- Next 16, React 19, TypeScript, Tailwind, TanStack Query, React Hook Form,
+  Zod, lucide-react, Zustand.

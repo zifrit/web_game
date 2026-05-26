@@ -1,6 +1,6 @@
 # API Routes Inventory
 
-Updated from code inspection on 2026-05-22.
+Updated from code inspection on 2026-05-25.
 
 Source: `backend/config/urls.py`, `backend/apps/game/urls.py`.
 
@@ -16,6 +16,7 @@ Auth:
 - `POST /api/auth/login`
 - `POST /api/auth/refresh`
 - `GET /api/auth/me`
+- `PATCH /api/auth/me/avatar`
 - `POST /api/auth/logout`
 
 Character:
@@ -46,3 +47,6 @@ Leaderboard:
 
 - `GET /api/leaderboard?type=level`
 
+Media:
+
+- `GET /api/media/icons`

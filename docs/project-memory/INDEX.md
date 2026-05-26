@@ -9,8 +9,17 @@ source_of_truth:
   - backend/config/urls.py
   - backend/config/celery.py
   - backend/apps/game/urls.py
+  - backend/apps/game/views/auth.py
+  - backend/apps/game/image_generation.py
+  - backend/apps/game/management/commands/generate_game_images.py
   - frontend/app/page.tsx
+  - frontend/lib/api.ts
+  - frontend/lib/i18n.ts
+  - frontend/lib/media.ts
+  - frontend/lib/types.ts
   - frontend/components/rpg-client.tsx
+  - frontend/components/screens/settings-screen.tsx
+  - frontend/package.json
   - docker-compose.yml
 last_verified: 2026-05-25
 verified_from:
@@ -24,10 +33,16 @@ verified_from:
   - backend/apps/game/models/base.py
   - backend/apps/game/serializers/common.py
   - backend/apps/game/serializers/inventory.py
+  - backend/apps/game/views/auth.py
+  - backend/apps/game/image_generation.py
+  - backend/apps/game/management/commands/generate_game_images.py
   - frontend/lib/api.ts
+  - frontend/lib/i18n.ts
   - frontend/lib/media.ts
   - frontend/lib/types.ts
   - frontend/components/rpg-client.tsx
+  - frontend/components/screens/settings-screen.tsx
+  - frontend/package.json
   - docker-compose.yml
 ---
 

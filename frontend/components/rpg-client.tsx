@@ -154,10 +154,10 @@ function Sidebar({
           <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
             {/* Avatar: skeleton while loading, then real avatar or placeholder */}
             {isLoadingCharacter && !characterName ? (
-              <Skeleton style={{ width: 47, height: 47, borderRadius: 6, flexShrink: 0 }} />
+              <Skeleton style={{ width: 47, height: 47, borderRadius: "50%", flexShrink: 0 }} />
             ) : (
               <div style={{
-                width: 47, height: 47, borderRadius: 6, flexShrink: 0,
+                width: 47, height: 47, borderRadius: "50%", flexShrink: 0,
                 background: "#202B44",
                 border: "1px solid #2E3B5A",
                 overflow: "hidden",

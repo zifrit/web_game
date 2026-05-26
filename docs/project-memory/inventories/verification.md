@@ -1,6 +1,6 @@
 # Verification Inventory
 
-Updated from code inspection on 2026-05-22.
+Updated from code inspection on 2026-05-25.
 
 Use the smallest useful checks for the touched area.
 
@@ -8,10 +8,19 @@ Use the smallest useful checks for the touched area.
 
 - `cd backend && uv run python manage.py check` - Django config/system check.
 - `cd backend && uv run python manage.py test apps.game` - game app tests.
+- `cd backend && uv run python manage.py makemigrations --check --dry-run` -
+  confirm migrations match models.
 
 ## Frontend
 
 - `cd frontend && npm run build` - Next production build/type integration.
+
+## Asset generation
+
+- `cd backend && uv run python manage.py generate_game_images assets/heroes_prompts.csv --dry-run`
+  validates CSV parsing/planned output without calling Polza.ai.
+- Non-dry generation requires `POLZA_AI_API_KEY` and may require network access;
+  do not copy secret values into memory or logs.
 
 ## Docker and smoke
 
@@ -35,4 +44,3 @@ For docs-only project memory updates:
 - confirm links/paths match the repo;
 - confirm no `.env` or `.env.*` content was read or copied;
 - no backend/frontend build is required.
-
