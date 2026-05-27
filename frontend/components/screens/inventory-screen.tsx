@@ -7,7 +7,7 @@ import { ErrorNotice, InventoryScreenSkeleton, LoadingLine } from "@/components/
 import { api } from "@/lib/api";
 import type { TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
-import type { Character, Inventory, InventoryCard, InventoryMutationResponse, ItemDetail } from "@/lib/types";
+import type { Character, DestroyPreview, Inventory, InventoryCard, InventoryMutationResponse, ItemDetail, RepairPreview } from "@/lib/types";
 
 const INVENTORY_PAGE_SIZE = 24;
 
@@ -33,11 +33,13 @@ function rg(rarity?: string) { return RARITY_GLOW[(rarity ?? "common").toLowerCa
 function PackCell({
   item,
   selected,
+  multiSelected,
   equipped,
   onClick,
 }: {
   item?: InventoryCard;
   selected?: boolean;
+  multiSelected?: boolean;
   equipped?: boolean;
   onClick?: () => void;
 }) {
@@ -52,8 +54,10 @@ function PackCell({
       onClick={onClick}
       className={`inv-cell${hasItem ? "" : " empty"}`}
       style={hasItem ? {
-        borderColor: selected ? "var(--primary)" : color,
-        boxShadow: selected
+        borderColor: multiSelected ? "var(--success)" : selected ? "var(--primary)" : undefined,
+        boxShadow: multiSelected
+          ? "0 0 0 2px rgba(34,197,94,0.9), 0 0 18px rgba(34,197,94,0.45)"
+          : selected
           ? "0 0 10px rgba(59,130,246,0.4)"
           : `inset 0 0 14px ${rg(item?.rarity)}`,
         cursor: "pointer",
@@ -72,6 +76,14 @@ function PackCell({
       )}
       {equipped && <div className="equipped-tag">E</div>}
       {item?.is_broken && <div className="broken-tag">!</div>}
+      {multiSelected && (
+        <div style={{
+          position: "absolute", right: 5, bottom: 5, width: 18, height: 18,
+          borderRadius: 999, background: "var(--success)", color: "#fff",
+          display: "grid", placeItems: "center", fontSize: 12, fontWeight: 800,
+          border: "1px solid rgba(255,255,255,0.5)",
+        }}>✓</div>
+      )}
     </button>
   );
 }
@@ -102,16 +114,25 @@ function patchInfiniteInventory(
 }
 
 /* ── Item Detail Panel ── */
-function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChanged: () => void }) {
-  const [showRepair, setShowRepair] = useState(false);
+function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChanged: (removedItemId?: number) => void }) {
+  const [confirmAction, setConfirmAction] = useState<"repair" | "destroy" | null>(null);
   const queryClient = useQueryClient();
   const { t } = useI18n();
 
+  useEffect(() => {
+    setConfirmAction(null);
+  }, [itemId]);
+
   const itemQ   = useQuery({ queryKey: ["inventory-item", itemId], queryFn: () => api.item(itemId!), enabled: !!itemId });
   const repairQ = useQuery({
-    queryKey: ["repair-preview", itemId],
-    queryFn: () => api.repairPreview(itemId!),
-    enabled: !!(itemId && showRepair),
+    queryKey: ["repair-preview", [itemId]],
+    queryFn: () => api.repairPreview([itemId!]),
+    enabled: !!(itemId && confirmAction === "repair"),
+  });
+  const destroyQ = useQuery({
+    queryKey: ["destroy-preview", [itemId]],
+    queryFn: () => api.destroyPreview([itemId!]),
+    enabled: !!(itemId && confirmAction === "destroy"),
   });
 
   const applyEquipResult = (result: InventoryMutationResponse) => {
@@ -143,7 +164,7 @@ function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChang
     );
     // Инвалидируем детальную карточку предмета (статус is_equipped мог измениться)
     void queryClient.invalidateQueries({ queryKey: ["inventory-item", itemId] });
-    setShowRepair(false);
+    setConfirmAction(null);
     onChanged();
   };
 
@@ -151,17 +172,29 @@ function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChang
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["inventory"] }),
       queryClient.invalidateQueries({ queryKey: ["inventory-item", itemId] }),
+      queryClient.invalidateQueries({ queryKey: ["character"] }),
       queryClient.invalidateQueries({ queryKey: ["me"] }),
     ]);
-    setShowRepair(false);
+    setConfirmAction(null);
     onChanged();
+  };
+
+  const invalidateAfterDestroy = async (result: { item_ids: number[] }) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+      queryClient.invalidateQueries({ queryKey: ["character"] }),
+      queryClient.invalidateQueries({ queryKey: ["me"] }),
+    ]);
+    setConfirmAction(null);
+    onChanged(result.item_ids[0]);
   };
 
   const equipM  = useMutation({
     mutationFn: (item: ItemDetail) => item.is_equipped ? api.unequip(item.id) : api.equip(item.id),
     onSuccess: applyEquipResult,
   });
-  const repairM = useMutation({ mutationFn: (id: number) => api.repair(id), onSuccess: invalidateAfterRepair });
+  const repairM = useMutation({ mutationFn: (ids: number[]) => api.repair(ids), onSuccess: invalidateAfterRepair });
+  const destroyM = useMutation({ mutationFn: (ids: number[]) => api.destroy(ids), onSuccess: invalidateAfterDestroy });
 
   if (!itemId) return (
     <div style={{
@@ -189,59 +222,59 @@ function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChang
 
   return (
     <div className="card animate-fade-in">
-      {/* Header */}
+      {/* Header image */}
+      <div style={{ padding: "16px 16px 0" }}>
       <div style={{
-        padding: "20px 24px", borderBottom: "1px solid var(--line-soft)",
-        display: "flex", flexDirection: "column", alignItems: "center", gap: 14,
+        width: "100%", aspectRatio: "1", flexShrink: 0,
+        background: "var(--bg-3)",
+        borderRadius: 8,
+        overflow: "hidden",
+        position: "relative",
       }}>
-        {/* Item icon placeholder */}
+        {itemImage ? (
+          <img
+            src={itemImage}
+            alt={item.name}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        ) : (
+          <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", fontSize: 40, opacity: 0.15 }}>⚔</div>
+        )}
+      </div>
+      </div>
+
+      {/* Item identity */}
+      <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--line-soft)", textAlign: "center" }}>
+        <span className={`tag rare-${item.rarity.toLowerCase()}`}>{t(`rarity.${item.rarity}` as TranslationKey)}</span>
         <div style={{
-          width: "min(320px, 100%)", aspectRatio: "1", borderRadius: 4, flexShrink: 0,
-          background: "var(--bg-3)",
-          border: `1px solid ${color}`,
-          overflow: "hidden",
-          position: "relative",
+          fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
+          fontSize: 21, fontWeight: 600, marginTop: 6,
+          color, letterSpacing: "0.03em", lineHeight: 1.2,
         }}>
-          {itemImage && (
-            <img
-              src={itemImage}
-              alt={item.name}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          )}
+          {item.name}
         </div>
-        <div style={{ width: "100%", textAlign: "center" }}>
-          <span className={`tag rare-${item.rarity.toLowerCase()}`}>{t(`rarity.${item.rarity}` as TranslationKey)}</span>
-          <div style={{
-            fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
-            fontSize: 26, fontWeight: 600, marginTop: 6,
-            color, letterSpacing: "0.03em",
-          }}>
-            {item.name}
-          </div>
-          <div className="mono" style={{
-            fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase",
-            color: "var(--text-mute)",
-          }}>
-            {t(`slot.${item.slot}` as TranslationKey)} · {t("inventory.forged")}
-          </div>
-          {item.is_equipped && (
-            <span className="mono" style={{
-              display: "inline-flex", marginTop: 8,
-              background: "rgba(34,197,94,0.15)", padding: "2px 8px",
-              borderRadius: 2, fontSize: 9, letterSpacing: "0.15em",
-              color: "var(--success)",
-            }}>{t("common.equipped").toUpperCase()}</span>
-          )}
+        <div className="mono" style={{
+          fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase",
+          color: "var(--text-mute)", marginTop: 4,
+        }}>
+          {t(`slot.${item.slot}` as TranslationKey)} · {t("inventory.forged")}
         </div>
+        {item.is_equipped && (
+          <span className="mono" style={{
+            display: "inline-flex", marginTop: 8,
+            background: "rgba(34,197,94,0.15)", padding: "2px 10px",
+            borderRadius: 2, fontSize: 9, letterSpacing: "0.15em",
+            color: "var(--success)", border: "1px solid rgba(34,197,94,0.25)",
+          }}>{t("common.equipped").toUpperCase()}</span>
+        )}
       </div>
 
       {/* Body */}
       <div style={{ padding: 24 }}>
         {/* Stats */}
-        <div className="stat-list" style={{ gridTemplateColumns: "1fr", marginBottom: 18 }}>
+        <div className="stat-list" style={{ gridTemplateColumns: "1fr", marginBottom: 26 }}>
           {Object.entries(item.stats).map(([k, v]) => (
-            <div key={k} className="sl-row">
+            <div key={k} className="sl-row" style={{ padding: "8px 0" }}>
               <span className="lbl" style={{ textTransform: "capitalize" }}>{t(`stats.${k}` as TranslationKey)}</span>
               <span className="val">+{v}</span>
             </div>
@@ -249,8 +282,8 @@ function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChang
         </div>
 
         {/* Durability */}
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+        <div style={{ marginBottom: 26 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
             <span className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-mute)" }}>
               {t("common.durability")}
             </span>
@@ -262,77 +295,197 @@ function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChang
             <i style={{ width: `${durPct * 100}%` }} />
           </div>
           {item.is_broken && (
-            <div className="mono" style={{ fontSize: 11, color: "var(--error)", marginTop: 6 }}>
+            <div className="mono" style={{ fontSize: 11, color: "var(--error)", marginTop: 8 }}>
               ⚠ {t("inventory.criticalWear")}
             </div>
           )}
         </div>
 
         {/* Level + type */}
-        <div className="stat-list" style={{ gridTemplateColumns: "1fr", marginBottom: 18 }}>
-          <div className="sl-row">
+        <div className="stat-list" style={{ gridTemplateColumns: "1fr", marginBottom: 26 }}>
+          <div className="sl-row" style={{ padding: "8px 0" }}>
             <span className="lbl">{t("common.itemLevel")}</span>
             <span className="val">{item.item_level}</span>
           </div>
-          <div className="sl-row">
+          <div className="sl-row" style={{ padding: "8px 0" }}>
             <span className="lbl">{t("common.type")}</span>
             <span className="val">{item.item_type}</span>
           </div>
         </div>
 
         {/* Actions */}
-        <div style={{ display: "flex", gap: 10 }}>
-          {item.durability.current < item.durability.max && (
-            <button
-              className="btn"
-              style={{ flex: 1 }}
-              disabled={repairM.isPending}
-              onClick={() => setShowRepair(true)}
-            >
-              {t("common.repair")} ◈ —
-            </button>
-          )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {/* Primary CTA — equip */}
           <button
-            className="btn btn-primary"
-            style={{ flex: 1 }}
+            className={`btn${item.is_equipped ? "" : " btn-primary"}`}
+            style={{ width: "100%" }}
             disabled={equipM.isPending || (!item.is_equipped && (!item.can_equip || item.is_broken))}
             onClick={() => equipM.mutate(item)}
           >
             {item.is_equipped ? t("common.unequip") : t("common.equip")}
           </button>
+          {/* Secondary row — repair + destroy */}
+          <div style={{ display: "flex", gap: 14 }}>
+            <button
+              className="btn btn-primary"
+              style={{ flex: 1 }}
+              disabled={repairM.isPending || item.durability.current >= item.durability.max}
+              onClick={() => setConfirmAction("repair")}
+            >
+              {t("common.repair")} ◈
+            </button>
+            <button
+              className="btn btn-danger"
+              style={{ flex: 1 }}
+              disabled={destroyM.isPending}
+              onClick={() => setConfirmAction("destroy")}
+            >
+              {t("common.destroy")}
+            </button>
+          </div>
         </div>
 
-        {/* Repair preview */}
-        {showRepair && (
+        {/* Repair / destroy preview */}
+        {confirmAction === "repair" && (
           <div style={{ marginTop: 14 }}>
             {repairQ.isLoading ? (
               <LoadingLine label={t("inventory.calculating")} />
             ) : repairQ.data ? (
               <div style={{
-                padding: 14, borderRadius: 12,
+                padding: 18, borderRadius: 12,
                 background: "rgba(59,130,246,0.08)",
                 border: "1px solid rgba(59,130,246,0.25)",
-                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
               }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{t("inventory.repairPreview")}</div>
-                  <div className="mono" style={{ fontSize: 11, color: "var(--text-mute)", marginTop: 2 }}>
-                    {t("inventory.missingCost", { missing: repairQ.data.durability.missing, cost: repairQ.data.repair_cost_copper })}
-                  </div>
+                <div className="mono" style={{ fontSize: 9, letterSpacing: "0.18em", color: "var(--primary-bright)", marginBottom: 8, textTransform: "uppercase" }}>
+                  {t("inventory.repairPreview")}
                 </div>
-                <button
-                  className="btn btn-primary"
-                  disabled={repairM.isPending || !repairQ.data.can_repair}
-                  onClick={() => repairM.mutate(item.id)}
-                >
-                  {repairM.isPending ? t("common.repairing") : t("common.confirm")}
-                </button>
+                <div className="mono" style={{ fontSize: 11, color: "var(--text-mute)", marginBottom: 14 }}>
+                  {t("inventory.missingCost", { missing: repairQ.data.durability_missing, cost: repairQ.data.repair_cost_copper })}
+                </div>
+                <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
+                  <button className="btn" style={{ flex: 1 }} disabled={repairM.isPending} onClick={() => setConfirmAction(null)}>
+                    {t("common.cancel")}
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    style={{ flex: 1 }}
+                    disabled={repairM.isPending || !repairQ.data.can_repair}
+                    onClick={() => repairM.mutate([item.id])}
+                  >
+                    {repairM.isPending ? t("common.repairing") : t("common.confirm")}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
+        {confirmAction === "destroy" && (
+          <div style={{ marginTop: 14 }}>
+            {destroyQ.isLoading ? (
+              <LoadingLine label={t("inventory.calculating")} />
+            ) : destroyQ.data ? (
+              <div style={{
+                padding: 18, borderRadius: 12,
+                background: "rgba(239,68,68,0.08)",
+                border: "1px solid rgba(239,68,68,0.28)",
+              }}>
+                <div className="mono" style={{ fontSize: 9, letterSpacing: "0.18em", color: "var(--error)", marginBottom: 10, textTransform: "uppercase" }}>
+                  {t("inventory.destroyPreview")}
+                </div>
+                <div className="mono" style={{ fontSize: 11, color: "var(--text-mute)", marginBottom: 8 }}>
+                  {t("inventory.destroyRefund", { count: destroyQ.data.items_count, refund: destroyQ.data.refund_copper })}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--error)", marginBottom: 12 }}>
+                  {t("inventory.destroyIrreversible")}
+                </div>
+                <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
+                  <button className="btn" style={{ flex: 1 }} disabled={destroyM.isPending} onClick={() => setConfirmAction(null)}>
+                    {t("common.cancel")}
+                  </button>
+                  <button
+                    className="btn btn-danger"
+                    style={{ flex: 1 }}
+                    disabled={destroyM.isPending || !destroyQ.data.can_destroy}
+                    onClick={() => destroyM.mutate([item.id])}
+                  >
+                    {destroyM.isPending ? t("common.destroying") : t("common.confirm")}
+                  </button>
+                </div>
               </div>
             ) : null}
           </div>
         )}
 
-        <ErrorNotice message={(equipM.error as Error | null)?.message ?? (repairM.error as Error | null)?.message} />
+        <ErrorNotice message={(equipM.error as Error | null)?.message ?? (repairM.error as Error | null)?.message ?? (destroyM.error as Error | null)?.message} />
+      </div>
+    </div>
+  );
+}
+
+function BulkActionModal({
+  action,
+  repairPreview,
+  destroyPreview,
+  isLoading,
+  isPending,
+  error,
+  onCancel,
+  onConfirm,
+}: {
+  action: "repair" | "destroy";
+  repairPreview?: RepairPreview;
+  destroyPreview?: DestroyPreview;
+  isLoading: boolean;
+  isPending: boolean;
+  error?: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const { t } = useI18n();
+  const isRepair = action === "repair";
+  const canConfirm = isRepair ? repairPreview?.can_repair : destroyPreview?.can_destroy;
+
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal">
+        <div className="card-h">
+          <div className="card-title">{isRepair ? t("inventory.repairSelected") : t("inventory.destroySelected")}</div>
+          <div className="card-sub">{isRepair ? t("inventory.repairSelectedSub") : t("inventory.destroySelectedSub")}</div>
+        </div>
+        <div className="card-body">
+          {isLoading ? (
+            <LoadingLine label={t("inventory.calculating")} />
+          ) : isRepair && repairPreview ? (
+            <div className="stat-list" style={{ gridTemplateColumns: "1fr", marginBottom: 16 }}>
+              <div className="sl-row"><span className="lbl">{t("inventory.selectedItems")}</span><span className="val">{repairPreview.items_count}</span></div>
+              <div className="sl-row"><span className="lbl">{t("inventory.repairCost")}</span><span className="val">{repairPreview.repair_cost_copper}c</span></div>
+            </div>
+          ) : destroyPreview ? (
+            <>
+              <div className="stat-list" style={{ gridTemplateColumns: "1fr", marginBottom: 12 }}>
+                <div className="sl-row"><span className="lbl">{t("inventory.selectedItems")}</span><span className="val">{destroyPreview.items_count}</span></div>
+                <div className="sl-row"><span className="lbl">{t("inventory.refund")}</span><span className="val">{destroyPreview.refund_copper}c</span></div>
+              </div>
+              <div style={{
+                padding: 12, borderRadius: 8, border: "1px solid rgba(239,68,68,0.28)",
+                background: "rgba(239,68,68,0.08)", color: "var(--error)", fontSize: 12,
+              }}>
+                {t("inventory.destroyIrreversible")}
+              </div>
+            </>
+          ) : null}
+          <ErrorNotice message={error} />
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+            <button className="btn" disabled={isPending} onClick={onCancel}>{t("common.cancel")}</button>
+            <button
+              className={`btn ${isRepair ? "btn-primary" : "btn-danger"}`}
+              disabled={isPending || !canConfirm}
+              onClick={onConfirm}
+            >
+              {isPending ? (isRepair ? t("common.repairing") : t("common.destroying")) : (isRepair ? t("common.repair") : t("common.destroy"))}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -343,7 +496,11 @@ function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChang
 ═══════════════════════════════════════ */
 export function InventoryScreen() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedBulkIds, setSelectedBulkIds] = useState<number[]>([]);
+  const [bulkAction, setBulkAction] = useState<"repair" | "destroy" | null>(null);
   const { t } = useI18n();
+  const queryClient = useQueryClient();
   const invQ = useInfiniteQuery({
     queryKey: ["inventory", { pageSize: INVENTORY_PAGE_SIZE }],
     queryFn: ({ pageParam }) => api.inventory(pageParam, INVENTORY_PAGE_SIZE),
@@ -362,7 +519,6 @@ export function InventoryScreen() {
   );
 
   const brokenItems  = items.filter((i) => i.is_broken);
-  const totalCost    = brokenItems.length * 50; // placeholder
   const itemsCount   = inv?.items_count ?? items.length;
   const slotsLimit   = inv?.slots_limit ?? null;
   const freeSlots    = inv?.free_slots ?? (slotsLimit === null ? null : Math.max(slotsLimit - itemsCount, 0));
@@ -370,6 +526,55 @@ export function InventoryScreen() {
     { length: Math.max(INVENTORY_PAGE_SIZE, items.length) },
     (_, i) => items[i],
   );
+  const selectedBulkSet = new Set(selectedBulkIds);
+
+  const repairPreviewQ = useQuery({
+    queryKey: ["repair-preview", selectedBulkIds],
+    queryFn: () => api.repairPreview(selectedBulkIds),
+    enabled: bulkAction === "repair" && selectedBulkIds.length > 0,
+  });
+  const destroyPreviewQ = useQuery({
+    queryKey: ["destroy-preview", selectedBulkIds],
+    queryFn: () => api.destroyPreview(selectedBulkIds),
+    enabled: bulkAction === "destroy" && selectedBulkIds.length > 0,
+  });
+
+  const finishBulkAction = async (removedIds: number[] = []) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+      queryClient.invalidateQueries({ queryKey: ["character"] }),
+      queryClient.invalidateQueries({ queryKey: ["me"] }),
+    ]);
+    if (selectedId !== null && removedIds.includes(selectedId)) {
+      setSelectedId(null);
+    } else if (selectedId !== null) {
+      await queryClient.invalidateQueries({ queryKey: ["inventory-item", selectedId] });
+    }
+    setSelectedBulkIds([]);
+    setSelectMode(false);
+    setBulkAction(null);
+  };
+
+  const repairBulkM = useMutation({
+    mutationFn: (ids: number[]) => api.repair(ids),
+    onSuccess: () => finishBulkAction(),
+  });
+  const destroyBulkM = useMutation({
+    mutationFn: (ids: number[]) => api.destroy(ids),
+    onSuccess: (result) => finishBulkAction(result.item_ids),
+  });
+
+  const toggleBulkItem = (id: number) => {
+    setSelectedBulkIds((current) => (
+      current.includes(id) ? current.filter((itemId) => itemId !== id) : [...current, id]
+    ));
+  };
+
+  const cancelSelectMode = () => {
+    setSelectMode(false);
+    setSelectedBulkIds([]);
+    setBulkAction(null);
+  };
 
   const handlePackScroll = (event: UIEvent<HTMLDivElement>) => {
     const node = event.currentTarget;
@@ -392,118 +597,164 @@ export function InventoryScreen() {
   return (
     <div className="col animate-fade-in">
 
-      {/* ── Top stat cards ── */}
-      <div className="grid-3">
-        {/* Pack */}
-        <div className="card">
-          <div className="card-body" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div>
-              <div className="card-sub">{t("nav.inventory")}</div>
-              <div style={{
-                fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
-                fontSize: 26, fontWeight: 500, color: "var(--bone)",
-              }}>
-                {slotsLimit === null ? itemsCount : `${itemsCount} / ${slotsLimit}`}
-              </div>
-            </div>
-            <div className="mono" style={{ fontSize: 11, color: "var(--text-dim)" }}>
-              {freeSlots === null ? t("common.noLimit") : t("common.free", { count: freeSlots })}
-            </div>
-          </div>
-        </div>
+      {/* ── Left column (cards + grid) + Right column (detail pane) ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(320px, 0.42fr)", gap: 18, alignItems: "start" }}>
 
-        {/* Needs repair */}
-        <div className="card">
-          <div className="card-body" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div>
-              <div className="card-sub">{t("inventory.needsRepair")}</div>
-              <div style={{
-                fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
-                fontSize: 26, fontWeight: 500,
-                color: brokenItems.length ? "var(--primary-bright)" : "var(--text-dim)",
-              }}>
-                {t("common.items", { count: brokenItems.length })}
-              </div>
-            </div>
-            <div className="mono" style={{ fontSize: 11, color: "var(--text-dim)" }}>
-              {t("inventory.cost")} ◈ {totalCost}
-            </div>
-          </div>
-        </div>
+        {/* Left column */}
+        <div className="col" style={{ gap: 18 }}>
 
-        {/* Quick action */}
-        <div className="card" style={{ background: "linear-gradient(180deg, rgba(59,130,246,0.12), var(--bg-2))" }}>
-          <div className="card-body" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-            <div style={{ minWidth: 0 }}>
-              <div className="card-sub">{t("inventory.quickAction")}</div>
-              <div style={{
-                fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
-                fontSize: 18, fontWeight: 500, color: "var(--bone)",
-              }}>
-                {t("inventory.repairPack")}
-              </div>
-            </div>
-            <button
-              className="btn btn-primary"
-              disabled={brokenItems.length === 0}
-            >
-              {t("inventory.repairAll")}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <ErrorNotice message={(invQ.error as Error | null)?.message} />
-
-      {/* ── Pack grid + selected item detail ── */}
-      <div className="inventory-main-layout">
-        <div className="card">
-          <div className="card-h">
-            <div className="card-title">{t("nav.inventory")}</div>
-            <div className="card-sub">{t("inventory.stored")}</div>
-          </div>
-          <div className="card-body">
-            <div
-              onScroll={handlePackScroll}
-              style={{ maxHeight: 760, overflowY: "auto", paddingRight: 4 }}
-            >
-              <div className="inv-grid inventory-pack-grid">
-                {packCells.map((item, i) => {
-                  return (
-                    <PackCell
-                      key={item?.id ?? `empty-${i}`}
-                      item={item}
-                      selected={item?.id === selectedId}
-                      equipped={item ? equippedItemIds.has(item.id) : false}
-                      onClick={item ? () => setSelectedId(item.id) : undefined}
-                    />
-                  );
-                })}
-              </div>
-              {invQ.isFetchingNextPage && <LoadingLine label={t("inventory.loadingMore")} />}
-            </div>
-
-            {items.length === 0 && !invQ.isLoading && (
-              <div style={{
-                textAlign: "center", padding: "40px 20px",
-                border: "1px dashed var(--line)", borderRadius: 10,
-              }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-dim)" }}>{t("inventory.empty")}</div>
-                <div style={{ fontSize: 12, color: "var(--text-mute)", marginTop: 6 }}>
-                  {t("inventory.emptyBody")}
+          {/* ── Top stat cards ── */}
+          <div className="grid-2">
+            {/* Pack */}
+            <div className="card">
+              <div style={{ padding: "15px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div className="card-sub">{t("nav.inventory")}</div>
+                  <div style={{
+                    fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
+                    fontSize: 20, fontWeight: 500, color: "var(--bone)",
+                  }}>
+                    {slotsLimit === null ? itemsCount : `${itemsCount} / ${slotsLimit}`}
+                  </div>
+                </div>
+                <div className="mono" style={{ fontSize: 11, color: "var(--text-dim)" }}>
+                  {freeSlots === null ? t("common.noLimit") : t("common.free", { count: freeSlots })}
                 </div>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
 
-        <aside className="inventory-detail-pane">
+            {/* Quick action */}
+            <div className="card" style={{ background: "linear-gradient(180deg, rgba(59,130,246,0.12), var(--bg-2))" }}>
+              <div style={{ padding: "15px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div className="card-sub">{t("inventory.quickAction")}</div>
+                  <div style={{
+                    fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
+                    fontSize: 15, fontWeight: 500, color: "var(--bone)",
+                  }}>
+                    {selectMode ? t("inventory.selectedCount", { count: selectedBulkIds.length }) : t("inventory.selectionMode")}
+                  </div>
+                </div>
+                {selectMode ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                    <button
+                      className="btn btn-ghost"
+                      style={{ padding: "8px 12px", color: "var(--text-dim)", fontSize: 13 }}
+                      onClick={cancelSelectMode}
+                    >
+                      {t("common.cancel")}
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      style={{ padding: "8px 14px", fontSize: 13 }}
+                      disabled={selectedBulkIds.length === 0}
+                      onClick={() => setBulkAction("repair")}
+                    >
+                      {t("common.repair")}
+                    </button>
+                    <button
+                      className="btn btn-danger"
+                      style={{ padding: "8px 14px", fontSize: 13 }}
+                      disabled={selectedBulkIds.length === 0}
+                      onClick={() => setBulkAction("destroy")}
+                    >
+                      {t("common.destroy")}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="btn btn-primary"
+                    disabled={items.length === 0}
+                    onClick={() => setSelectMode(true)}
+                  >
+                    {t("common.select")}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <ErrorNotice message={(invQ.error as Error | null)?.message} />
+
+          {/* ── Pack grid ── */}
+          <div className="card">
+            <div className="card-h">
+              <div className="card-title">{t("nav.inventory")}</div>
+              <div className="card-sub">{t("inventory.stored")}</div>
+            </div>
+            <div className="card-body">
+              <div
+                onScroll={handlePackScroll}
+                style={{ maxHeight: 760, overflowY: "auto", paddingRight: 4 }}
+              >
+                <div className="inv-grid inventory-pack-grid">
+                  {packCells.map((item, i) => {
+                    return (
+                      <PackCell
+                        key={item?.id ?? `empty-${i}`}
+                        item={item}
+                        selected={item?.id === selectedId}
+                        multiSelected={item ? selectedBulkSet.has(item.id) : false}
+                        equipped={item ? equippedItemIds.has(item.id) : false}
+                        onClick={item ? () => (selectMode ? toggleBulkItem(item.id) : setSelectedId(item.id)) : undefined}
+                      />
+                    );
+                  })}
+                </div>
+                {invQ.isFetchingNextPage && <LoadingLine label={t("inventory.loadingMore")} />}
+              </div>
+
+              {items.length === 0 && !invQ.isLoading && (
+                <div style={{
+                  textAlign: "center", padding: "40px 20px",
+                  border: "1px dashed var(--line)", borderRadius: 10,
+                }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-dim)" }}>{t("inventory.empty")}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-mute)", marginTop: 6 }}>
+                    {t("inventory.emptyBody")}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>{/* end left column */}
+
+        {/* Right column — item detail */}
+        <aside className="inventory-detail-pane" style={{ marginTop: 94 }}>
           <ItemDetailPanel
             itemId={selectedId}
-            onChanged={() => {/* keep selection */}}
+            onChanged={(removedItemId) => {
+              if (removedItemId && removedItemId === selectedId) {
+                setSelectedId(null);
+              }
+            }}
           />
         </aside>
+
       </div>
+      {bulkAction && (
+        <BulkActionModal
+          action={bulkAction}
+          repairPreview={repairPreviewQ.data}
+          destroyPreview={destroyPreviewQ.data}
+          isLoading={bulkAction === "repair" ? repairPreviewQ.isLoading : destroyPreviewQ.isLoading}
+          isPending={bulkAction === "repair" ? repairBulkM.isPending : destroyBulkM.isPending}
+          error={
+            bulkAction === "repair"
+              ? ((repairPreviewQ.error as Error | null)?.message ?? (repairBulkM.error as Error | null)?.message)
+              : ((destroyPreviewQ.error as Error | null)?.message ?? (destroyBulkM.error as Error | null)?.message)
+          }
+          onCancel={() => setBulkAction(null)}
+          onConfirm={() => {
+            if (bulkAction === "repair") {
+              repairBulkM.mutate(selectedBulkIds);
+            } else {
+              destroyBulkM.mutate(selectedBulkIds);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
