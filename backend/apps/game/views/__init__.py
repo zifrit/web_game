@@ -14,6 +14,10 @@ from .inventory import (
     InventoryItemRepairPreviewView,
     InventoryItemRepairView,
     InventoryItemUnequipView,
+    InventoryItemsDestroyPreviewView,
+    InventoryItemsDestroyView,
+    InventoryItemsRepairPreviewView,
+    InventoryItemsRepairView,
     InventoryView,
 )
 from .leaderboard import LeaderboardView
@@ -34,6 +38,10 @@ __all__ = [
     "InventoryItemRepairPreviewView",
     "InventoryItemRepairView",
     "InventoryItemUnequipView",
+    "InventoryItemsDestroyPreviewView",
+    "InventoryItemsDestroyView",
+    "InventoryItemsRepairPreviewView",
+    "InventoryItemsRepairView",
     "InventoryView",
     "LeaderboardView",
     "LoginView",

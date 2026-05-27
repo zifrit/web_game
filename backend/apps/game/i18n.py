@@ -51,6 +51,14 @@ MESSAGES = {
         "en": "Not enough money to repair this item.",
         "ru": "Недостаточно денег для ремонта предмета.",
     },
+    "no_items_selected": {
+        "en": "No items selected.",
+        "ru": "Предметы не выбраны.",
+    },
+    "no_repair_needed": {
+        "en": "Selected items do not need repair.",
+        "ru": "Выбранные предметы не нуждаются в ремонте.",
+    },
     "broken_item_equip": {
         "en": "Broken items cannot be equipped.",
         "ru": "Сломанные предметы нельзя экипировать.",

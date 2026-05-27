@@ -11,6 +11,7 @@ class RarityConfig(models.Model):
     name = models.CharField("Название", max_length=80)
     name_i18n = models.JSONField("Переводы названия", default=dict, blank=True)
     stat_multiplier = models.FloatField("Множитель характеристик")
+    economy_multiplier = models.DecimalField("Множитель экономики", max_digits=6, decimal_places=2, default=1)
     min_item_level = models.PositiveIntegerField("Минимальный уровень предмета")
     max_item_level = models.PositiveIntegerField("Максимальный уровень предмета")
     min_stats_count = models.PositiveIntegerField("Минимум характеристик")

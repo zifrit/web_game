@@ -21,7 +21,7 @@ source_of_truth:
   - frontend/components/screens/settings-screen.tsx
   - frontend/package.json
   - docker-compose.yml
-last_verified: 2026-05-25
+last_verified: 2026-05-27
 verified_from:
   - AGENTS.md
   - README.md

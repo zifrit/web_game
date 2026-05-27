@@ -1,6 +1,6 @@
 # API Routes Inventory
 
-Updated from code inspection on 2026-05-25.
+Updated from code inspection on 2026-05-27.
 
 Source: `backend/config/urls.py`, `backend/apps/game/urls.py`.
 
@@ -37,6 +37,10 @@ Dungeons:
 Inventory:
 
 - `GET /api/inventory`
+- `POST /api/inventory/items/repair-preview`
+- `POST /api/inventory/items/repair`
+- `POST /api/inventory/items/destroy-preview`
+- `POST /api/inventory/items/destroy`
 - `GET /api/inventory/items/<item_id>`
 - `GET /api/inventory/items/<item_id>/repair-preview`
 - `POST /api/inventory/items/<item_id>/repair`

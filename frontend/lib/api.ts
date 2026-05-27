@@ -111,8 +111,9 @@ export type ItemDetail = {
 };
 
 export type RepairPreview = {
-  item_id: number;
-  durability: { current: number; max: number; missing: number };
+  item_ids: number[];
+  items_count: number;
+  durability_missing: number;
   repair_cost_copper: number;
   user_money_copper: number;
   can_repair: boolean;
@@ -301,11 +302,29 @@ export const api = {
   item(itemId: number) {
     return apiFetch<AppTypes.ItemDetail>(`/inventory/items/${itemId}`);
   },
-  repairPreview(itemId: number) {
-    return apiFetch<AppTypes.RepairPreview>(`/inventory/items/${itemId}/repair-preview`);
+  repairPreview(itemIds: number[]) {
+    return apiFetch<AppTypes.RepairPreview>("/inventory/items/repair-preview", {
+      method: "POST",
+      body: JSON.stringify({ item_ids: itemIds }),
+    });
   },
-  repair(itemId: number) {
-    return apiFetch(`/inventory/items/${itemId}/repair`, { method: "POST" });
+  repair(itemIds: number[]) {
+    return apiFetch<AppTypes.RepairResponse>("/inventory/items/repair", {
+      method: "POST",
+      body: JSON.stringify({ item_ids: itemIds }),
+    });
+  },
+  destroyPreview(itemIds: number[]) {
+    return apiFetch<AppTypes.DestroyPreview>("/inventory/items/destroy-preview", {
+      method: "POST",
+      body: JSON.stringify({ item_ids: itemIds }),
+    });
+  },
+  destroy(itemIds: number[]) {
+    return apiFetch<AppTypes.DestroyResponse>("/inventory/items/destroy", {
+      method: "POST",
+      body: JSON.stringify({ item_ids: itemIds }),
+    });
   },
   equip(itemId: number) {
     return apiFetch<AppTypes.InventoryMutationResponse>(`/inventory/items/${itemId}/equip`, { method: "POST" });

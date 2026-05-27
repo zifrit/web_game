@@ -1,6 +1,6 @@
 # Backend Inventory
 
-Updated from code inspection on 2026-05-25.
+Updated from code inspection on 2026-05-27.
 
 ## Entrypoints
 
@@ -19,7 +19,8 @@ Updated from code inspection on 2026-05-25.
   `original`/`large`/`medium`/`small` files.
 - `users.py` - `UserManager`, custom `User`.
 - `characters.py` - `CharacterClass`, `Character`.
-- `config.py` - `RarityConfig`, `EquipmentSlotConfig`, `GameConfig`.
+- `config.py` - `RarityConfig` with stat/economy multipliers,
+  `EquipmentSlotConfig`, `GameConfig`.
 - `items.py` - `ItemTemplate`, `UserItem`, `RepairTransaction`.
 - `dungeons.py` - `DungeonLocation`, `DungeonLocationItemTemplate`,
   `DungeonRunStatus`, `DungeonRun`, `DungeonRunClaim`, `DungeonRunClaimItem`.
@@ -38,6 +39,13 @@ Updated from code inspection on 2026-05-25.
 - `InventoryService`
 - `ClaimResult`
 - `item_allowed_for_character`
+
+Inventory economy notes:
+
+- Repair and destroy prices use `RarityConfig.economy_multiplier`.
+- Bulk inventory endpoints are the source of truth for repair/destroy; single
+  item repair endpoints delegate to the bulk service with one id.
+- Destroy physically deletes `UserItem` rows and does not create a deletion log.
 
 ## Serializers and views
 

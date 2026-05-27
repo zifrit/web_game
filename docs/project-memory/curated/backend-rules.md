@@ -37,6 +37,14 @@ start dungeon run требуют явных transactional boundaries там, г�
 - 24 visible pack cells - только page/window size, не лимит вместимости.
 - Broken equipped items остаются equipped, не дают stats, блокируют start new
   dungeon runs и не могут быть equipped again до ремонта.
+- Ремонт и уничтожение предметов считаются в `InventoryService` через массовые
+  методы; одиночные сценарии передают один id в ту же bulk-логику.
+- Формула ремонта:
+  `rarity.economy_multiplier * ((durability_max - durability_current) * 2.5)`,
+  банковское округление до целого.
+- Формула уничтожения:
+  `rarity.economy_multiplier * (durability_current * 2)`, банковское
+  округление до целого. Уничтожение физически удаляет `UserItem`.
 
 ## Media assets
 

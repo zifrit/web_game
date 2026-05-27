@@ -67,6 +67,7 @@ class Command(BaseCommand):
                     "name": names["ru"],
                     "name_i18n": names,
                     "stat_multiplier": mult,
+                    "economy_multiplier": mult,
                     "min_item_level": min_level,
                     "max_item_level": max_level,
                     "min_stats_count": min_stats,

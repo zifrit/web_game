@@ -3,10 +3,11 @@ from __future__ import annotations
 import math
 import random
 from dataclasses import dataclass
+from decimal import Decimal, ROUND_HALF_EVEN
 from typing import Any
 
 from django.db import IntegrityError, transaction
-from django.db.models import F, Q, Value
+from django.db.models import F, Value, QuerySet
 from django.db.models.functions import Greatest
 from django.utils import timezone
 from rest_framework import serializers
@@ -53,10 +54,42 @@ DEFAULT_CONFIGS: dict[str, dict[str, Any]] = {
 }
 
 DEFAULT_RARITIES = {
-    "common": {"name": "Обычный", "stat_multiplier": 1.0, "min_item_level": 1, "max_item_level": 3, "min_stats_count": 1, "max_stats_count": 1},
-    "uncommon": {"name": "Необычный", "stat_multiplier": 1.25, "min_item_level": 2, "max_item_level": 5, "min_stats_count": 1, "max_stats_count": 2},
-    "rare": {"name": "Редкий", "stat_multiplier": 1.6, "min_item_level": 4, "max_item_level": 8, "min_stats_count": 2, "max_stats_count": 3},
-    "epic": {"name": "Эпический", "stat_multiplier": 2.2, "min_item_level": 7, "max_item_level": 10, "min_stats_count": 3, "max_stats_count": 3},
+    "common": {
+        "name": "Обычный",
+        "stat_multiplier": 1.0,
+        "economy_multiplier": Decimal("2.0"),
+        "min_item_level": 1,
+        "max_item_level": 3,
+        "min_stats_count": 1,
+        "max_stats_count": 1,
+    },
+    "uncommon": {
+        "name": "Необычный",
+        "stat_multiplier": 1.25,
+        "economy_multiplier": Decimal("2.5"),
+        "min_item_level": 2,
+        "max_item_level": 5,
+        "min_stats_count": 1,
+        "max_stats_count": 2,
+    },
+    "rare": {
+        "name": "Редкий",
+        "stat_multiplier": 1.6,
+        "economy_multiplier": Decimal("3.0"),
+        "min_item_level": 4,
+        "max_item_level": 8,
+        "min_stats_count": 2,
+        "max_stats_count": 3,
+    },
+    "epic": {
+        "name": "Эпический",
+        "stat_multiplier": 2.2,
+        "economy_multiplier": Decimal("3.5"),
+        "min_item_level": 7,
+        "max_item_level": 10,
+        "min_stats_count": 3,
+        "max_stats_count": 3,
+    },
 }
 
 
@@ -105,6 +138,7 @@ class GameBalanceService:
             return {
                 "name": db_config.name,
                 "stat_multiplier": db_config.stat_multiplier,
+                "economy_multiplier": db_config.economy_multiplier,
                 "min_item_level": db_config.min_item_level,
                 "max_item_level": db_config.max_item_level,
                 "min_stats_count": db_config.min_stats_count,
@@ -192,8 +226,15 @@ class GameFormulaService:
         """Считает стоимость ремонта недостающей прочности предмета."""
 
         missing = max(item.durability_max - item.durability_current, 0)
-        config = GameConfigService.get_config("repair_cost_config")
-        return int(missing * int(config.get("copper_per_durability", 10)))
+        multiplier = Decimal(str(GameBalanceService.rarity_config(item.rarity)["economy_multiplier"]))
+        return int((multiplier * Decimal(missing) * Decimal("2.5")).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN))
+
+    @staticmethod
+    def destroy_refund(item: UserItem) -> int:
+        """Считает возврат денег за уничтожение предмета."""
+
+        multiplier = Decimal(str(GameBalanceService.rarity_config(item.rarity)["economy_multiplier"]))
+        return int((multiplier * Decimal(item.durability_current) * Decimal("2")).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN))
 
     @staticmethod
     def durability_loss(is_success: bool) -> int:
@@ -247,7 +288,7 @@ class LootGenerationService:
         stats: dict[str, int] = {}
         for stat_key in selected_stats:
             stat_range = possible_stats[stat_key]
-            base_value = random.uniform(float(stat_range["min"]), float(stat_range["max"]))
+            base_value = random.randint(int(stat_range["min"]), int(stat_range["max"]))
             value = base_value * rarity_config["stat_multiplier"] * (1 + item_level * 0.08)
             stats[stat_key] = max(1, int(round(value)))
 
@@ -270,7 +311,7 @@ def item_allowed_for_character(item: ItemTemplate | UserItem, character: Charact
 
     item_type = item.item_type
     required_class = WEAPON_CLASS_BY_TYPE.get(item_type)
-    if required_class and required_class != character.character_class_id:
+    if required_class and required_class != character.character_class.key:
         return False
     allowed_classes = getattr(item, "allowed_classes", None)
     if allowed_classes is None and hasattr(item, "template"):
@@ -502,45 +543,131 @@ class InventoryService:
         stats["power"] = GameFormulaService.power_from_stats(stats)
         return {key: round(value, 2) for key, value in stats.items()}
 
-    @staticmethod
-    def repair_preview(user, item: UserItem) -> dict[str, Any]:
-        """Возвращает расчёт ремонта предмета без изменения баланса и прочности."""
+    @classmethod
+    def _owned_items(cls, user, item_ids: list[int] | tuple[int, ...], for_update: bool = False) -> QuerySet[UserItem]:
+        """Возвращает queryset выбранных предметов текущего пользователя."""
 
-        cost = GameFormulaService.repair_cost(item)
-        missing = max(item.durability_max - item.durability_current, 0)
+        qs = UserItem.objects.filter(owner_user=user, pk__in=item_ids).select_related("template", "equipped_character")
+        if for_update:
+            qs = qs.select_for_update()
+        return qs
+
+    @staticmethod
+    def _repair_preview_payload(user, items: list[UserItem]) -> dict[str, Any]:
+        repairable = [item for item in items if item.durability_current < item.durability_max]
+        total_missing = sum(max(item.durability_max - item.durability_current, 0) for item in repairable)
+        total_cost = sum(GameFormulaService.repair_cost(item) for item in repairable)
         return {
-            "item_id": item.id,
-            "durability": {"current": item.durability_current, "max": item.durability_max, "missing": missing},
-            "repair_cost_copper": cost,
+            "item_ids": [item.id for item in repairable],
+            "items_count": len(repairable),
+            "durability_missing": total_missing,
+            "repair_cost_copper": total_cost,
             "user_money_copper": user.money_copper,
-            "can_repair": missing > 0 and user.money_copper >= cost,
+            "can_repair": len(repairable) > 0 and user.money_copper >= total_cost,
         }
 
     @staticmethod
-    @transaction.atomic
-    def repair(user, item_id: int, locale=DEFAULT_LOCALE) -> tuple[UserItem, int, int]:
-        """Транзакционно ремонтирует предмет и списывает стоимость с пользователя."""
+    def _destroy_preview_payload(user, items: list[UserItem]) -> dict[str, Any]:
+        refund = sum(GameFormulaService.destroy_refund(item) for item in items)
+        return {
+            "item_ids": [item.id for item in items],
+            "items_count": len(items),
+            "refund_copper": refund,
+            "user_money_copper": user.money_copper,
+            "can_destroy": len(items) > 0,
+        }
 
-        item = UserItem.objects.select_for_update().get(pk=item_id, owner_user=user)
+    @classmethod
+    def repair_preview(cls, user, item_ids: list[int] | tuple[int, ...]) -> dict[str, Any]:
+        """Возвращает массовый расчёт ремонта без изменения баланса и прочности."""
+
+        qs = cls._owned_items(user, item_ids)
+        items = list(qs)
+        if not items:
+            raise serializers.ValidationError(message("no_items_selected", DEFAULT_LOCALE))
+        return cls._repair_preview_payload(user, items)
+
+    @classmethod
+    def destroy_preview(cls, user, item_ids: list[int] | tuple[int, ...]) -> dict[str, Any]:
+        """Возвращает массовый расчёт возврата за уничтожение предметов."""
+
+        qs = cls._owned_items(user, item_ids)
+        items = list(qs)
+        if not items:
+            raise serializers.ValidationError(message("no_items_selected", DEFAULT_LOCALE))
+        return cls._destroy_preview_payload(user, items)
+
+    @classmethod
+    @transaction.atomic
+    def repair_items(cls, user, item_ids: list[int] | tuple[int, ...], locale=DEFAULT_LOCALE) -> dict[str, Any]:
+        """Транзакционно ремонтирует выбранные предметы и списывает общую стоимость."""
+
         user = type(user).objects.select_for_update().get(pk=user.pk)
-        cost = GameFormulaService.repair_cost(item)
-        if item.durability_current >= item.durability_max:
-            raise serializers.ValidationError(message("item_fully_repaired", locale))
+        qs = cls._owned_items(user, item_ids, for_update=True)
+        items = list(qs)
+        repairable = [item for item in items if item.durability_current < item.durability_max]
+        if not repairable:
+            raise serializers.ValidationError(message("no_repair_needed", locale))
+        cost = sum(GameFormulaService.repair_cost(item) for item in repairable)
         if user.money_copper < cost:
             raise serializers.ValidationError(message("not_enough_money_repair", locale))
-        before = item.durability_current
+
         user.money_copper -= cost
-        item.durability_current = item.durability_max
         user.save(update_fields=["money_copper", "updated_at"])
-        item.save(update_fields=["durability_current", "updated_at"])
-        RepairTransaction.objects.create(
-            user=user,
-            item=item,
-            cost_copper=cost,
-            durability_before=before,
-            durability_after=item.durability_current,
-        )
-        return item, cost, user.money_copper
+        repair_transactions = []
+        for item in repairable:
+            before = item.durability_current
+            item_cost = GameFormulaService.repair_cost(item)
+            item.durability_current = item.durability_max
+            item.save(update_fields=["durability_current", "updated_at"])
+            repair_transactions.append(
+                RepairTransaction(
+                    user=user,
+                    item=item,
+                    cost_copper=item_cost,
+                    durability_before=before,
+                    durability_after=item.durability_current,
+                )
+            )
+        RepairTransaction.objects.bulk_create(repair_transactions)
+        return {
+            "success": True,
+            "item_ids": [item.id for item in repairable],
+            "items_count": len(repairable),
+            "repair_cost_copper": cost,
+            "remaining_money_copper": user.money_copper,
+        }
+
+    @classmethod
+    def repair(cls, user, item_id: int, locale=DEFAULT_LOCALE) -> tuple[UserItem, int, int]:
+        """Совместимая одиночная обёртка поверх массового ремонта."""
+
+        result = cls.repair_items(user, [item_id], locale=locale)
+        item = UserItem.objects.get(pk=item_id, owner_user=user)
+        return item, result["repair_cost_copper"], result["remaining_money_copper"]
+
+    @classmethod
+    @transaction.atomic
+    def destroy_items(cls, user, item_ids: list[int] | tuple[int, ...], locale=DEFAULT_LOCALE) -> dict[str, Any]:
+        """Транзакционно удаляет выбранные предметы и начисляет возврат."""
+
+        user = type(user).objects.select_for_update().get(pk=user.pk)
+        qs = cls._owned_items(user, item_ids, for_update=True)
+        items = list(qs)
+        if not items:
+            raise serializers.ValidationError(message("no_items_selected", locale))
+        refund = sum(GameFormulaService.destroy_refund(item) for item in items)
+        destroyed_ids = [item.id for item in items]
+        user.money_copper += refund
+        user.save(update_fields=["money_copper", "updated_at"])
+        UserItem.objects.filter(pk__in=destroyed_ids, owner_user=user).delete()
+        return {
+            "success": True,
+            "item_ids": destroyed_ids,
+            "items_count": len(destroyed_ids),
+            "refund_copper": refund,
+            "remaining_money_copper": user.money_copper,
+        }
 
     @staticmethod
     @transaction.atomic

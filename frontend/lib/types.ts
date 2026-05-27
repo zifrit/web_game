@@ -189,15 +189,40 @@ export type ItemDetail = {
 };
 
 export type RepairPreview = {
-  item_id: number;
-  durability: {
-    current: number;
-    max: number;
-    missing: number;
-  };
+  item_ids: number[];
+  items_count: number;
+  durability_missing: number;
   repair_cost_copper: number;
   user_money_copper: number;
   can_repair: boolean;
+};
+
+export type RepairResponse = {
+  success: boolean;
+  item_ids: number[];
+  items_count: number;
+  repair_cost_copper: number;
+  remaining_money_copper: number;
+  durability?: {
+    current: number;
+    max: number;
+  };
+};
+
+export type DestroyPreview = {
+  item_ids: number[];
+  items_count: number;
+  refund_copper: number;
+  user_money_copper: number;
+  can_destroy: boolean;
+};
+
+export type DestroyResponse = {
+  success: boolean;
+  item_ids: number[];
+  items_count: number;
+  refund_copper: number;
+  remaining_money_copper: number;
 };
 
 export type Leaderboard = {

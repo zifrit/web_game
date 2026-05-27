@@ -1,6 +1,6 @@
 # Frontend Inventory
 
-Updated from code inspection on 2026-05-25.
+Updated from code inspection on 2026-05-27.
 
 ## Entrypoints
 
@@ -56,9 +56,16 @@ Updated from code inspection on 2026-05-25.
 - `register`, `login`, `logout`, `me`
 - `characterClasses`, `createCharacter`, `character`
 - `dungeons`, `startRun`, `currentRun`, `claimRun`
-- `inventory`, `item`, `repairPreview`, `repair`, `equip`, `unequip`
+- `inventory`, `item`, `repairPreview`, `repair`, `destroyPreview`,
+  `destroy`, `equip`, `unequip`
 - `leaderboard`
 - `iconAssets`, `updateAvatar`
+
+Inventory screen notes:
+
+- Top inventory action enters multi-select mode instead of repairing all.
+- Repair and destroy use bulk API calls; detail panel sends a single selected
+  item id to the same bulk endpoints.
 
 ## Package scripts
 

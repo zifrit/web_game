@@ -8,6 +8,13 @@ from apps.game.serializers import InventorySerializer, UserItemDetailSerializer
 from apps.game.services import InventoryService
 
 
+def request_item_ids(request) -> list[int]:
+    """Читает список id предметов из JSON body."""
+
+    item_ids = request.data.get("item_ids", [])
+    return item_ids if isinstance(item_ids, list) else []
+
+
 class InventoryView(APIView):
     """API-ручка просмотра инвентаря и экипировки героя."""
 
@@ -45,7 +52,7 @@ class InventoryItemDetailView(APIView):
         """Возвращает характеристики, прочность, медиа и возможность экипировки."""
 
         item = get_object_or_404(UserItem.objects.select_related("template__media"), pk=item_id, owner_user=request.user)
-        character = getattr(request.user, "character", None)
+        character = Character.objects.select_related("character_class", "avatar_media").get(user=request.user)
         return Response(UserItemDetailSerializer(item, context={"request": request, "character": character}).data)
 
 
@@ -53,27 +60,57 @@ class InventoryItemRepairPreviewView(APIView):
     """API-ручка предварительного расчёта ремонта предмета."""
 
     def get(self, request, item_id):
-        """Возвращает стоимость ремонта и возможность оплатить его текущим балансом."""
+        """Возвращает стоимость ремонта одного предмета через массовую логику."""
 
-        item = get_object_or_404(UserItem, pk=item_id, owner_user=request.user)
-        return Response(InventoryService.repair_preview(request.user, item))
+        return Response(InventoryService.repair_preview(request.user, [item_id]))
 
 
 class InventoryItemRepairView(APIView):
     """API-ручка ремонта предмета пользователя."""
 
     def post(self, request, item_id):
-        """Ремонтирует предмет до максимальной прочности и списывает медные монеты."""
+        """Ремонтирует один предмет через массовую логику и списывает медные монеты."""
 
-        item, cost, remaining_money = InventoryService.repair(request.user, item_id, locale=request_locale(request))
-        return Response(
-            {
-                "success": True,
-                "repair_cost_copper": cost,
-                "durability": {"current": item.durability_current, "max": item.durability_max},
-                "remaining_money_copper": remaining_money,
-            }
-        )
+        result = InventoryService.repair_items(request.user, [item_id], locale=request_locale(request))
+        item = get_object_or_404(UserItem, pk=item_id, owner_user=request.user)
+        result["durability"] = {"current": item.durability_current, "max": item.durability_max}
+        return Response(result)
+
+
+class InventoryItemsRepairPreviewView(APIView):
+    """API-ручка предварительного расчёта массового ремонта предметов."""
+
+    def post(self, request):
+        """Возвращает стоимость ремонта выбранных предметов."""
+
+        return Response(InventoryService.repair_preview(request.user, request_item_ids(request)))
+
+
+class InventoryItemsRepairView(APIView):
+    """API-ручка массового ремонта предметов пользователя."""
+
+    def post(self, request):
+        """Ремонтирует выбранные предметы до максимальной прочности."""
+
+        return Response(InventoryService.repair_items(request.user, request_item_ids(request), locale=request_locale(request)))
+
+
+class InventoryItemsDestroyPreviewView(APIView):
+    """API-ручка предварительного расчёта уничтожения предметов."""
+
+    def post(self, request):
+        """Возвращает сумму возврата за уничтожение выбранных предметов."""
+
+        return Response(InventoryService.destroy_preview(request.user, request_item_ids(request)))
+
+
+class InventoryItemsDestroyView(APIView):
+    """API-ручка массового уничтожения предметов пользователя."""
+
+    def post(self, request):
+        """Удаляет выбранные предметы и начисляет возврат."""
+
+        return Response(InventoryService.destroy_items(request.user, request_item_ids(request), locale=request_locale(request)))
 
 
 class InventoryItemEquipView(APIView):

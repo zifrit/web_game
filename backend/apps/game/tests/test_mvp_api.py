@@ -199,13 +199,25 @@ class MvpApiTests(APITestCase):
 
         preview = self.client.get(f"/api/inventory/items/{item.id}/repair-preview")
         self.assertEqual(preview.status_code, status.HTTP_200_OK)
-        self.assertEqual(preview.data["repair_cost_copper"], 100)
+        self.assertEqual(preview.data["repair_cost_copper"], 25)
         self.assertEqual(preview.data["can_repair"], True)
 
         repair = self.client.post(f"/api/inventory/items/{item.id}/repair", {}, format="json")
         self.assertEqual(repair.status_code, status.HTTP_200_OK, repair.data)
         self.assertEqual(repair.data["durability"]["current"], 10)
-        self.assertEqual(repair.data["remaining_money_copper"], 400)
+        self.assertEqual(repair.data["remaining_money_copper"], 475)
+
+        item.durability_current = 6
+        item.save(update_fields=["durability_current"])
+        bulk_preview = self.client.post("/api/inventory/items/repair-preview", {"item_ids": [item.id]}, format="json")
+        self.assertEqual(bulk_preview.status_code, status.HTTP_200_OK, bulk_preview.data)
+        self.assertEqual(bulk_preview.data["items_count"], 1)
+        self.assertEqual(bulk_preview.data["repair_cost_copper"], 10)
+
+        bulk_repair = self.client.post("/api/inventory/items/repair", {"item_ids": [item.id]}, format="json")
+        self.assertEqual(bulk_repair.status_code, status.HTTP_200_OK, bulk_repair.data)
+        self.assertEqual(bulk_repair.data["repair_cost_copper"], 10)
+        self.assertEqual(bulk_repair.data["remaining_money_copper"], 465)
 
         replacement = UserItem.objects.create(
             owner_user=user,
@@ -232,6 +244,16 @@ class MvpApiTests(APITestCase):
         self.assertEqual(unequip.data["item"]["id"], replacement.id)
         self.assertIsNone(unequip.data["equipment"]["weapon"])
         self.assertEqual(unequip.data["stats"]["power"], unequip.data["new_power"])
+
+        destroy_preview = self.client.post("/api/inventory/items/destroy-preview", {"item_ids": [replacement.id]}, format="json")
+        self.assertEqual(destroy_preview.status_code, status.HTTP_200_OK, destroy_preview.data)
+        self.assertEqual(destroy_preview.data["items_count"], 1)
+        self.assertEqual(destroy_preview.data["refund_copper"], 20)
+
+        destroy = self.client.post("/api/inventory/items/destroy", {"item_ids": [replacement.id]}, format="json")
+        self.assertEqual(destroy.status_code, status.HTTP_200_OK, destroy.data)
+        self.assertEqual(destroy.data["refund_copper"], 20)
+        self.assertFalse(UserItem.objects.filter(pk=replacement.id).exists())
 
     def test_inventory_is_paginated_by_twenty_four_items(self):
         user = self.register_and_authenticate("pack@example.com")

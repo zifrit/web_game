@@ -78,7 +78,7 @@ class ItemTemplateAdmin(admin.ModelAdmin):
 
 @admin.register(RarityConfig)
 class RarityConfigAdmin(admin.ModelAdmin):
-    list_display = ("key", "name", "stat_multiplier", "min_item_level", "max_item_level", "is_active", "sort_order")
+    list_display = ("key", "name", "stat_multiplier", "economy_multiplier", "min_item_level", "max_item_level", "is_active", "sort_order")
 
 
 @admin.register(EquipmentSlotConfig)

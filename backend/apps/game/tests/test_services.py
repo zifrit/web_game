@@ -37,6 +37,24 @@ class GameFormulaTests(TestCase):
         self.assertEqual(GameFormulaService.success_chance(10_000, 1), 100)
         self.assertEqual(GameFormulaService.success_chance(1, 10_000), 35)
 
+    def test_item_economy_uses_bankers_rounding(self):
+        template = ItemTemplate.objects.filter(slot="weapon", item_type="sword").first()
+        item = UserItem.objects.create(
+            owner_user=self.user,
+            template=template,
+            name="Uncommon sword",
+            slot="weapon",
+            item_type="sword",
+            rarity="uncommon",
+            item_level=1,
+            stats={"attack": 5},
+            durability_current=9,
+            durability_max=10,
+        )
+
+        self.assertEqual(GameFormulaService.repair_cost(item), 3)
+        self.assertEqual(GameFormulaService.destroy_refund(item), 22)
+
 
 class DungeonLifecycleTests(TestCase):
     def setUp(self):
@@ -123,11 +141,34 @@ class InventoryTests(TestCase):
         self.user.money_copper = 100
         self.user.save(update_fields=["money_copper"])
 
-        repaired, cost, remaining = InventoryService.repair(self.user, item.id)
+        result = InventoryService.repair_items(self.user, [item.id])
+        item.refresh_from_db()
 
-        self.assertEqual(repaired.durability_current, 5)
-        self.assertEqual(cost, 40)
-        self.assertEqual(remaining, 60)
+        self.assertEqual(item.durability_current, 5)
+        self.assertEqual(result["repair_cost_copper"], 10)
+        self.assertEqual(result["remaining_money_copper"], 90)
+
+    def test_destroy_equipped_item_deletes_record_and_refunds_money(self):
+        item = self.create_item(equipped_character=self.character, durability_current=5, durability_max=10)
+        self.user.money_copper = 20
+        self.user.save(update_fields=["money_copper"])
+
+        result = InventoryService.destroy_items(self.user, [item.id])
+        self.user.refresh_from_db()
+
+        self.assertEqual(result["refund_copper"], 10)
+        self.assertEqual(self.user.money_copper, 30)
+        self.assertFalse(UserItem.objects.filter(pk=item.id).exists())
+
+    def test_bulk_preview_ignores_foreign_items(self):
+        foreign = User.objects.create_user("foreign@example.com", "strongpass123")
+        foreign_item = self.create_item(owner_user=foreign)
+        own_item = self.create_item(durability_current=6, durability_max=10)
+
+        preview = InventoryService.repair_preview(self.user, [foreign_item.id, own_item.id])
+
+        self.assertEqual(preview["item_ids"], [own_item.id])
+        self.assertEqual(preview["repair_cost_copper"], 10)
 
 
 class ApiSmokeTests(TestCase):
