@@ -547,7 +547,7 @@ class InventoryService:
     def _owned_items(cls, user, item_ids: list[int] | tuple[int, ...], for_update: bool = False) -> QuerySet[UserItem]:
         """Возвращает queryset выбранных предметов текущего пользователя."""
 
-        qs = UserItem.objects.filter(owner_user=user, pk__in=item_ids).select_related("template", "equipped_character")
+        qs = UserItem.objects.filter(owner_user=user, pk__in=item_ids).select_related("template")
         if for_update:
             qs = qs.select_for_update()
         return qs

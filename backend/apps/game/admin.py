@@ -71,7 +71,7 @@ class DungeonLocationAdmin(admin.ModelAdmin):
 
 @admin.register(ItemTemplate)
 class ItemTemplateAdmin(admin.ModelAdmin):
-    list_display = ("name", "slot", "item_type", "is_active", "min_durability", "max_durability")
+    list_display = ("name", "slot","allowed_classes", "item_type", "is_active", "min_durability", "max_durability")
     list_filter = ("slot", "item_type", "is_active")
     search_fields = ("name",)
 
