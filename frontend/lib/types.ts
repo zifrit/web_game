@@ -53,6 +53,7 @@ export type Character = {
   };
   class_key?: string;
   level: number;
+  rank?: string;
   experience: number;
   experience_to_next_level?: number;
   stats?: StatBlock;

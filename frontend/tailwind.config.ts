@@ -22,10 +22,14 @@ const config: Config = {
         "cyan-accent":  "#38BDF8",
 
         // Rarity colours (used as text/border)
-        "rarity-common":   "#9CA3AF",
-        "rarity-uncommon": "#22C55E",
-        "rarity-rare":     "#3B82F6",
-        "rarity-epic":     "#A855F7",
+        "rarity-f": "#94A3B8",
+        "rarity-e": "#22C55E",
+        "rarity-d": "#38BDF8",
+        "rarity-c": "#3B82F6",
+        "rarity-b": "#A855F7",
+        "rarity-a": "#F59E0B",
+        "rarity-s": "#EF4444",
+        "rarity-ex": "#F8FAFC",
 
         // Status
         success: "#22C55E",

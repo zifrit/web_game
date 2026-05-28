@@ -197,7 +197,7 @@ export function SettingsScreen() {
                     {character.name}
                   </div>
                   <div className="mono" style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 2 }}>
-                    {character.class?.name ?? "—"} · {t("common.levelShort")} {character.level}
+                    {character.class?.name ?? "—"} · {t("common.levelShort")} {character.level} · {t("common.rank")} {character.rank ?? "F"}
                   </div>
                 </>
               ) : (

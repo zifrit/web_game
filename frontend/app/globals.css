@@ -33,10 +33,14 @@
   --cyan:          #38BDF8;
 
   /* Rarity */
-  --rare-common:   #9CA3AF;
-  --rare-uncommon: #22C55E;
-  --rare-rare:     #3B82F6;
-  --rare-epic:     #A855F7;
+  --rare-f:  #94A3B8;
+  --rare-e:  #22C55E;
+  --rare-d:  #38BDF8;
+  --rare-c:  #3B82F6;
+  --rare-b:  #A855F7;
+  --rare-a:  #F59E0B;
+  --rare-s:  #EF4444;
+  --rare-ex: #F8FAFC;
 
   /* Status */
   --success: #22C55E;
@@ -505,15 +509,23 @@ button, input, select, textarea { font: inherit; }
   letter-spacing: 0.10em; text-transform: uppercase;
   background: var(--bg-2); border: 1px solid var(--line-soft); color: var(--text-dim);
 }
-.tag.rare-common   { color: var(--rare-common);   border-color: #475569; background: rgba(148,163,184,0.08); }
-.tag.rare-uncommon { color: var(--rare-uncommon); border-color: rgba(34,197,94,0.45);  background: rgba(34,197,94,0.10);  }
-.tag.rare-rare     { color: var(--rare-rare);     border-color: rgba(59,130,246,0.45); background: rgba(59,130,246,0.10); }
-.tag.rare-epic     { color: var(--rare-epic);     border-color: rgba(168,85,247,0.45); background: rgba(168,85,247,0.10); }
+.tag.rare-f  { color: var(--rare-f);  border-color: #475569; background: rgba(148,163,184,0.08); }
+.tag.rare-e  { color: var(--rare-e);  border-color: rgba(34,197,94,0.45);  background: rgba(34,197,94,0.10); }
+.tag.rare-d  { color: var(--rare-d);  border-color: rgba(56,189,248,0.45); background: rgba(56,189,248,0.10); }
+.tag.rare-c  { color: var(--rare-c);  border-color: rgba(59,130,246,0.45); background: rgba(59,130,246,0.10); }
+.tag.rare-b  { color: var(--rare-b);  border-color: rgba(168,85,247,0.45); background: rgba(168,85,247,0.10); }
+.tag.rare-a  { color: var(--rare-a);  border-color: rgba(245,158,11,0.45); background: rgba(245,158,11,0.10); }
+.tag.rare-s  { color: var(--rare-s);  border-color: rgba(239,68,68,0.45);  background: rgba(239,68,68,0.10); }
+.tag.rare-ex { color: var(--rare-ex); border-color: rgba(248,250,252,0.55); background: rgba(248,250,252,0.10); }
 
-.rarity-common   { color: var(--rare-common);   }
-.rarity-uncommon { color: var(--rare-uncommon); }
-.rarity-rare     { color: var(--rare-rare);     }
-.rarity-epic     { color: var(--rare-epic);     }
+.rarity-f  { color: var(--rare-f); }
+.rarity-e  { color: var(--rare-e); }
+.rarity-d  { color: var(--rare-d); }
+.rarity-c  { color: var(--rare-c); }
+.rarity-b  { color: var(--rare-b); }
+.rarity-a  { color: var(--rare-a); }
+.rarity-s  { color: var(--rare-s); }
+.rarity-ex { color: var(--rare-ex); }
 
 /* ── Heading ── */
 .heading-cinzel { font-family: var(--font-cinzel, 'Cinzel', 'Times New Roman', serif); letter-spacing: 0.02em; }
