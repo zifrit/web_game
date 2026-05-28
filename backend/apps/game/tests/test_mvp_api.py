@@ -83,6 +83,7 @@ class MvpApiTests(APITestCase):
         self.assertEqual(me.status_code, status.HTTP_200_OK)
         self.assertEqual(me.data["class"]["key"], "warrior")
         self.assertEqual(me.data["class"]["name"], "Warrior")
+        self.assertEqual(me.data["rank"], "F")
         self.assertIn("media", me.data["class"])
         self.assertTrue(me.data["class"]["media"]["medium_url"])
         self.assertIn("avatar", me.data)
@@ -118,7 +119,7 @@ class MvpApiTests(APITestCase):
         self.assertEqual(claim.data["status"], "CLAIMED")
         self.assertEqual(claim.data["is_success"], True)
         if claim.data["rewards"]["items"]:
-            self.assertTrue(claim.data["rewards"]["items"][0]["name"].startswith(("Common", "Uncommon", "Rare", "Epic")))
+            self.assertTrue(claim.data["rewards"]["items"][0]["name"].startswith(("F", "E", "D", "C", "B", "A", "S", "EX")))
         self.assertEqual(DungeonRunClaim.objects.count(), 1)
 
         second_claim = self.client.post(f"/api/dungeon-runs/{start.data['id']}/claim", {}, format="json")
@@ -131,15 +132,15 @@ class MvpApiTests(APITestCase):
         user.money_copper = 500
         user.save()
         character = user.character
-        template = ItemTemplate.objects.get(name="Ржавый меч")
+        template = ItemTemplate.objects.filter(slot="weapon", item_type="sword", rarity_key="f").first()
         item = UserItem.objects.create(
             owner_user=user,
             source_character=character,
             template=template,
-            name="Обычный ржавый меч",
+            name=template.name,
             slot=template.slot,
             item_type=template.item_type,
-            rarity="common",
+            rarity="f",
             item_level=1,
             stats={"attack": 5},
             durability_current=5,
@@ -158,14 +159,14 @@ class MvpApiTests(APITestCase):
         self.assertEqual(inventory.data["items_count"], 1)
         self.assertIsNone(inventory.data["slots_limit"])
         self.assertIsNone(inventory.data["free_slots"])
-        self.assertEqual(inventory.data["items"][0]["name"], "Common Rusty Sword")
+        self.assertEqual(inventory.data["items"][0]["name"], template.name_i18n["en"])
         self.assertIn("media", inventory.data["items"][0])
         self.assertTrue(inventory.data["items"][0]["media"]["medium_url"])
         self.assertNotIn("icon_url", inventory.data["items"][0])
 
         item_detail_ru = self.client.get(f"/api/inventory/items/{item.id}", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(item_detail_ru.status_code, status.HTTP_200_OK)
-        self.assertEqual(item_detail_ru.data["name"], "Обычный Ржавый меч")
+        self.assertEqual(item_detail_ru.data["name"], template.name_i18n["ru"])
         self.assertTrue(item_detail_ru.data["media"]["large_url"])
         self.assertEqual(set(item_detail_ru.data["media"].keys()), {"large_url", "medium_url", "small_url"})
 
@@ -226,7 +227,7 @@ class MvpApiTests(APITestCase):
             name="Новый меч",
             slot=template.slot,
             item_type=template.item_type,
-            rarity="common",
+            rarity="f",
             item_level=1,
             stats={"attack": 7},
             durability_current=10,
@@ -259,16 +260,16 @@ class MvpApiTests(APITestCase):
         user = self.register_and_authenticate("pack@example.com")
         self.create_character()
         character = user.character
-        template = ItemTemplate.objects.get(name="Ржавый меч")
+        template = ItemTemplate.objects.filter(slot="weapon", item_type="sword", rarity_key="f").first()
         for index in range(25):
             UserItem.objects.create(
                 owner_user=user,
                 source_character=character,
                 template=template,
-                name=f"Обычный ржавый меч {index}",
+                name=f"{template.name} {index}",
                 slot=template.slot,
                 item_type=template.item_type,
-                rarity="common",
+                rarity="f",
                 item_level=1,
                 stats={"attack": 5},
                 durability_current=10,

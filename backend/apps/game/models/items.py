@@ -33,6 +33,7 @@ class ItemTemplate(TimestampedModel):
     media = models.ForeignKey(MediaAsset, verbose_name="Медиа", null=True, blank=True, on_delete=models.SET_NULL)
     slot = models.CharField("Слот", max_length=20, choices=SLOT_CHOICES)
     item_type = models.CharField("Тип предмета", max_length=20, choices=ITEM_TYPE_CHOICES)
+    rarity_key = models.CharField("Ранг предмета", max_length=20, null=True, blank=True, db_index=True)
     allowed_classes = models.JSONField("Разрешённые классы", null=True, blank=True)
     possible_stats = models.JSONField("Возможные характеристики")
     min_durability = models.PositiveIntegerField("Минимальная прочность", default=10)

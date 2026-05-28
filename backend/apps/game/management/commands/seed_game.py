@@ -6,9 +6,10 @@ from apps.game.models import (
     DungeonLocationItemTemplate,
     EquipmentSlotConfig,
     GameConfig,
-    ItemTemplate,
     RarityConfig,
 )
+from apps.game.ranks import MAX_RANK_LEVEL, RANKS
+from apps.game.seed_data import seed_ranked_item_templates
 from apps.game.services import DEFAULT_CONFIGS
 
 
@@ -24,7 +25,8 @@ class Command(BaseCommand):
     help = "Seed MVP balance data for Browser Async RPG."
 
     def handle(self, *args, **options):
-        for key, value in DEFAULT_CONFIGS.items():
+        configs = {**DEFAULT_CONFIGS, "experience_curve_config": {**DEFAULT_CONFIGS["experience_curve_config"], "max_level": MAX_RANK_LEVEL}}
+        for key, value in configs.items():
             GameConfig.objects.update_or_create(
                 key=key,
                 defaults={"value": value, "description": "MVP central balance config", "is_active": True},
@@ -53,25 +55,20 @@ class Command(BaseCommand):
                 },
             )
 
-        rarities = [
-            ("common", {"en": "Common", "ru": "Обычный"}, 1.0, 1, 3, 1, 1),
-            ("uncommon", {"en": "Uncommon", "ru": "Необычный"}, 1.25, 2, 5, 1, 2),
-            ("rare", {"en": "Rare", "ru": "Редкий"}, 1.6, 4, 8, 2, 3),
-            ("epic", {"en": "Epic", "ru": "Эпический"}, 2.2, 7, 10, 3, 3),
-        ]
-        for index, rarity in enumerate(rarities):
-            key, names, mult, min_level, max_level, min_stats, max_stats = rarity
+        rank_keys = [rank.key for rank in RANKS]
+        RarityConfig.objects.exclude(key__in=rank_keys).update(is_active=False)
+        for index, rank in enumerate(RANKS):
             RarityConfig.objects.update_or_create(
-                key=key,
+                key=rank.key,
                 defaults={
-                    "name": names["ru"],
-                    "name_i18n": names,
-                    "stat_multiplier": mult,
-                    "economy_multiplier": mult,
-                    "min_item_level": min_level,
-                    "max_item_level": max_level,
-                    "min_stats_count": min_stats,
-                    "max_stats_count": max_stats,
+                    "name": rank.label,
+                    "name_i18n": {"en": rank.label, "ru": rank.label},
+                    "stat_multiplier": rank.stat_multiplier,
+                    "economy_multiplier": rank.economy_multiplier,
+                    "min_item_level": rank.min_level,
+                    "max_item_level": rank.max_level,
+                    "min_stats_count": rank.min_stats_count,
+                    "max_stats_count": rank.max_stats_count,
                     "sort_order": index,
                     "is_active": True,
                 },
@@ -91,37 +88,12 @@ class Command(BaseCommand):
                 defaults={"name": names["ru"], "name_i18n": names, "sort_order": index, "is_active": True},
             )
 
-        templates = [
-            ({"en": "Rusty Sword", "ru": "Ржавый меч"}, "weapon", "sword", ["warrior"], {"attack": {"min": 3, "max": 6}, "defense": {"min": 1, "max": 2}}),
-            ({"en": "Cracked Staff", "ru": "Треснувший посох"}, "weapon", "staff", ["mage"], {"attack": {"min": 4, "max": 8}, "critical_chance": {"min": 1, "max": 3}}),
-            ({"en": "Short Bow", "ru": "Короткий лук"}, "weapon", "bow", ["archer"], {"attack": {"min": 3, "max": 7}, "evasion": {"min": 1, "max": 2}}),
-            ({"en": "Old Dagger", "ru": "Старый кинжал"}, "weapon", "dagger", ["assassin"], {"attack": {"min": 3, "max": 7}, "critical_chance": {"min": 1, "max": 4}}),
-            ({"en": "Worn Helmet", "ru": "Потертый шлем"}, "helmet", "helmet", None, {"health": {"min": 5, "max": 12}, "defense": {"min": 1, "max": 3}}),
-            ({"en": "Leather Armor", "ru": "Кожаная броня"}, "armor", "armor", None, {"health": {"min": 8, "max": 18}, "defense": {"min": 2, "max": 5}}),
-            ({"en": "Travel Boots", "ru": "Дорожные ботинки"}, "boots", "boots", None, {"evasion": {"min": 1, "max": 3}, "defense": {"min": 1, "max": 2}}),
-            ({"en": "Copper Ring", "ru": "Медное кольцо"}, "ring", "ring", None, {"critical_chance": {"min": 1, "max": 3}, "health": {"min": 3, "max": 8}}),
-        ]
-        item_templates = []
-        for names, slot, item_type, allowed, stats in templates:
-            template, _ = ItemTemplate.objects.update_or_create(
-                name=names["ru"],
-                defaults={
-                    "name_i18n": names,
-                    "slot": slot,
-                    "item_type": item_type,
-                    "allowed_classes": allowed,
-                    "possible_stats": stats,
-                    "min_durability": 12,
-                    "max_durability": 24,
-                    "is_active": True,
-                },
-            )
-            item_templates.append(template)
+        item_templates = seed_ranked_item_templates()
 
         dungeons = [
-            ({"en": "Old Forest", "ru": "Старый лес"}, {"en": "A safe starting location.", "ru": "Безопасная стартовая локация."}, 15, 50, 5, 8, 30, 60, 10, {"common": 90, "uncommon": 10, "rare": 0, "epic": 0}),
-            ({"en": "Abandoned Trail", "ru": "Заброшенная тропа"}, {"en": "Light risk and quick farming.", "ru": "Легкий риск и быстрый фарм."}, 30, 70, 8, 14, 45, 90, 15, {"common": 70, "uncommon": 28, "rare": 2, "epic": 0}),
-            ({"en": "Damp Cave", "ru": "Сырая пещера"}, {"en": "A risky early dungeon.", "ru": "Рискованный early dungeon."}, 300, 100, 18, 35, 120, 220, 25, {"common": 45, "uncommon": 45, "rare": 9, "epic": 1}),
+            ({"en": "Old Forest", "ru": "Старый лес"}, {"en": "A safe starting location.", "ru": "Безопасная стартовая локация."}, 15, 50, 5, 8, 30, 60, 10, {"f": 90, "e": 10, "d": 0, "c": 0, "b": 0, "a": 0, "s": 0, "ex": 0}),
+            ({"en": "Abandoned Trail", "ru": "Заброшенная тропа"}, {"en": "Light risk and quick farming.", "ru": "Легкий риск и быстрый фарм."}, 30, 70, 8, 14, 45, 90, 15, {"f": 70, "e": 25, "d": 5, "c": 0, "b": 0, "a": 0, "s": 0, "ex": 0}),
+            ({"en": "Damp Cave", "ru": "Сырая пещера"}, {"en": "A risky early dungeon.", "ru": "Рискованный early dungeon."}, 300, 100, 18, 35, 120, 220, 25, {"f": 45, "e": 35, "d": 15, "c": 4, "b": 1, "a": 0, "s": 0, "ex": 0}),
         ]
         for index, data in enumerate(dungeons):
             names, descriptions, duration, power, exp_min, exp_max, money_min, money_max, drop, rarity = data

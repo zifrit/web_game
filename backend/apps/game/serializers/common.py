@@ -29,6 +29,8 @@ def localized_item_name(item: UserItem, locale: str, context: dict | None = None
         else:
             rarity = RarityConfig.objects.filter(key=item.rarity).first()
         rarity_name = localized_name(rarity, locale) if rarity else item.rarity.replace("_", " ").title()
+    if template_name.lower().startswith(f"{rarity_name.lower()} "):
+        return template_name
     return f"{rarity_name} {template_name}".strip()
 
 

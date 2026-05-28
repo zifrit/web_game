@@ -27,6 +27,7 @@ from .models import (
     RepairTransaction,
     UserItem,
 )
+from .ranks import MAX_RANK_LEVEL, RANKS
 
 STAT_KEYS = ("health", "attack", "defense", "critical_chance", "evasion")
 EQUIPMENT_SLOTS = ("weapon", "helmet", "armor", "boots", "ring")
@@ -48,48 +49,22 @@ DEFAULT_CONFIGS: dict[str, dict[str, Any]] = {
     },
     "success_chance_config": {"base": 75, "power_delta_multiplier": 1.5, "min": 35, "max": 100},
     "repair_cost_config": {"copper_per_durability": 10},
-    "experience_curve_config": {"base": 100, "exponent": 1.5, "max_level": 20},
+    "experience_curve_config": {"base": 100, "exponent": 1.5, "max_level": MAX_RANK_LEVEL},
     "stat_caps": {"critical_chance": 60, "evasion": 50},
     "durability_loss_config": {"success": 1, "failure": 5},
 }
 
 DEFAULT_RARITIES = {
-    "common": {
-        "name": "Обычный",
-        "stat_multiplier": 1.0,
-        "economy_multiplier": Decimal("2.0"),
-        "min_item_level": 1,
-        "max_item_level": 3,
-        "min_stats_count": 1,
-        "max_stats_count": 1,
-    },
-    "uncommon": {
-        "name": "Необычный",
-        "stat_multiplier": 1.25,
-        "economy_multiplier": Decimal("2.5"),
-        "min_item_level": 2,
-        "max_item_level": 5,
-        "min_stats_count": 1,
-        "max_stats_count": 2,
-    },
-    "rare": {
-        "name": "Редкий",
-        "stat_multiplier": 1.6,
-        "economy_multiplier": Decimal("3.0"),
-        "min_item_level": 4,
-        "max_item_level": 8,
-        "min_stats_count": 2,
-        "max_stats_count": 3,
-    },
-    "epic": {
-        "name": "Эпический",
-        "stat_multiplier": 2.2,
-        "economy_multiplier": Decimal("3.5"),
-        "min_item_level": 7,
-        "max_item_level": 10,
-        "min_stats_count": 3,
-        "max_stats_count": 3,
-    },
+    rank.key: {
+        "name": rank.label,
+        "stat_multiplier": rank.stat_multiplier,
+        "economy_multiplier": Decimal(rank.economy_multiplier),
+        "min_item_level": rank.min_level,
+        "max_item_level": rank.max_level,
+        "min_stats_count": rank.min_stats_count,
+        "max_stats_count": rank.max_stats_count,
+    }
+    for rank in RANKS
 }
 
 
@@ -271,6 +246,7 @@ class LootGenerationService:
         rarity_config = GameBalanceService.rarity_config(rarity)
         templates = ItemTemplate.objects.filter(
             is_active=True,
+            rarity_key=rarity,
             template_locations__location=location,
         ).distinct()
         templates = [template for template in templates if item_allowed_for_character(template, character)]
@@ -293,9 +269,10 @@ class LootGenerationService:
             stats[stat_key] = max(1, int(round(value)))
 
         durability_max = random.randint(template.min_durability, template.max_durability)
+        item_name = template.name if template.name.lower().startswith(f"{rarity_config['name'].lower()} ") else f"{rarity_config['name']} {template.name}"
         return {
             "template_id": template.id,
-            "name": f"{rarity_config['name']} {template.name}",
+            "name": item_name,
             "slot": template.slot,
             "item_type": template.item_type,
             "rarity": rarity,
