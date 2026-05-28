@@ -1,6 +1,6 @@
 # Backend Inventory
 
-Updated from code inspection on 2026-05-27.
+Updated from code inspection on 2026-05-28.
 
 ## Entrypoints
 
@@ -21,7 +21,8 @@ Updated from code inspection on 2026-05-27.
 - `characters.py` - `CharacterClass`, `Character`.
 - `config.py` - `RarityConfig` with stat/economy multipliers,
   `EquipmentSlotConfig`, `GameConfig`.
-- `items.py` - `ItemTemplate`, `UserItem`, `RepairTransaction`.
+- `items.py` - `ItemTemplate` with `rarity_key`, `UserItem`,
+  `RepairTransaction`.
 - `dungeons.py` - `DungeonLocation`, `DungeonLocationItemTemplate`,
   `DungeonRunStatus`, `DungeonRun`, `DungeonRunClaim`, `DungeonRunClaimItem`.
 
@@ -42,6 +43,10 @@ Updated from code inspection on 2026-05-27.
 
 Inventory economy notes:
 
+- `apps.game.ranks` maps level ranges to F/E/D/C/B/A/S/EX for both hero level
+  and item level; current hero max level is 80.
+- `LootGenerationService` filters item templates by selected `rarity_key` so
+  generated item level and template rank stay aligned.
 - Repair and destroy prices use `RarityConfig.economy_multiplier`.
 - Bulk inventory endpoints are the source of truth for repair/destroy; single
   item repair endpoints delegate to the bulk service with one id.
@@ -80,6 +85,8 @@ View domains:
 
 - `backend/apps/game/admin.py` registers game/balance/admin models.
 - `backend/apps/game/management/commands/seed_game.py` seeds MVP data.
+- `backend/apps/game/management/commands/seed_item_templates.py` idempotently
+  creates 176 ranked F-EX item templates; `seed_game` calls the same helper.
 - `backend/apps/game/management/commands/generate_game_images.py` generates
   local webp image variants from CSV prompts through Polza.ai; it has dry-run,
   limit, max-images and retry behavior.

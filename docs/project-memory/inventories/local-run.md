@@ -1,6 +1,6 @@
 # Local Run Inventory
 
-Updated from code inspection and project memory consolidation on 2026-05-25.
+Updated from code inspection and project memory consolidation on 2026-05-28.
 
 ## Docker run
 
@@ -53,6 +53,8 @@ cd backend
 uv sync
 uv run python manage.py migrate
 uv run python manage.py seed_game
+# Optional standalone refresh; seed_game already calls the same helper.
+uv run python manage.py seed_item_templates
 uv run python manage.py runserver
 ```
 

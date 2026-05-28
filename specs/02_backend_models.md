@@ -190,6 +190,7 @@ name
 media_id nullable
 slot
 item_type
+rarity_key nullable
 allowed_classes JSON nullable
 possible_stats JSON
 min_durability
@@ -263,6 +264,7 @@ created_at
 ## 12. rarity_configs
 
 Настройки редкости предметов.
+В текущем балансе это буквенные ранги F, E, D, C, B, A, S, EX.
 
 ```text
 key

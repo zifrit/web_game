@@ -32,6 +32,11 @@ start dungeon run требуют явных transactional boundaries там, г�
 
 ## Inventory and durability
 
+- `rarity` now means F/E/D/C/B/A/S/EX rank. Hero and item level rank ranges are
+  centralized in `apps.game.ranks`: 1-10 F through 71-80 EX.
+- Ranked item templates are command-seeded, not data-migrated:
+  `seed_item_templates` creates 176 active templates and `seed_game` calls the
+  same helper.
 - Inventory capacity в MVP unlimited.
 - `slots_limit` и `free_slots` равны `null`, когда capacity unlimited.
 - 24 visible pack cells - только page/window size, не лимит вместимости.
