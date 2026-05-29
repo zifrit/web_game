@@ -89,14 +89,17 @@ class Command(BaseCommand):
             )
 
         item_templates = seed_ranked_item_templates()
+        templates_by_rank = {}
+        for template in item_templates:
+            templates_by_rank.setdefault(template.rarity_key, []).append(template)
 
         dungeons = [
-            ({"en": "Old Forest", "ru": "Старый лес"}, {"en": "A safe starting location.", "ru": "Безопасная стартовая локация."}, 15, 50, 5, 8, 30, 60, 10, {"f": 90, "e": 10, "d": 0, "c": 0, "b": 0, "a": 0, "s": 0, "ex": 0}),
-            ({"en": "Abandoned Trail", "ru": "Заброшенная тропа"}, {"en": "Light risk and quick farming.", "ru": "Легкий риск и быстрый фарм."}, 30, 70, 8, 14, 45, 90, 15, {"f": 70, "e": 25, "d": 5, "c": 0, "b": 0, "a": 0, "s": 0, "ex": 0}),
-            ({"en": "Damp Cave", "ru": "Сырая пещера"}, {"en": "A risky early dungeon.", "ru": "Рискованный early dungeon."}, 300, 100, 18, 35, 120, 220, 25, {"f": 45, "e": 35, "d": 15, "c": 4, "b": 1, "a": 0, "s": 0, "ex": 0}),
+            ({"en": "Old Forest", "ru": "Старый лес"}, {"en": "A safe starting location.", "ru": "Безопасная стартовая локация."}, 15, 50, 5, 8, 30, 60, 10, {"f": 90, "e": 10}),
+            ({"en": "Abandoned Trail", "ru": "Заброшенная тропа"}, {"en": "Light risk and quick farming.", "ru": "Легкий риск и быстрый фарм."}, 30, 70, 8, 14, 45, 90, 15, {"f": 70, "e": 25, "d": 5}),
+            ({"en": "Damp Cave", "ru": "Сырая пещера"}, {"en": "A risky early dungeon.", "ru": "Рискованный early dungeon."}, 300, 100, 18, 35, 120, 220, 25, {"f": 45, "e": 35, "d": 15, "c": 4, "b": 1}),
         ]
         for index, data in enumerate(dungeons):
-            names, descriptions, duration, power, exp_min, exp_max, money_min, money_max, drop, rarity = data
+            names, descriptions, duration, power, exp_min, exp_max, money_min, money_max, drop, template_chances = data
             dungeon, _ = DungeonLocation.objects.update_or_create(
                 name=names["ru"],
                 defaults={
@@ -110,12 +113,19 @@ class Command(BaseCommand):
                     "money_min_copper": money_min,
                     "money_max_copper": money_max,
                     "item_drop_chance": drop,
-                    "rarity_chances": rarity,
                     "is_active": True,
                     "sort_order": index,
                 },
             )
-            for template in item_templates:
-                DungeonLocationItemTemplate.objects.get_or_create(location=dungeon, item_template=template)
+            active_template_ids = []
+            for rarity_key, chance in template_chances.items():
+                for template in templates_by_rank.get(rarity_key, []):
+                    DungeonLocationItemTemplate.objects.update_or_create(
+                        location=dungeon,
+                        item_template=template,
+                        defaults={"chance": chance},
+                    )
+                    active_template_ids.append(template.id)
+            DungeonLocationItemTemplate.objects.filter(location=dungeon).exclude(item_template_id__in=active_template_ids).delete()
 
         self.stdout.write(self.style.SUCCESS("Seeded MVP game data."))

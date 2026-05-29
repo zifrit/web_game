@@ -103,9 +103,18 @@ experience_max
 money_min_copper
 money_max_copper
 item_drop_chance
-rarity_chances JSON
 is_active
 sort_order
+created_at
+updated_at
+```
+
+### DungeonLocationItemTemplate
+
+```text
+location_id
+item_template_id
+chance PositiveSmallInteger 1..100
 created_at
 updated_at
 ```

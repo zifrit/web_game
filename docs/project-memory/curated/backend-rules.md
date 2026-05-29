@@ -34,6 +34,9 @@ start dungeon run требуют явных transactional boundaries там, г�
 
 - `rarity` now means F/E/D/C/B/A/S/EX rank. Hero and item level rank ranges are
   centralized in `apps.game.ranks`: 1-10 F through 71-80 EX.
+- Dungeon loot uses `DungeonLocation.item_drop_chance` as the first item roll,
+  then weighted `DungeonLocationItemTemplate.chance` links to choose the
+  concrete `ItemTemplate`; rarity comes from `ItemTemplate.rarity_key`.
 - Ranked item templates are command-seeded, not data-migrated:
   `seed_item_templates` creates 176 active templates and `seed_game` calls the
   same helper.

@@ -181,11 +181,12 @@ bow    -> archer
 ```text
 1. Выбирается dungeon location.
 2. Проверяется item_drop_chance.
-3. Если предмет выпал — выбирается rank/rarity по rarity_chances локации.
-4. Выбираются доступные item_templates через dungeon_location_item_templates и
-   `ItemTemplate.rarity_key`.
-5. Templates фильтруются по классу героя.
-6. Выбирается item_template.
+3. Если предмет выпал — выбираются связи `DungeonLocationItemTemplate` этой
+   локации с активными `ItemTemplate`.
+4. Templates фильтруются по классу героя.
+5. Выбирается `item_template` weighted random по
+   `DungeonLocationItemTemplate.chance`.
+6. Rank/rarity берётся из `ItemTemplate.rarity_key`.
 7. По rank/rarity выбирается item_level.
 8. По rank/rarity выбирается количество статов.
 9. Из possible_stats шаблона выбираются 1–3 характеристики.

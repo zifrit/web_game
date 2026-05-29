@@ -23,7 +23,8 @@ Updated from code inspection on 2026-05-28.
   `EquipmentSlotConfig`, `GameConfig`.
 - `items.py` - `ItemTemplate` with `rarity_key`, `UserItem`,
   `RepairTransaction`.
-- `dungeons.py` - `DungeonLocation`, `DungeonLocationItemTemplate`,
+- `dungeons.py` - `DungeonLocation`, `DungeonLocationItemTemplate` with
+  per-location item `chance` weights,
   `DungeonRunStatus`, `DungeonRun`, `DungeonRunClaim`, `DungeonRunClaimItem`.
 
 `models/__init__.py` exports public model classes and `UserManager`.
@@ -45,8 +46,9 @@ Inventory economy notes:
 
 - `apps.game.ranks` maps level ranges to F/E/D/C/B/A/S/EX for both hero level
   and item level; current hero max level is 80.
-- `LootGenerationService` filters item templates by selected `rarity_key` so
-  generated item level and template rank stay aligned.
+- `LootGenerationService` first rolls `DungeonLocation.item_drop_chance`, then
+  chooses a linked `DungeonLocationItemTemplate` by `chance`; generated item
+  level and template rank stay aligned through `ItemTemplate.rarity_key`.
 - Repair and destroy prices use `RarityConfig.economy_multiplier`.
 - Bulk inventory endpoints are the source of truth for repair/destroy; single
   item repair endpoints delegate to the bulk service with one id.

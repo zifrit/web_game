@@ -1,10 +1,13 @@
+from unittest.mock import patch
+
+from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.game.management.commands.seed_game import Command as SeedCommand
-from apps.game.models import CharacterClass, DungeonLocation, DungeonRun, ItemTemplate, RarityConfig, User, UserItem
+from apps.game.models import CharacterClass, DungeonLocation, DungeonLocationItemTemplate, DungeonRun, ItemTemplate, RarityConfig, User, UserItem
 from apps.game.ranks import RANKS, rank_for_level
 from apps.game.services import DungeonRunService, GameBalanceService, GameFormulaService, InventoryService, LootGenerationService
 
@@ -270,12 +273,106 @@ class RankedSeedTests(TestCase):
         location.item_drop_chance = 100
 
         for rank in RANKS:
-            location.rarity_chances = {candidate.key: 100 if candidate.key == rank.key else 0 for candidate in RANKS}
+            DungeonLocationItemTemplate.objects.filter(location=location).delete()
+            template = ItemTemplate.objects.filter(rarity_key=rank.key, item_type="sword", is_active=True).first()
+            DungeonLocationItemTemplate.objects.create(location=location, item_template=template, chance=100)
             draft = LootGenerationService.generate_item_reward(character, location)
             self.assertIsNotNone(draft)
             self.assertEqual(draft["rarity"], rank.key)
             self.assertGreaterEqual(draft["item_level"], rank.min_level)
             self.assertLessEqual(draft["item_level"], rank.max_level)
+
+    def test_seed_game_links_only_nonzero_rank_templates_to_locations(self):
+        old_forest = DungeonLocation.objects.get(name="Старый лес")
+        ranks = set(old_forest.location_item_templates.values_list("item_template__rarity_key", flat=True))
+
+        self.assertEqual(ranks, {"f", "e"})
+        self.assertFalse(old_forest.location_item_templates.filter(chance=0).exists())
+
+    def test_location_item_template_chance_must_be_between_one_and_one_hundred(self):
+        location = DungeonLocation.objects.get(name="Старый лес")
+        template = ItemTemplate.objects.filter(rarity_key="f", item_type="sword", is_active=True).first()
+
+        with self.assertRaises(ValidationError):
+            DungeonLocationItemTemplate(location=location, item_template=template, chance=0).full_clean()
+
+        with self.assertRaises(ValidationError):
+            DungeonLocationItemTemplate(location=location, item_template=template, chance=101).full_clean()
+
+    def test_active_drop_location_requires_active_templates(self):
+        location = DungeonLocation.objects.get(name="Старый лес")
+        DungeonLocationItemTemplate.objects.filter(location=location).delete()
+        location.item_drop_chance = 100
+
+        with self.assertRaises(ValidationError):
+            location.full_clean()
+
+    def test_item_drop_chance_zero_prevents_loot(self):
+        user = User.objects.create_user("no-drop@example.com", "strongpass123")
+        character = GameBalanceService.create_character(user, "NoDrop", CharacterClass.objects.get(key="warrior"))
+        location = DungeonLocation.objects.get(name="Старый лес")
+        location.item_drop_chance = 0
+
+        self.assertIsNone(LootGenerationService.generate_item_reward(character, location))
+
+    def test_loot_uses_only_templates_linked_to_location(self):
+        user = User.objects.create_user("linked@example.com", "strongpass123")
+        character = GameBalanceService.create_character(user, "Linked", CharacterClass.objects.get(key="warrior"))
+        location = DungeonLocation.objects.get(name="Старый лес")
+        template = ItemTemplate.objects.filter(rarity_key="f", item_type="sword", is_active=True).first()
+        unlinked = ItemTemplate.objects.filter(rarity_key="e", item_type="sword", is_active=True).first()
+        DungeonLocationItemTemplate.objects.filter(location=location).delete()
+        DungeonLocationItemTemplate.objects.create(location=location, item_template=template, chance=100)
+        location.item_drop_chance = 100
+
+        for _ in range(5):
+            draft = LootGenerationService.generate_item_reward(character, location)
+            self.assertEqual(draft["template_id"], template.id)
+            self.assertNotEqual(draft["template_id"], unlinked.id)
+
+    def test_loot_filters_templates_disallowed_for_character(self):
+        user = User.objects.create_user("filtered@example.com", "strongpass123")
+        character = GameBalanceService.create_character(user, "Filtered", CharacterClass.objects.get(key="warrior"))
+        location = DungeonLocation.objects.get(name="Старый лес")
+        staff = ItemTemplate.objects.filter(rarity_key="f", item_type="staff", is_active=True).first()
+        DungeonLocationItemTemplate.objects.filter(location=location).delete()
+        DungeonLocationItemTemplate.objects.create(location=location, item_template=staff, chance=100)
+        location.item_drop_chance = 100
+
+        self.assertIsNone(LootGenerationService.generate_item_reward(character, location))
+
+    def test_link_chance_weights_template_selection(self):
+        user = User.objects.create_user("weighted@example.com", "strongpass123")
+        character = GameBalanceService.create_character(user, "Weighted", CharacterClass.objects.get(key="warrior"))
+        location = DungeonLocation.objects.get(name="Старый лес")
+        low = ItemTemplate.objects.filter(rarity_key="f", item_type="sword", is_active=True).first()
+        high = ItemTemplate.objects.filter(rarity_key="e", item_type="sword", is_active=True).first()
+        DungeonLocationItemTemplate.objects.filter(location=location).delete()
+        DungeonLocationItemTemplate.objects.create(location=location, item_template=low, chance=1)
+        DungeonLocationItemTemplate.objects.create(location=location, item_template=high, chance=99)
+        location.item_drop_chance = 100
+
+        with patch("apps.game.services.random.uniform", side_effect=[0, 50]):
+            draft = LootGenerationService.generate_item_reward(character, location)
+
+        self.assertEqual(draft["template_id"], high.id)
+
+    def test_loot_generation_loads_location_links_without_n_plus_one(self):
+        user = User.objects.create_user("queries@example.com", "strongpass123")
+        character = GameBalanceService.create_character(user, "Queries", CharacterClass.objects.get(key="warrior"))
+        location = DungeonLocation.objects.get(name="Старый лес")
+        templates = list(ItemTemplate.objects.filter(rarity_key="f", item_type="sword", is_active=True)[:3])
+        DungeonLocationItemTemplate.objects.filter(location=location).delete()
+        for template in templates:
+            DungeonLocationItemTemplate.objects.create(location=location, item_template=template, chance=10)
+        location.item_drop_chance = 100
+        GameBalanceService.rarity_config("f")
+
+        with patch("apps.game.services.random.uniform", side_effect=[0, 0]):
+            with self.assertNumQueries(1):
+                draft = LootGenerationService.generate_item_reward(character, location)
+
+        self.assertEqual(draft["template_id"], templates[0].id)
 
 
 class ApiSmokeTests(TestCase):

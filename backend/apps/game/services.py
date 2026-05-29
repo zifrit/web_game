@@ -17,6 +17,7 @@ from .models import (
     Character,
     CharacterClass,
     DungeonLocation,
+    DungeonLocationItemTemplate,
     DungeonRun,
     DungeonRunClaim,
     DungeonRunClaimItem,
@@ -266,17 +267,17 @@ class LootGenerationService:
     """Сервис генерации предметных наград за успешные подземелья."""
 
     @staticmethod
-    def _weighted_choice(chances: dict[str, float]) -> str:
-        """Выбирает ключ из словаря весов случайным взвешенным броском."""
+    def _weighted_choice(weighted_items: list[tuple[Any, float]]) -> Any:
+        """Выбирает элемент из списка весов случайным взвешенным броском."""
 
-        total = sum(float(value) for value in chances.values())
+        total = sum(float(value) for _, value in weighted_items)
         roll = random.uniform(0, total)
         upto = 0.0
-        for key, value in chances.items():
+        for item, value in weighted_items:
             upto += float(value)
             if roll <= upto:
-                return key
-        return next(reversed(chances))
+                return item
+        return weighted_items[-1][0]
 
     @classmethod
     def generate_item_reward(cls, character: Character, location: DungeonLocation) -> dict[str, Any] | None:
@@ -285,18 +286,19 @@ class LootGenerationService:
         if random.uniform(0, 100) > location.item_drop_chance:
             return None
 
-        rarity = cls._weighted_choice(location.rarity_chances)
-        rarity_config = GameBalanceService.rarity_config(rarity)
-        templates = ItemTemplate.objects.filter(
-            is_active=True,
-            rarity_key=rarity,
-            template_locations__location=location,
-        ).distinct()
-        templates = [template for template in templates if item_allowed_for_character(template, character)]
-        if not templates:
+        links = (
+            DungeonLocationItemTemplate.objects.filter(location=location, item_template__is_active=True)
+            .select_related("item_template")
+            .order_by("id")
+        )
+        weighted_links = [(link, link.chance) for link in links if item_allowed_for_character(link.item_template, character)]
+        if not weighted_links:
             return None
 
-        template = random.choice(templates)
+        link = cls._weighted_choice(weighted_links)
+        template = link.item_template
+        rarity = template.rarity_key
+        rarity_config = GameBalanceService.rarity_config(rarity)
         item_level = random.randint(rarity_config["min_item_level"], rarity_config["max_item_level"])
         possible_stats = template.possible_stats or {}
         count = min(
