@@ -1,7 +1,8 @@
 from urllib.parse import urlparse
 
 from apps.game.i18n import request_locale, translate
-from apps.game.models import RarityConfig, UserItem
+from apps.game.models import UserItem
+from apps.game.services import RarityConfigCache
 
 
 def serializer_locale(context):
@@ -22,12 +23,7 @@ def localized_item_name(item: UserItem, locale: str, context: dict | None = None
     template_name = localized_name(item.template, locale) if getattr(item, "template", None) else item.name
     rarity_name = translate(getattr(getattr(item, "_rarity_config", None), "name_i18n", None), locale, "")
     if not rarity_name:
-        if context is not None:
-            if "rarity_configs" not in context:
-                context["rarity_configs"] = {rc.key: rc for rc in RarityConfig.objects.all()}
-            rarity = context["rarity_configs"].get(item.rarity)
-        else:
-            rarity = RarityConfig.objects.filter(key=item.rarity).first()
+        rarity = RarityConfigCache.all_active().get(item.rarity)
         rarity_name = localized_name(rarity, locale) if rarity else item.rarity.replace("_", " ").title()
     if template_name.lower().startswith(f"{rarity_name.lower()} "):
         return template_name

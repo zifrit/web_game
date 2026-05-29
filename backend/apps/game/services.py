@@ -68,6 +68,44 @@ DEFAULT_RARITIES = {
 }
 
 
+_GAME_CONFIG_CACHE: dict[str, dict[str, Any]] = {}
+_RARITY_CONFIG_CACHE: dict[str, RarityConfig] | None = None
+
+
+def _invalidate_game_config_cache(*_args, **_kwargs) -> None:
+    """Сбрасывает кэш игровых настроек при изменении или удалении записей."""
+
+    _GAME_CONFIG_CACHE.clear()
+
+
+def _invalidate_rarity_config_cache(*_args, **_kwargs) -> None:
+    """Сбрасывает кэш конфигурации редкостей при изменении записей."""
+
+    global _RARITY_CONFIG_CACHE
+    _RARITY_CONFIG_CACHE = None
+
+
+class RarityConfigCache:
+    """Кэш активных RarityConfig в памяти процесса с инвалидацией по сигналу."""
+
+    @staticmethod
+    def all_active() -> dict[str, RarityConfig]:
+        """Возвращает словарь активных редкостей по ключу, кэшированный в памяти."""
+
+        global _RARITY_CONFIG_CACHE
+        if _RARITY_CONFIG_CACHE is None:
+            _RARITY_CONFIG_CACHE = {
+                rc.key: rc for rc in RarityConfig.objects.filter(is_active=True)
+            }
+        return _RARITY_CONFIG_CACHE
+
+    @staticmethod
+    def all_ordered() -> list[RarityConfig]:
+        """Возвращает активные редкости, отсортированные по sort_order."""
+
+        return sorted(RarityConfigCache.all_active().values(), key=lambda rc: rc.sort_order)
+
+
 class GameConfigService:
     """Сервис чтения игровых настроек с дефолтами и переопределениями из БД."""
 
@@ -75,10 +113,14 @@ class GameConfigService:
     def get_config(key: str) -> dict[str, Any]:
         """Возвращает активную настройку по ключу, объединяя БД с DEFAULT_CONFIGS."""
 
+        cached = _GAME_CONFIG_CACHE.get(key)
+        if cached is not None:
+            return cached.copy()
         value = DEFAULT_CONFIGS.get(key, {}).copy()
         db_config = GameConfig.objects.filter(key=key, is_active=True).first()
         if db_config and isinstance(db_config.value, dict):
             value.update(db_config.value)
+        _GAME_CONFIG_CACHE[key] = value.copy()
         return value
 
 
@@ -108,7 +150,8 @@ class GameBalanceService:
     def rarity_config(rarity: str) -> dict[str, Any]:
         """Возвращает параметры редкости из БД или встроенного набора по умолчанию."""
 
-        db_config = RarityConfig.objects.filter(key=rarity, is_active=True).first()
+        configs = RarityConfigCache.all_active()
+        db_config = configs.get(rarity)
         if db_config:
             return {
                 "name": db_config.name,
