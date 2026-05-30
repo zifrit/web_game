@@ -1,6 +1,6 @@
 # Backend Inventory
 
-Updated from code inspection on 2026-05-28.
+Updated from code inspection on 2026-05-30.
 
 ## Entrypoints
 
@@ -10,6 +10,8 @@ Updated from code inspection on 2026-05-28.
 - `backend/config/urls.py` - `admin/` and `/api/`.
 - `backend/config/celery.py` - Celery app setup.
 - `backend/apps/game/urls.py` - public API routes.
+- `backend/apps/game/two_factor.py` - encrypted TOTP secret helpers, QR data
+  URL generation, login challenge signing and replay-aware TOTP verification.
 - `backend/apps/game/image_generation.py` - parsing/resizing/saving helpers for
   generated image assets.
 
@@ -17,7 +19,8 @@ Updated from code inspection on 2026-05-28.
 
 - `base.py` - `TimestampedModel`, `MediaAsset` with nullable `asset_type` and
   `original`/`large`/`medium`/`small` files.
-- `users.py` - `UserManager`, custom `User`.
+- `users.py` - `UserManager`, custom `User`, `UserTwoFactor` for opt-in TOTP
+  protection.
 - `characters.py` - `CharacterClass`, `Character`.
 - `config.py` - `RarityConfig` with stat/economy multipliers,
   `EquipmentSlotConfig`, `GameConfig`.
@@ -72,6 +75,11 @@ legacy `icon_url`.
 Auth views also include avatar media endpoints: `IconAssetsView` lists
 `asset_type=icons` assets and `UserAvatarUpdateView` updates `User.avatar_media`
 only to an icon asset.
+
+Auth views include TOTP endpoints. Protected password login returns a short-lived
+`challenge_token`; `POST /api/auth/login/totp` verifies the code before issuing
+JWT tokens. Settings-driven setup uses pending secrets and only flips
+`totp_protection=true` after confirmation; disable requires password + TOTP.
 
 View domains:
 

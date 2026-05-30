@@ -1,6 +1,6 @@
 # API Routes Inventory
 
-Updated from code inspection on 2026-05-27.
+Updated from code inspection on 2026-05-30.
 
 Source: `backend/config/urls.py`, `backend/apps/game/urls.py`.
 
@@ -14,8 +14,13 @@ Auth:
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `POST /api/auth/login/totp`
 - `POST /api/auth/refresh`
 - `GET /api/auth/me`
+- `GET /api/auth/two-factor`
+- `POST /api/auth/two-factor/setup`
+- `POST /api/auth/two-factor/confirm`
+- `POST /api/auth/two-factor/disable`
 - `PATCH /api/auth/me/avatar`
 - `POST /api/auth/logout`
 
