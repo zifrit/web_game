@@ -12,6 +12,7 @@ export type ApiUser = {
   money_copper?: number;
   has_character: boolean;
   avatar?: AppTypes.MediaAssetUrls | null;
+  two_factor?: AppTypes.TwoFactorStatus;
 };
 
 export type AuthPayload = Tokens & { user: ApiUser };
@@ -253,9 +254,15 @@ export const api = {
     }, false);
   },
   login(email: string, password: string) {
-    return apiFetch<AppTypes.AuthResponse>("/auth/login", {
+    return apiFetch<AppTypes.LoginResponse>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
+    }, false);
+  },
+  verifyLoginTotp(challengeToken: string, code: string) {
+    return apiFetch<AppTypes.AuthResponse>("/auth/login/totp", {
+      method: "POST",
+      body: JSON.stringify({ challenge_token: challengeToken, code }),
     }, false);
   },
   logout(refreshToken: string) {
@@ -342,6 +349,24 @@ export const api = {
     return apiFetch<{ avatar: AppTypes.MediaAssetUrls }>("/auth/me/avatar", {
       method: "PATCH",
       body: JSON.stringify({ avatar_media_id: avatarMediaId }),
+    });
+  },
+  twoFactorStatus() {
+    return apiFetch<AppTypes.TwoFactorStatus>("/auth/two-factor");
+  },
+  startTwoFactorSetup() {
+    return apiFetch<AppTypes.TwoFactorSetup>("/auth/two-factor/setup", { method: "POST" });
+  },
+  confirmTwoFactorSetup(code: string) {
+    return apiFetch<AppTypes.TwoFactorStatus>("/auth/two-factor/confirm", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+  },
+  disableTwoFactor(password: string, code: string) {
+    return apiFetch<AppTypes.TwoFactorStatus>("/auth/two-factor/disable", {
+      method: "POST",
+      body: JSON.stringify({ password, code }),
     });
   },
 };

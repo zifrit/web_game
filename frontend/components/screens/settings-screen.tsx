@@ -1,12 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { KeyRound } from "lucide-react";
 import { useI18n } from "@/components/providers";
+import { ErrorNotice } from "@/components/ui";
 import { api } from "@/lib/api";
 import { bestMediaUrl } from "@/lib/media";
-import type { User } from "@/lib/types";
+import type { TwoFactorSetup, User } from "@/lib/types";
 import type { Locale } from "@/lib/i18n";
+
+type SettingsToast = {
+  tone: "success" | "error";
+  message: string;
+};
 
 export function SettingsScreen() {
   const { locale, setLocale, t } = useI18n();
@@ -14,13 +22,22 @@ export function SettingsScreen() {
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selectedIconId, setSelectedIconId] = useState<number | null>(null);
+  const [twoFactorSetup, setTwoFactorSetup] = useState<TwoFactorSetup | null>(null);
+  const [confirmCode, setConfirmCode] = useState("");
+  const [disableOpen, setDisableOpen] = useState(false);
+  const [disablePassword, setDisablePassword] = useState("");
+  const [disableCode, setDisableCode] = useState("");
+  const [toast, setToast] = useState<SettingsToast | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const characterQuery = useQuery({ queryKey: ["character"], queryFn: api.character });
   const userQuery      = useQuery({ queryKey: ["me"],        queryFn: api.me });
   const iconsQuery     = useQuery({ queryKey: ["iconAssets"], queryFn: api.iconAssets, enabled: pickerOpen });
+  const twoFactorQuery = useQuery({ queryKey: ["twoFactor"], queryFn: api.twoFactorStatus });
 
   const character = characterQuery.data;
   const user      = userQuery.data;
+  const twoFactor = twoFactorQuery.data ?? user?.two_factor;
 
   const avatarMutation = useMutation({
     mutationFn: (id: number) => api.updateAvatar(id),
@@ -34,6 +51,71 @@ export function SettingsScreen() {
   });
 
   const currentAvatarUrl = user?.avatar ? bestMediaUrl(user.avatar) : undefined;
+
+  const showToast = (nextToast: SettingsToast) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    setToast(nextToast);
+    toastTimerRef.current = setTimeout(() => {
+      setToast(null);
+      toastTimerRef.current = null;
+    }, 4000);
+  };
+
+  const showErrorToast = (error: unknown) => {
+    const message = error instanceof Error && error.message ? error.message : t("settings.totpErrorToast");
+    showToast({ tone: "error", message });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
+
+  const setTwoFactorEnabled = (totpProtection: boolean) => {
+    queryClient.setQueryData<User>(["me"], (prev) =>
+      prev ? { ...prev, two_factor: { ...(prev.two_factor ?? {}), totp_protection: totpProtection } } : prev,
+    );
+    void queryClient.invalidateQueries({ queryKey: ["twoFactor"] });
+    void queryClient.invalidateQueries({ queryKey: ["me"] });
+  };
+
+  const setupMutation = useMutation({
+    mutationFn: api.startTwoFactorSetup,
+    onSuccess: (data) => {
+      setTwoFactorSetup(data);
+      setConfirmCode("");
+      setDisableOpen(false);
+    },
+    onError: showErrorToast,
+  });
+
+  const confirmMutation = useMutation({
+    mutationFn: () => api.confirmTwoFactorSetup(confirmCode),
+    onSuccess: () => {
+      setTwoFactorSetup(null);
+      setConfirmCode("");
+      setTwoFactorEnabled(true);
+      showToast({ tone: "success", message: t("settings.totpEnabledToast") });
+    },
+    onError: showErrorToast,
+  });
+
+  const disableMutation = useMutation({
+    mutationFn: () => api.disableTwoFactor(disablePassword, disableCode),
+    onSuccess: () => {
+      setDisableOpen(false);
+      setDisablePassword("");
+      setDisableCode("");
+      setTwoFactorEnabled(false);
+      showToast({ tone: "success", message: t("settings.totpDisabledToast") });
+    },
+    onError: showErrorToast,
+  });
 
   const handleEdit = () => {
     setPickerOpen(true);
@@ -49,8 +131,18 @@ export function SettingsScreen() {
     if (selectedIconId) avatarMutation.mutate(selectedIconId);
   };
 
+  const toastNode = toast && typeof document !== "undefined"
+    ? createPortal(
+        <div className={`toast toast-${toast.tone}`} role="status" aria-live="polite">
+          {toast.message}
+        </div>,
+        document.body,
+      )
+    : null;
+
   return (
     <div className="col" style={{ maxWidth: 900, marginLeft: "auto", marginRight: "auto" }}>
+      {toastNode}
 
       {/* Account + Avatar */}
       <div className="card">
@@ -211,6 +303,172 @@ export function SettingsScreen() {
               <div className="mono" style={{ fontSize: 13, color: "var(--bone)", marginTop: 4 }}>v0.1 — MVP</div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Security */}
+      <div className="card">
+        <div className="card-h">
+          <div>
+            <div className="card-title">{t("settings.security")}</div>
+            <div className="card-sub">{t("settings.securitySub")}</div>
+          </div>
+        </div>
+        <div className="card-body">
+          <div className="setting-row">
+            <div>
+              <div style={{ fontSize: 13, color: "var(--text)" }}>{t("settings.totpProtection")}</div>
+              <div className="mono" style={{ fontSize: 10, color: "var(--text-mute)", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 2 }}>
+                {twoFactor?.totp_protection ? t("settings.totpEnabled") : t("settings.totpDisabled")}
+              </div>
+            </div>
+            <label className="switch-control" aria-label={t("settings.totpProtection")}>
+              <input
+                type="checkbox"
+                checked={Boolean(twoFactor?.totp_protection)}
+                disabled={setupMutation.isPending || disableMutation.isPending || confirmMutation.isPending || twoFactorQuery.isLoading}
+                onChange={(event) => {
+                  if (event.target.checked) {
+                    setupMutation.mutate();
+                    return;
+                  }
+                  setDisableOpen(true);
+                  setTwoFactorSetup(null);
+                }}
+              />
+              <span className="switch-track">
+                <span className="switch-thumb" />
+              </span>
+            </label>
+          </div>
+
+          <ErrorNotice message={(setupMutation.error as Error | null)?.message} />
+
+          {twoFactorSetup && (
+            <div style={{ marginTop: 18, display: "grid", gap: 14 }}>
+              <div className="divider" />
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(120px, 180px) 1fr", gap: 18, alignItems: "center" }}>
+                <img
+                  src={twoFactorSetup.qr_data_url}
+                  alt={t("settings.totpQr")}
+                  style={{ width: "100%", maxWidth: 180, borderRadius: 8, background: "#fff", padding: 8 }}
+                />
+                <div>
+                  <div className="mono" style={{ fontSize: 10, color: "var(--text-mute)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 8 }}>
+                    {t("settings.totpManualKey")}
+                  </div>
+                  <div className="mono" style={{ overflowWrap: "anywhere", color: "var(--bone)", fontSize: 13, lineHeight: 1.6 }}>
+                    {twoFactorSetup.secret}
+                  </div>
+                </div>
+              </div>
+
+              <label>
+                <span style={{ display: "block", fontSize: 12, color: "var(--text-dim)", marginBottom: 6 }}>{t("settings.totpConfirmCode")}</span>
+                <div className="auth-input-wrap">
+                  <KeyRound size={16} />
+                  <input
+                    autoComplete="one-time-code"
+                    className="input"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="123456"
+                    type="text"
+                    value={confirmCode}
+                    onChange={(event) => setConfirmCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                  />
+                </div>
+              </label>
+
+              <ErrorNotice message={(confirmMutation.error as Error | null)?.message} />
+
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    setTwoFactorSetup(null);
+                    setConfirmCode("");
+                    setupMutation.reset();
+                    confirmMutation.reset();
+                  }}
+                  disabled={confirmMutation.isPending}
+                >
+                  {t("common.cancel")}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => confirmMutation.mutate()}
+                  disabled={confirmCode.length !== 6 || confirmMutation.isPending}
+                >
+                  {confirmMutation.isPending ? t("settings.totpConfirming") : t("settings.totpConfirm")}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {disableOpen && (
+            <div style={{ marginTop: 18, display: "grid", gap: 14 }}>
+              <div className="divider" />
+              <label>
+                <span style={{ display: "block", fontSize: 12, color: "var(--text-dim)", marginBottom: 6 }}>{t("settings.totpPassword")}</span>
+                <div className="auth-input-wrap">
+                  <KeyRound size={16} />
+                  <input
+                    autoComplete="current-password"
+                    className="input"
+                    placeholder={t("auth.passwordPlaceholder")}
+                    type="password"
+                    value={disablePassword}
+                    onChange={(event) => setDisablePassword(event.target.value)}
+                  />
+                </div>
+              </label>
+              <label>
+                <span style={{ display: "block", fontSize: 12, color: "var(--text-dim)", marginBottom: 6 }}>{t("settings.totpCurrentCode")}</span>
+                <div className="auth-input-wrap">
+                  <KeyRound size={16} />
+                  <input
+                    autoComplete="one-time-code"
+                    className="input"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="123456"
+                    type="text"
+                    value={disableCode}
+                    onChange={(event) => setDisableCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                  />
+                </div>
+              </label>
+
+              <ErrorNotice message={(disableMutation.error as Error | null)?.message} />
+
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    setDisableOpen(false);
+                    setDisablePassword("");
+                    setDisableCode("");
+                    disableMutation.reset();
+                  }}
+                  disabled={disableMutation.isPending}
+                >
+                  {t("common.cancel")}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => disableMutation.mutate()}
+                  disabled={!disablePassword || disableCode.length !== 6 || disableMutation.isPending}
+                >
+                  {disableMutation.isPending ? t("settings.totpDisabling") : t("settings.totpDisableConfirm")}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

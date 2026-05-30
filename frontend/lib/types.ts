@@ -14,12 +14,31 @@ export type User = {
   money_copper?: number;
   has_character: boolean;
   avatar?: MediaAssetUrls | null;
+  two_factor?: TwoFactorStatus;
 };
 
 export type AuthResponse = {
   access_token: string;
   refresh_token: string;
   user: User;
+};
+
+export type TwoFactorRequiredResponse = {
+  two_factor_required: true;
+  challenge_token: string;
+};
+
+export type LoginResponse = AuthResponse | TwoFactorRequiredResponse;
+
+export type TwoFactorStatus = {
+  totp_protection: boolean;
+  setup_pending?: boolean;
+};
+
+export type TwoFactorSetup = {
+  secret: string;
+  otpauth_uri: string;
+  qr_data_url: string;
 };
 
 export type MediaAssetUrls = {
