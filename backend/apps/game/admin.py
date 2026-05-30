@@ -18,6 +18,7 @@ from .models import (
     RepairTransaction,
     User,
     UserItem,
+    UserTwoFactor,
 )
 
 
@@ -82,6 +83,30 @@ class MediaAssetAdmin(admin.ModelAdmin):
     list_filter = ("asset_type",)
     list_display_links = ("id", "name", "asset_type")
     search_fields = ("name", "original", "large", "medium", "small")
+
+
+@admin.register(UserTwoFactor)
+class UserTwoFactorAdmin(admin.ModelAdmin):
+    list_display = ("user", "totp_protection", "setup_pending", "confirmed_at", "last_verified_at", "updated_at")
+    list_filter = ("totp_protection",)
+    search_fields = ("user__email",)
+    autocomplete_fields = ("user",)
+    readonly_fields = (
+        "user",
+        "totp_protection",
+        "setup_pending",
+        "pending_started_at",
+        "confirmed_at",
+        "last_verified_at",
+        "last_timecode",
+        "created_at",
+        "updated_at",
+    )
+    exclude = ("active_secret_ciphertext", "pending_secret_ciphertext")
+
+    @admin.display(boolean=True, description="Настройка начата")
+    def setup_pending(self, obj):
+        return bool(obj.pending_secret_ciphertext)
 
 
 @admin.register(CharacterClass)

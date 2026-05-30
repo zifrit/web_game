@@ -2,7 +2,7 @@ from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.db import models
 
-from .base import MediaAsset
+from .base import MediaAsset, TimestampedModel
 
 
 class UserManager(BaseUserManager):
@@ -53,3 +53,25 @@ class User(AbstractBaseUser, PermissionsMixin):
         """Возвращает email как человекочитаемое имя аккаунта."""
 
         return self.email
+
+
+class UserTwoFactor(TimestampedModel):
+    """Настройки двухфакторной TOTP-защиты игрового аккаунта."""
+
+    user = models.OneToOneField(User, verbose_name="Пользователь", related_name="two_factor", on_delete=models.CASCADE)
+    totp_protection = models.BooleanField("TOTP-защита включена", default=False)
+    active_secret_ciphertext = models.TextField("Активный TOTP-секрет", blank=True, default="")
+    pending_secret_ciphertext = models.TextField("Ожидающий TOTP-секрет", blank=True, default="")
+    pending_started_at = models.DateTimeField("Дата начала настройки", null=True, blank=True)
+    confirmed_at = models.DateTimeField("Дата подтверждения", null=True, blank=True)
+    last_verified_at = models.DateTimeField("Дата последней проверки", null=True, blank=True)
+    last_timecode = models.BigIntegerField("Последний использованный TOTP timecode", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Двухфакторная защита"
+        verbose_name_plural = "Двухфакторная защита"
+
+    def __str__(self) -> str:
+        """Возвращает краткое описание настройки 2FA."""
+
+        return f"2FA for {self.user.email}"

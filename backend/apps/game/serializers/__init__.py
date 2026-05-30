@@ -1,4 +1,4 @@
-from .auth import LoginSerializer, RegisterSerializer, token_response
+from .auth import LoginSerializer, RegisterSerializer, TotpCodeSerializer, TotpDisableSerializer, TotpLoginSerializer, token_response
 from .characters import CharacterClassSerializer, CharacterCreateSerializer, CharacterMeSerializer, CreateCharacterSerializer
 from .common import localized_item_name, localized_name, media_payload, serializer_locale
 from .dungeons import (
@@ -25,6 +25,9 @@ __all__ = [
     "LeaderboardItemSerializer",
     "LoginSerializer",
     "RegisterSerializer",
+    "TotpCodeSerializer",
+    "TotpDisableSerializer",
+    "TotpLoginSerializer",
     "UserItemDetailSerializer",
     "UserItemSummarySerializer",
     "localized_item_name",

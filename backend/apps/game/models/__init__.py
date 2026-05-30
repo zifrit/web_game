@@ -10,7 +10,7 @@ from .dungeons import (
     DungeonRunStatus,
 )
 from .items import ItemTemplate, RepairTransaction, UserItem
-from .users import User, UserManager
+from .users import User, UserManager, UserTwoFactor
 
 __all__ = [
     "Character",
@@ -31,4 +31,5 @@ __all__ = [
     "User",
     "UserItem",
     "UserManager",
+    "UserTwoFactor",
 ]

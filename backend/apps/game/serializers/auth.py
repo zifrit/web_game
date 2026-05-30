@@ -4,6 +4,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.game.i18n import message
 from apps.game.models import User
+from apps.game.two_factor import two_factor_payload
 
 from .common import media_payload, serializer_locale
 
@@ -20,6 +21,7 @@ def token_response(user, context=None):
             "email": user.email,
             "has_character": hasattr(user, "character"),
             "avatar": media_payload(user.avatar_media, context),
+            "two_factor": two_factor_payload(user),
         },
     }
 
@@ -57,3 +59,23 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError(message("invalid_credentials", serializer_locale(self.context)))
         attrs["user"] = user
         return attrs
+
+
+class TotpLoginSerializer(serializers.Serializer):
+    """Сериализатор второго шага входа по TOTP-коду."""
+
+    challenge_token = serializers.CharField()
+    code = serializers.CharField(min_length=6, max_length=12, write_only=True)
+
+
+class TotpCodeSerializer(serializers.Serializer):
+    """Сериализатор подтверждения TOTP-кода."""
+
+    code = serializers.CharField(min_length=6, max_length=12, write_only=True)
+
+
+class TotpDisableSerializer(serializers.Serializer):
+    """Сериализатор отключения TOTP-защиты."""
+
+    password = serializers.CharField(write_only=True)
+    code = serializers.CharField(min_length=6, max_length=12, write_only=True)
