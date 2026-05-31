@@ -40,7 +40,6 @@ Django выбран из-за:
 JSON-поля допустимы для:
 
 - growth_profile;
-- rarity_chances;
 - possible_stats;
 - generated item stats;
 - items_reward draft.

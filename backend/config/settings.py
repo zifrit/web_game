@@ -7,6 +7,7 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-secret-key")
+TOTP_ENCRYPTION_KEY = os.getenv("TOTP_ENCRYPTION_KEY", "")
 DEBUG = os.getenv("DJANGO_DEBUG", "1") == "1"
 SQL_DEBUG = True
 POLZA_AI_API_KEY = os.getenv("POLZA_AI_API_KEY")
@@ -25,6 +26,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "storages",
     "rest_framework_simplejwt.token_blacklist",
+    "django_extensions",
     "apps.game",
 ]
 

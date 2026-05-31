@@ -13,21 +13,27 @@ const INVENTORY_PAGE_SIZE = 24;
 
 /* ── Rarity helpers ── */
 const RARITY_COLOR: Record<string, string> = {
-  common:   "#9CA3AF",
-  uncommon: "#22C55E",
-  rare:     "#3B82F6",
-  epic:     "#A855F7",
-  legendary:"#F59E0B",
+  f: "#94A3B8",
+  e: "#22C55E",
+  d: "#38BDF8",
+  c: "#3B82F6",
+  b: "#A855F7",
+  a: "#F59E0B",
+  s: "#EF4444",
+  ex:"#F8FAFC",
 };
 const RARITY_GLOW: Record<string, string> = {
-  common:   "rgba(156,163,175,0.25)",
-  uncommon: "rgba(34,197,94,0.30)",
-  rare:     "rgba(59,130,246,0.35)",
-  epic:     "rgba(168,85,247,0.35)",
-  legendary:"rgba(245,158,11,0.35)",
+  f: "rgba(148,163,184,0.25)",
+  e: "rgba(34,197,94,0.30)",
+  d: "rgba(56,189,248,0.32)",
+  c: "rgba(59,130,246,0.35)",
+  b: "rgba(168,85,247,0.35)",
+  a: "rgba(245,158,11,0.35)",
+  s: "rgba(239,68,68,0.35)",
+  ex:"rgba(248,250,252,0.35)",
 };
-function rc(rarity?: string) { return RARITY_COLOR[(rarity ?? "common").toLowerCase()] ?? RARITY_COLOR.common; }
-function rg(rarity?: string) { return RARITY_GLOW[(rarity ?? "common").toLowerCase()]  ?? RARITY_GLOW.common;  }
+function rc(rarity?: string) { return RARITY_COLOR[(rarity ?? "f").toLowerCase()] ?? RARITY_COLOR.f; }
+function rg(rarity?: string) { return RARITY_GLOW[(rarity ?? "f").toLowerCase()]  ?? RARITY_GLOW.f;  }
 
 /* ── Pack grid cell ── */
 function PackCell({

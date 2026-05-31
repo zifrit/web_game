@@ -1,11 +1,15 @@
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.files.base import ContentFile
+from django.test import override_settings
 from django.utils import timezone
+from cryptography.fernet import Fernet
+import pyotp
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.game.models import CharacterClass, DungeonLocation, DungeonRunClaim, ItemTemplate, MediaAsset, UserItem
+from apps.game.models import CharacterClass, DungeonLocation, DungeonRunClaim, ItemTemplate, MediaAsset, UserItem, UserTwoFactor
+from apps.game.two_factor import TOTP_INTERVAL_SECONDS, current_timecode
 
 
 User = get_user_model()
@@ -83,6 +87,7 @@ class MvpApiTests(APITestCase):
         self.assertEqual(me.status_code, status.HTTP_200_OK)
         self.assertEqual(me.data["class"]["key"], "warrior")
         self.assertEqual(me.data["class"]["name"], "Warrior")
+        self.assertEqual(me.data["rank"], "F")
         self.assertIn("media", me.data["class"])
         self.assertTrue(me.data["class"]["media"]["medium_url"])
         self.assertIn("avatar", me.data)
@@ -95,6 +100,92 @@ class MvpApiTests(APITestCase):
         me_ru = self.client.get("/api/characters/me", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(me_ru.status_code, status.HTTP_200_OK)
         self.assertEqual(me_ru.data["class"]["name"], "Воин")
+
+    @override_settings(TOTP_ENCRYPTION_KEY=Fernet.generate_key().decode())
+    def test_totp_two_factor_login_lifecycle(self):
+        register = self.client.post("/api/auth/register", {"email": "totp@example.com", "password": "strong_password_123"}, format="json")
+        self.assertEqual(register.status_code, status.HTTP_201_CREATED, register.data)
+        self.assertIn("access_token", register.data)
+        self.assertEqual(register.data["user"]["two_factor"]["totp_protection"], False)
+
+        unprotected_login = self.client.post("/api/auth/login", {"email": "totp@example.com", "password": "strong_password_123"}, format="json")
+        self.assertEqual(unprotected_login.status_code, status.HTTP_200_OK, unprotected_login.data)
+        self.assertIn("access_token", unprotected_login.data)
+
+        self.client.credentials()
+        unauthorized_setup = self.client.post("/api/auth/two-factor/setup", {}, format="json")
+        self.assertEqual(unauthorized_setup.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {register.data['access_token']}")
+        setup = self.client.post("/api/auth/two-factor/setup", {}, format="json")
+        self.assertEqual(setup.status_code, status.HTTP_200_OK, setup.data)
+        self.assertIn("secret", setup.data)
+        self.assertTrue(setup.data["qr_data_url"].startswith("data:image/png;base64,"))
+
+        user = User.objects.get(email="totp@example.com")
+        two_factor = UserTwoFactor.objects.get(user=user)
+        self.assertFalse(two_factor.totp_protection)
+        self.assertTrue(two_factor.pending_secret_ciphertext)
+
+        confirm_code = pyotp.TOTP(setup.data["secret"]).now()
+        confirm = self.client.post("/api/auth/two-factor/confirm", {"code": confirm_code}, format="json")
+        self.assertEqual(confirm.status_code, status.HTTP_200_OK, confirm.data)
+        self.assertEqual(confirm.data["totp_protection"], True)
+
+        two_factor.refresh_from_db()
+        self.assertTrue(two_factor.totp_protection)
+        self.assertTrue(two_factor.active_secret_ciphertext)
+        self.assertFalse(two_factor.pending_secret_ciphertext)
+
+        protected_login = self.client.post("/api/auth/login", {"email": "totp@example.com", "password": "strong_password_123"}, format="json")
+        self.assertEqual(protected_login.status_code, status.HTTP_200_OK, protected_login.data)
+        self.assertEqual(protected_login.data["two_factor_required"], True)
+        self.assertIn("challenge_token", protected_login.data)
+        self.assertNotIn("access_token", protected_login.data)
+
+        wrong_totp = self.client.post(
+            "/api/auth/login/totp",
+            {"challenge_token": protected_login.data["challenge_token"], "code": "000000"},
+            format="json",
+        )
+        self.assertEqual(wrong_totp.status_code, status.HTTP_400_BAD_REQUEST)
+
+        login_code = pyotp.TOTP(setup.data["secret"]).now()
+        verified_login = self.client.post(
+            "/api/auth/login/totp",
+            {"challenge_token": protected_login.data["challenge_token"], "code": login_code},
+            format="json",
+        )
+        self.assertEqual(verified_login.status_code, status.HTTP_200_OK, verified_login.data)
+        self.assertIn("access_token", verified_login.data)
+
+        replay = self.client.post(
+            "/api/auth/login/totp",
+            {"challenge_token": protected_login.data["challenge_token"], "code": login_code},
+            format="json",
+        )
+        self.assertEqual(replay.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {verified_login.data['access_token']}")
+        disable_bad_password = self.client.post(
+            "/api/auth/two-factor/disable",
+            {"password": "wrong_password", "code": pyotp.TOTP(setup.data["secret"]).at((current_timecode() + 1) * TOTP_INTERVAL_SECONDS)},
+            format="json",
+        )
+        self.assertEqual(disable_bad_password.status_code, status.HTTP_400_BAD_REQUEST)
+
+        disable_code = pyotp.TOTP(setup.data["secret"]).at((current_timecode() + 1) * TOTP_INTERVAL_SECONDS)
+        disable = self.client.post(
+            "/api/auth/two-factor/disable",
+            {"password": "strong_password_123", "code": disable_code},
+            format="json",
+        )
+        self.assertEqual(disable.status_code, status.HTTP_200_OK, disable.data)
+        self.assertEqual(disable.data["totp_protection"], False)
+
+        two_factor.refresh_from_db()
+        self.assertFalse(two_factor.totp_protection)
+        self.assertFalse(two_factor.active_secret_ciphertext)
 
     def test_dungeon_run_claim_is_idempotent(self):
         self.register_and_authenticate()
@@ -118,7 +209,7 @@ class MvpApiTests(APITestCase):
         self.assertEqual(claim.data["status"], "CLAIMED")
         self.assertEqual(claim.data["is_success"], True)
         if claim.data["rewards"]["items"]:
-            self.assertTrue(claim.data["rewards"]["items"][0]["name"].startswith(("Common", "Uncommon", "Rare", "Epic")))
+            self.assertTrue(claim.data["rewards"]["items"][0]["name"].startswith(("F", "E", "D", "C", "B", "A", "S", "EX")))
         self.assertEqual(DungeonRunClaim.objects.count(), 1)
 
         second_claim = self.client.post(f"/api/dungeon-runs/{start.data['id']}/claim", {}, format="json")
@@ -131,15 +222,15 @@ class MvpApiTests(APITestCase):
         user.money_copper = 500
         user.save()
         character = user.character
-        template = ItemTemplate.objects.get(name="Ржавый меч")
+        template = ItemTemplate.objects.filter(slot="weapon", item_type="sword", rarity_key="f").first()
         item = UserItem.objects.create(
             owner_user=user,
             source_character=character,
             template=template,
-            name="Обычный ржавый меч",
+            name=template.name,
             slot=template.slot,
             item_type=template.item_type,
-            rarity="common",
+            rarity="f",
             item_level=1,
             stats={"attack": 5},
             durability_current=5,
@@ -158,14 +249,14 @@ class MvpApiTests(APITestCase):
         self.assertEqual(inventory.data["items_count"], 1)
         self.assertIsNone(inventory.data["slots_limit"])
         self.assertIsNone(inventory.data["free_slots"])
-        self.assertEqual(inventory.data["items"][0]["name"], "Common Rusty Sword")
+        self.assertEqual(inventory.data["items"][0]["name"], template.name_i18n["en"])
         self.assertIn("media", inventory.data["items"][0])
         self.assertTrue(inventory.data["items"][0]["media"]["medium_url"])
         self.assertNotIn("icon_url", inventory.data["items"][0])
 
         item_detail_ru = self.client.get(f"/api/inventory/items/{item.id}", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(item_detail_ru.status_code, status.HTTP_200_OK)
-        self.assertEqual(item_detail_ru.data["name"], "Обычный Ржавый меч")
+        self.assertEqual(item_detail_ru.data["name"], template.name_i18n["ru"])
         self.assertTrue(item_detail_ru.data["media"]["large_url"])
         self.assertEqual(set(item_detail_ru.data["media"].keys()), {"large_url", "medium_url", "small_url"})
 
@@ -226,7 +317,7 @@ class MvpApiTests(APITestCase):
             name="Новый меч",
             slot=template.slot,
             item_type=template.item_type,
-            rarity="common",
+            rarity="f",
             item_level=1,
             stats={"attack": 7},
             durability_current=10,
@@ -259,16 +350,16 @@ class MvpApiTests(APITestCase):
         user = self.register_and_authenticate("pack@example.com")
         self.create_character()
         character = user.character
-        template = ItemTemplate.objects.get(name="Ржавый меч")
+        template = ItemTemplate.objects.filter(slot="weapon", item_type="sword", rarity_key="f").first()
         for index in range(25):
             UserItem.objects.create(
                 owner_user=user,
                 source_character=character,
                 template=template,
-                name=f"Обычный ржавый меч {index}",
+                name=f"{template.name} {index}",
                 slot=template.slot,
                 item_type=template.item_type,
-                rarity="common",
+                rarity="f",
                 item_level=1,
                 stats={"attack": 5},
                 durability_current=10,

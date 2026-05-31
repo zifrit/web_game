@@ -17,6 +17,7 @@ from .models import (
     Character,
     CharacterClass,
     DungeonLocation,
+    DungeonLocationItemTemplate,
     DungeonRun,
     DungeonRunClaim,
     DungeonRunClaimItem,
@@ -27,6 +28,7 @@ from .models import (
     RepairTransaction,
     UserItem,
 )
+from .ranks import MAX_RANK_LEVEL, RANKS
 
 STAT_KEYS = ("health", "attack", "defense", "critical_chance", "evasion")
 EQUIPMENT_SLOTS = ("weapon", "helmet", "armor", "boots", "ring")
@@ -48,49 +50,61 @@ DEFAULT_CONFIGS: dict[str, dict[str, Any]] = {
     },
     "success_chance_config": {"base": 75, "power_delta_multiplier": 1.5, "min": 35, "max": 100},
     "repair_cost_config": {"copper_per_durability": 10},
-    "experience_curve_config": {"base": 100, "exponent": 1.5, "max_level": 20},
+    "experience_curve_config": {"base": 100, "exponent": 1.5, "max_level": MAX_RANK_LEVEL},
     "stat_caps": {"critical_chance": 60, "evasion": 50},
     "durability_loss_config": {"success": 1, "failure": 5},
 }
 
 DEFAULT_RARITIES = {
-    "common": {
-        "name": "Обычный",
-        "stat_multiplier": 1.0,
-        "economy_multiplier": Decimal("2.0"),
-        "min_item_level": 1,
-        "max_item_level": 3,
-        "min_stats_count": 1,
-        "max_stats_count": 1,
-    },
-    "uncommon": {
-        "name": "Необычный",
-        "stat_multiplier": 1.25,
-        "economy_multiplier": Decimal("2.5"),
-        "min_item_level": 2,
-        "max_item_level": 5,
-        "min_stats_count": 1,
-        "max_stats_count": 2,
-    },
-    "rare": {
-        "name": "Редкий",
-        "stat_multiplier": 1.6,
-        "economy_multiplier": Decimal("3.0"),
-        "min_item_level": 4,
-        "max_item_level": 8,
-        "min_stats_count": 2,
-        "max_stats_count": 3,
-    },
-    "epic": {
-        "name": "Эпический",
-        "stat_multiplier": 2.2,
-        "economy_multiplier": Decimal("3.5"),
-        "min_item_level": 7,
-        "max_item_level": 10,
-        "min_stats_count": 3,
-        "max_stats_count": 3,
-    },
+    rank.key: {
+        "name": rank.label,
+        "stat_multiplier": rank.stat_multiplier,
+        "economy_multiplier": Decimal(rank.economy_multiplier),
+        "min_item_level": rank.min_level,
+        "max_item_level": rank.max_level,
+        "min_stats_count": rank.min_stats_count,
+        "max_stats_count": rank.max_stats_count,
+    }
+    for rank in RANKS
 }
+
+
+_GAME_CONFIG_CACHE: dict[str, dict[str, Any]] = {}
+_RARITY_CONFIG_CACHE: dict[str, RarityConfig] | None = None
+
+
+def _invalidate_game_config_cache(*_args, **_kwargs) -> None:
+    """Сбрасывает кэш игровых настроек при изменении или удалении записей."""
+
+    _GAME_CONFIG_CACHE.clear()
+
+
+def _invalidate_rarity_config_cache(*_args, **_kwargs) -> None:
+    """Сбрасывает кэш конфигурации редкостей при изменении записей."""
+
+    global _RARITY_CONFIG_CACHE
+    _RARITY_CONFIG_CACHE = None
+
+
+class RarityConfigCache:
+    """Кэш активных RarityConfig в памяти процесса с инвалидацией по сигналу."""
+
+    @staticmethod
+    def all_active() -> dict[str, RarityConfig]:
+        """Возвращает словарь активных редкостей по ключу, кэшированный в памяти."""
+
+        global _RARITY_CONFIG_CACHE
+        if _RARITY_CONFIG_CACHE is None:
+            _RARITY_CONFIG_CACHE = {
+                rc.key: rc for rc in RarityConfig.objects.filter(is_active=True)
+            }
+        return _RARITY_CONFIG_CACHE
+
+    @staticmethod
+    def all_ordered() -> list[RarityConfig]:
+        """Возвращает активные редкости, отсортированные по sort_order."""
+
+        return sorted(RarityConfigCache.all_active().values(), key=lambda rc: rc.sort_order)
 
 
 class GameConfigService:
@@ -100,10 +114,14 @@ class GameConfigService:
     def get_config(key: str) -> dict[str, Any]:
         """Возвращает активную настройку по ключу, объединяя БД с DEFAULT_CONFIGS."""
 
+        cached = _GAME_CONFIG_CACHE.get(key)
+        if cached is not None:
+            return cached.copy()
         value = DEFAULT_CONFIGS.get(key, {}).copy()
         db_config = GameConfig.objects.filter(key=key, is_active=True).first()
         if db_config and isinstance(db_config.value, dict):
             value.update(db_config.value)
+        _GAME_CONFIG_CACHE[key] = value.copy()
         return value
 
 
@@ -133,7 +151,8 @@ class GameBalanceService:
     def rarity_config(rarity: str) -> dict[str, Any]:
         """Возвращает параметры редкости из БД или встроенного набора по умолчанию."""
 
-        db_config = RarityConfig.objects.filter(key=rarity, is_active=True).first()
+        configs = RarityConfigCache.all_active()
+        db_config = configs.get(rarity)
         if db_config:
             return {
                 "name": db_config.name,
@@ -248,17 +267,17 @@ class LootGenerationService:
     """Сервис генерации предметных наград за успешные подземелья."""
 
     @staticmethod
-    def _weighted_choice(chances: dict[str, float]) -> str:
-        """Выбирает ключ из словаря весов случайным взвешенным броском."""
+    def _weighted_choice(weighted_items: list[tuple[Any, float]]) -> Any:
+        """Выбирает элемент из списка весов случайным взвешенным броском."""
 
-        total = sum(float(value) for value in chances.values())
+        total = sum(float(value) for _, value in weighted_items)
         roll = random.uniform(0, total)
         upto = 0.0
-        for key, value in chances.items():
+        for item, value in weighted_items:
             upto += float(value)
             if roll <= upto:
-                return key
-        return next(reversed(chances))
+                return item
+        return weighted_items[-1][0]
 
     @classmethod
     def generate_item_reward(cls, character: Character, location: DungeonLocation) -> dict[str, Any] | None:
@@ -267,17 +286,19 @@ class LootGenerationService:
         if random.uniform(0, 100) > location.item_drop_chance:
             return None
 
-        rarity = cls._weighted_choice(location.rarity_chances)
-        rarity_config = GameBalanceService.rarity_config(rarity)
-        templates = ItemTemplate.objects.filter(
-            is_active=True,
-            template_locations__location=location,
-        ).distinct()
-        templates = [template for template in templates if item_allowed_for_character(template, character)]
-        if not templates:
+        links = (
+            DungeonLocationItemTemplate.objects.filter(location=location, item_template__is_active=True)
+            .select_related("item_template")
+            .order_by("id")
+        )
+        weighted_links = [(link, link.chance) for link in links if item_allowed_for_character(link.item_template, character)]
+        if not weighted_links:
             return None
 
-        template = random.choice(templates)
+        link = cls._weighted_choice(weighted_links)
+        template = link.item_template
+        rarity = template.rarity_key
+        rarity_config = GameBalanceService.rarity_config(rarity)
         item_level = random.randint(rarity_config["min_item_level"], rarity_config["max_item_level"])
         possible_stats = template.possible_stats or {}
         count = min(
@@ -293,9 +314,10 @@ class LootGenerationService:
             stats[stat_key] = max(1, int(round(value)))
 
         durability_max = random.randint(template.min_durability, template.max_durability)
+        item_name = template.name if template.name.lower().startswith(f"{rarity_config['name'].lower()} ") else f"{rarity_config['name']} {template.name}"
         return {
             "template_id": template.id,
-            "name": f"{rarity_config['name']} {template.name}",
+            "name": item_name,
             "slot": template.slot,
             "item_type": template.item_type,
             "rarity": rarity,

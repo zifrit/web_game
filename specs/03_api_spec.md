@@ -154,6 +154,7 @@ Response:
   "name": "Arthas",
   "class_key": "warrior",
   "level": 1,
+  "rank": "F",
   "experience": 0
 }
 ```
@@ -171,6 +172,7 @@ Response:
     "name": "Воин"
   },
   "level": 1,
+  "rank": "F",
   "experience": 0,
   "experience_to_next_level": 100,
   "stats": {
@@ -352,8 +354,8 @@ Response:
     "items": [
       {
         "id": 100,
-        "name": "Обычный ржавый меч",
-        "rarity": "common",
+        "name": "F Меч новичка",
+        "rarity": "f",
         "item_level": 1
       }
     ],
@@ -417,7 +419,7 @@ Response:
         "medium_url": "...",
         "small_url": "..."
       },
-      "rarity": "rare",
+      "rarity": "f",
       "is_broken": false
     },
     "helmet": null,
@@ -433,7 +435,7 @@ Response:
         "medium_url": "...",
         "small_url": "..."
       },
-      "rarity": "common",
+      "rarity": "f",
       "is_broken": true
     }
   ]
@@ -451,11 +453,11 @@ Response:
 ```json
 {
   "id": 1001,
-  "name": "Редкий ржавый меч",
+  "name": "F Меч новичка",
   "slot": "weapon",
   "item_type": "sword",
-  "rarity": "rare",
-  "item_level": 4,
+  "rarity": "f",
+  "item_level": 1,
   "stats": {
     "attack": 7,
     "critical_chance": 2

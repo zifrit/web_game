@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from apps.game.i18n import message
 from apps.game.models import Character, CharacterClass
+from apps.game.ranks import rank_for_level
 from apps.game.services import GameFormulaService
 
 from .common import localized_name, media_payload, serializer_locale
@@ -97,6 +98,7 @@ class CharacterCreateSerializer(serializers.ModelSerializer):
             "name": instance.name,
             "class_key": instance.character_class_id,
             "level": instance.level,
+            "rank": rank_for_level(instance.level).label,
             "experience": instance.experience,
         }
 
@@ -109,10 +111,11 @@ class CharacterMeSerializer(serializers.ModelSerializer):
     stats = serializers.SerializerMethodField()
     equipment = serializers.SerializerMethodField()
     avatar = serializers.SerializerMethodField()
+    rank = serializers.SerializerMethodField()
 
     class Meta:
         model = Character
-        fields = ["id", "name", "avatar", "class_info", "level", "experience", "experience_to_next_level", "stats", "equipment"]
+        fields = ["id", "name", "avatar", "class_info", "level", "rank", "experience", "experience_to_next_level", "stats", "equipment"]
 
     def to_representation(self, instance):
         """Переименовывает class_info в поле class для API-контракта."""
@@ -134,6 +137,11 @@ class CharacterMeSerializer(serializers.ModelSerializer):
         """Возвращает количество опыта, нужное для следующего уровня."""
 
         return GameFormulaService.experience_required(obj.level)
+
+    def get_rank(self, obj):
+        """Возвращает буквенный ранг героя по его уровню."""
+
+        return rank_for_level(obj.level).label
 
     def get_stats(self, obj):
         """Возвращает рассчитанные сервером характеристики героя."""

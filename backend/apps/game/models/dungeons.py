@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -24,7 +25,6 @@ class DungeonLocation(TimestampedModel):
     money_min_copper = models.PositiveIntegerField("Минимум медных монет")
     money_max_copper = models.PositiveIntegerField("Максимум медных монет")
     item_drop_chance = models.FloatField("Шанс выпадения предмета")
-    rarity_chances = models.JSONField("Шансы редкостей")
     is_active = models.BooleanField("Активна", default=True)
     sort_order = models.PositiveIntegerField("Порядок сортировки", default=0)
 
@@ -34,7 +34,7 @@ class DungeonLocation(TimestampedModel):
         verbose_name_plural = "Локации подземелий"
 
     def clean(self) -> None:
-        """Проверяет диапазоны наград, шанс дропа и сумму шансов редкостей."""
+        """Проверяет диапазоны наград, шанс дропа и наличие активного лута."""
 
         if self.experience_min > self.experience_max:
             raise ValidationError("experience_min cannot exceed experience_max")
@@ -42,8 +42,13 @@ class DungeonLocation(TimestampedModel):
             raise ValidationError("money_min_copper cannot exceed money_max_copper")
         if not 0 <= self.item_drop_chance <= 100:
             raise ValidationError("item_drop_chance must be between 0 and 100")
-        if round(sum(self.rarity_chances.values())) != 100:
-            raise ValidationError("rarity_chances must sum to 100")
+        if (
+            self.pk
+            and self.is_active
+            and self.item_drop_chance > 0
+            and not self.location_item_templates.filter(item_template__is_active=True).exists()
+        ):
+            raise ValidationError("active dungeon with item_drop_chance > 0 must have at least one active item template")
 
     def __str__(self) -> str:
         """Возвращает название локации подземелья."""
@@ -56,9 +61,16 @@ class DungeonLocationItemTemplate(TimestampedModel):
 
     location = models.ForeignKey(DungeonLocation, verbose_name="Локация", related_name="location_item_templates", on_delete=models.CASCADE)
     item_template = models.ForeignKey(ItemTemplate, verbose_name="Шаблон предмета", related_name="template_locations", on_delete=models.CASCADE)
+    chance = models.PositiveSmallIntegerField("Вес выпадения", validators=[MinValueValidator(1), MaxValueValidator(100)])
 
     class Meta:
         unique_together = ("location", "item_template")
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(chance__gte=1, chance__lte=100),
+                name="dungeon_location_item_template_chance_1_100",
+            ),
+        ]
         verbose_name = "Предмет локации подземелья"
         verbose_name_plural = "Предметы локаций подземелий"
 

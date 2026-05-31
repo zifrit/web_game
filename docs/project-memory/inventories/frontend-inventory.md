@@ -1,6 +1,6 @@
 # Frontend Inventory
 
-Updated from code inspection on 2026-05-27.
+Updated from code inspection on 2026-05-30.
 
 ## Entrypoints
 
@@ -50,10 +50,18 @@ Updated from code inspection on 2026-05-27.
   avatar picker opens.
 - Avatar save calls `PATCH /api/auth/me/avatar` via `api.updateAvatar()` and
   patches the `me` TanStack Query cache.
+- Settings screen includes a Security card for TOTP. Enable starts setup,
+  displays QR/manual key and requires a 6-digit confirmation code; disable
+  requires current password and current TOTP code.
+- Auth screen handles two-step login: `api.login()` may return
+  `two_factor_required` and a `challenge_token`; `api.verifyLoginTotp()` then
+  returns normal auth tokens.
 
 ## API facade methods
 
-- `register`, `login`, `logout`, `me`
+- `register`, `login`, `verifyLoginTotp`, `logout`, `me`
+- `twoFactorStatus`, `startTwoFactorSetup`, `confirmTwoFactorSetup`,
+  `disableTwoFactor`
 - `characterClasses`, `createCharacter`, `character`
 - `dungeons`, `startRun`, `currentRun`, `claimRun`
 - `inventory`, `item`, `repairPreview`, `repair`, `destroyPreview`,

@@ -16,6 +16,7 @@ import {
 import { api, clearTokens, getStoredTokens, setApiLocale, storeTokens } from "@/lib/api";
 import {
   type Locale,
+  DEFAULT_LOCALE,
   makeTranslator,
   readStoredLocale,
   type TranslationKey,
@@ -123,7 +124,13 @@ export function useSession() {
 }
 
 function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(() => readStoredLocale());
+  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
+
+  useEffect(() => {
+    const storedLocale = readStoredLocale();
+    setApiLocale(storedLocale);
+    setLocaleState(storedLocale);
+  }, []);
 
   useEffect(() => {
     setApiLocale(locale);

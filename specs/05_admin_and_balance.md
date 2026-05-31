@@ -50,7 +50,6 @@ required_power
 experience_min/max
 money_min/max
 item_drop_chance
-rarity_chances
 is_active
 sort_order
 ```
@@ -59,9 +58,11 @@ Inline:
 
 ```text
 DungeonLocationItemTemplate
+chance
 ```
 
-Чтобы прямо на странице данжа выбирать возможные item templates.
+Чтобы прямо на странице данжа выбирать возможные item templates и их вес
+выпадения внутри локации.
 
 ### 2.3 Item Templates
 
@@ -242,9 +243,9 @@ InventoryService
 
 Нужна валидация:
 
-- сумма rarity_chances должна быть 100;
 - min не должен быть больше max;
 - item_level ranges не должны быть невалидными;
 - item_drop_chance в пределах 0–100;
+- DungeonLocationItemTemplate.chance в пределах 1–100;
 - success chance caps в пределах 0–100;
 - active dungeon должен иметь хотя бы один возможный item_template, если item_drop_chance > 0.

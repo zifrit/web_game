@@ -1,6 +1,6 @@
 # Backend Inventory
 
-Updated from code inspection on 2026-05-27.
+Updated from code inspection on 2026-05-30.
 
 ## Entrypoints
 
@@ -10,6 +10,8 @@ Updated from code inspection on 2026-05-27.
 - `backend/config/urls.py` - `admin/` and `/api/`.
 - `backend/config/celery.py` - Celery app setup.
 - `backend/apps/game/urls.py` - public API routes.
+- `backend/apps/game/two_factor.py` - encrypted TOTP secret helpers, QR data
+  URL generation, login challenge signing and replay-aware TOTP verification.
 - `backend/apps/game/image_generation.py` - parsing/resizing/saving helpers for
   generated image assets.
 
@@ -17,12 +19,15 @@ Updated from code inspection on 2026-05-27.
 
 - `base.py` - `TimestampedModel`, `MediaAsset` with nullable `asset_type` and
   `original`/`large`/`medium`/`small` files.
-- `users.py` - `UserManager`, custom `User`.
+- `users.py` - `UserManager`, custom `User`, `UserTwoFactor` for opt-in TOTP
+  protection.
 - `characters.py` - `CharacterClass`, `Character`.
 - `config.py` - `RarityConfig` with stat/economy multipliers,
   `EquipmentSlotConfig`, `GameConfig`.
-- `items.py` - `ItemTemplate`, `UserItem`, `RepairTransaction`.
-- `dungeons.py` - `DungeonLocation`, `DungeonLocationItemTemplate`,
+- `items.py` - `ItemTemplate` with `rarity_key`, `UserItem`,
+  `RepairTransaction`.
+- `dungeons.py` - `DungeonLocation`, `DungeonLocationItemTemplate` with
+  per-location item `chance` weights,
   `DungeonRunStatus`, `DungeonRun`, `DungeonRunClaim`, `DungeonRunClaimItem`.
 
 `models/__init__.py` exports public model classes and `UserManager`.
@@ -42,6 +47,11 @@ Updated from code inspection on 2026-05-27.
 
 Inventory economy notes:
 
+- `apps.game.ranks` maps level ranges to F/E/D/C/B/A/S/EX for both hero level
+  and item level; current hero max level is 80.
+- `LootGenerationService` first rolls `DungeonLocation.item_drop_chance`, then
+  chooses a linked `DungeonLocationItemTemplate` by `chance`; generated item
+  level and template rank stay aligned through `ItemTemplate.rarity_key`.
 - Repair and destroy prices use `RarityConfig.economy_multiplier`.
 - Bulk inventory endpoints are the source of truth for repair/destroy; single
   item repair endpoints delegate to the bulk service with one id.
@@ -66,6 +76,11 @@ Auth views also include avatar media endpoints: `IconAssetsView` lists
 `asset_type=icons` assets and `UserAvatarUpdateView` updates `User.avatar_media`
 only to an icon asset.
 
+Auth views include TOTP endpoints. Protected password login returns a short-lived
+`challenge_token`; `POST /api/auth/login/totp` verifies the code before issuing
+JWT tokens. Settings-driven setup uses pending secrets and only flips
+`totp_protection=true` after confirmation; disable requires password + TOTP.
+
 View domains:
 
 - `auth.py`
@@ -80,6 +95,8 @@ View domains:
 
 - `backend/apps/game/admin.py` registers game/balance/admin models.
 - `backend/apps/game/management/commands/seed_game.py` seeds MVP data.
+- `backend/apps/game/management/commands/seed_item_templates.py` idempotently
+  creates 176 ranked F-EX item templates; `seed_game` calls the same helper.
 - `backend/apps/game/management/commands/generate_game_images.py` generates
   local webp image variants from CSV prompts through Polza.ai; it has dry-run,
   limit, max-images and retry behavior.

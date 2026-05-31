@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Lock, LogIn, Mail, ShieldCheck, UserPlus } from "lucide-react";
+import { KeyRound, Lock, LogIn, Mail, ShieldCheck, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -20,6 +20,8 @@ type AuthMode = "login" | "register";
 
 export function AuthScreen() {
   const [mode, setMode] = useState<AuthMode>("login");
+  const [totpChallenge, setTotpChallenge] = useState<string | null>(null);
+  const [totpCode, setTotpCode] = useState("");
   const { setSession } = useSession();
   const { t } = useI18n();
   const queryClient = useQueryClient();
@@ -34,18 +36,37 @@ export function AuthScreen() {
         ? api.login(values.email, values.password)
         : api.register(values.email, values.password),
     onSuccess: (auth) => {
+      if ("two_factor_required" in auth) {
+        setTotpChallenge(auth.challenge_token);
+        setTotpCode("");
+        return;
+      }
       setSession(auth);
+      void queryClient.invalidateQueries({ queryKey: ["me"] });
+    },
+  });
+
+  const totpMutation = useMutation({
+    mutationFn: () => api.verifyLoginTotp(totpChallenge ?? "", totpCode),
+    onSuccess: (auth) => {
+      setSession(auth);
+      setTotpChallenge(null);
+      setTotpCode("");
       void queryClient.invalidateQueries({ queryKey: ["me"] });
     },
   });
 
   const setAuthMode = (nextMode: AuthMode) => {
     setMode(nextMode);
+    setTotpChallenge(null);
+    setTotpCode("");
     form.clearErrors();
     mutation.reset();
+    totpMutation.reset();
   };
 
   const isLogin = mode === "login";
+  const needsTotp = Boolean(totpChallenge);
 
   return (
     <main className="auth-shell">
@@ -104,67 +125,119 @@ export function AuthScreen() {
           </div>
 
           <div className="auth-panel-head">
-            <div className="card-sub">{isLogin ? t("auth.accountAccess") : t("auth.newAccount")}</div>
-            <h2>{isLogin ? t("auth.enterKeep") : t("auth.openGate")}</h2>
+            <div className="card-sub">{needsTotp ? t("auth.totpRequired") : isLogin ? t("auth.accountAccess") : t("auth.newAccount")}</div>
+            <h2>{needsTotp ? t("auth.totpTitle") : isLogin ? t("auth.enterKeep") : t("auth.openGate")}</h2>
           </div>
 
-          <form className="auth-form" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
-            <label>
-              <span>{t("auth.email")}</span>
-              <div className="auth-input-wrap">
-                <Mail size={16} />
-                <input
-                  autoComplete="email"
-                  className="input"
-                  placeholder="you@example.com"
-                  type="email"
-                  {...form.register("email")}
-                />
-              </div>
-              {form.formState.errors.email && (
-                <small>{form.formState.errors.email.message}</small>
-              )}
-            </label>
+          {needsTotp ? (
+            <form className="auth-form" onSubmit={(event) => {
+              event.preventDefault();
+              totpMutation.mutate();
+            }}>
+              <label>
+                <span>{t("auth.totpCode")}</span>
+                <div className="auth-input-wrap">
+                  <KeyRound size={16} />
+                  <input
+                    autoComplete="one-time-code"
+                    className="input"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="123456"
+                    type="text"
+                    value={totpCode}
+                    onChange={(event) => setTotpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                  />
+                </div>
+              </label>
 
-            <label>
-              <span>{t("auth.password")}</span>
-              <div className="auth-input-wrap">
-                <Lock size={16} />
-                <input
-                  autoComplete={isLogin ? "current-password" : "new-password"}
-                  className="input"
-                  placeholder={t("auth.passwordPlaceholder")}
-                  type="password"
-                  {...form.register("password")}
-                />
-              </div>
-              {form.formState.errors.password && (
-                <small>{form.formState.errors.password.message}</small>
-              )}
-            </label>
+              <ErrorNotice message={(totpMutation.error as Error | null)?.message} />
 
-            <ErrorNotice message={(mutation.error as Error | null)?.message} />
+              <button
+                type="submit"
+                disabled={totpMutation.isPending || totpCode.length !== 6}
+                className="btn btn-primary auth-submit"
+              >
+                {totpMutation.isPending ? t("auth.working") : (
+                  <>
+                    <ShieldCheck size={17} />
+                    {t("auth.verifyTotp")}
+                  </>
+                )}
+              </button>
 
-            <button
-              type="submit"
-              disabled={mutation.isPending}
-              className="btn btn-primary auth-submit"
-            >
-              {mutation.isPending ? (
-                t("auth.working")
-              ) : isLogin ? (
-                <>
-                  <ShieldCheck size={17} />
-                  {t("auth.enter")}
-                </>
-              ) : (
-                <>
-                  <UserPlus size={17} />
-                  {t("auth.createAccount")}
-                </>
-              )}
-            </button>
-          </form>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setTotpChallenge(null);
+                  setTotpCode("");
+                  mutation.reset();
+                  totpMutation.reset();
+                }}
+              >
+                {t("common.back")}
+              </button>
+            </form>
+          ) : (
+            <form className="auth-form" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
+              <label>
+                <span>{t("auth.email")}</span>
+                <div className="auth-input-wrap">
+                  <Mail size={16} />
+                  <input
+                    autoComplete="email"
+                    className="input"
+                    placeholder="you@example.com"
+                    type="email"
+                    {...form.register("email")}
+                  />
+                </div>
+                {form.formState.errors.email && (
+                  <small>{form.formState.errors.email.message}</small>
+                )}
+              </label>
+
+              <label>
+                <span>{t("auth.password")}</span>
+                <div className="auth-input-wrap">
+                  <Lock size={16} />
+                  <input
+                    autoComplete={isLogin ? "current-password" : "new-password"}
+                    className="input"
+                    placeholder={t("auth.passwordPlaceholder")}
+                    type="password"
+                    {...form.register("password")}
+                  />
+                </div>
+                {form.formState.errors.password && (
+                  <small>{form.formState.errors.password.message}</small>
+                )}
+              </label>
+
+              <ErrorNotice message={(mutation.error as Error | null)?.message} />
+
+              <button
+                type="submit"
+                disabled={mutation.isPending}
+                className="btn btn-primary auth-submit"
+              >
+                {mutation.isPending ? (
+                  t("auth.working")
+                ) : isLogin ? (
+                  <>
+                    <ShieldCheck size={17} />
+                    {t("auth.enter")}
+                  </>
+                ) : (
+                  <>
+                    <UserPlus size={17} />
+                    {t("auth.createAccount")}
+                  </>
+                )}
+              </button>
+            </form>
+          )}
         </div>
       </section>
     </main>

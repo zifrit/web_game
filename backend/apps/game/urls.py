@@ -26,6 +26,11 @@ from .views import (
     LogoutView,
     MeView,
     RegisterView,
+    TotpLoginView,
+    TwoFactorConfirmView,
+    TwoFactorDisableView,
+    TwoFactorSetupView,
+    TwoFactorStatusView,
     UserAvatarUpdateView,
 )
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -33,8 +38,13 @@ from rest_framework_simplejwt.views import TokenRefreshView
 urlpatterns = [
     path("auth/register", RegisterView.as_view(), name="auth_register"),
     path("auth/login", LoginView.as_view(), name="auth_login"),
+    path("auth/login/totp", TotpLoginView.as_view(), name="auth_login_totp"),
     path("auth/refresh", TokenRefreshView.as_view(), name="auth_refresh"),
     path("auth/me", MeView.as_view(), name="auth_me"),
+    path("auth/two-factor", TwoFactorStatusView.as_view(), name="auth_two_factor_status"),
+    path("auth/two-factor/setup", TwoFactorSetupView.as_view(), name="auth_two_factor_setup"),
+    path("auth/two-factor/confirm", TwoFactorConfirmView.as_view(), name="auth_two_factor_confirm"),
+    path("auth/two-factor/disable", TwoFactorDisableView.as_view(), name="auth_two_factor_disable"),
     path("auth/logout", LogoutView.as_view(), name="auth_logout"),
     path("character-classes", CharacterClassListView.as_view(), name="character_classes"),
     path("characters", CharacterCreateView.as_view(), name="character_create"),

@@ -29,9 +29,9 @@ services:
     build:
       context: ./backend
     command: >
-      sh -c "python manage.py migrate &&
-             python manage.py seed_game &&
-             python manage.py runserver 0.0.0.0:8000"
+      sh -c "uv sync &&
+             uv run python manage.py migrate &&
+             uv run python manage.py runserver 0.0.0.0:8000"
     env_file:
       - .env
     environment:

@@ -1,6 +1,6 @@
 # Verification Inventory
 
-Updated from code inspection on 2026-05-25.
+Updated from code inspection on 2026-05-28.
 
 Use the smallest useful checks for the touched area.
 
@@ -44,3 +44,11 @@ For docs-only project memory updates:
 - confirm links/paths match the repo;
 - confirm no `.env` or `.env.*` content was read or copied;
 - no backend/frontend build is required.
+
+## Graphify maintenance
+
+After code changes, run:
+
+- `graphify update .` - refresh the local knowledge graph without API cost.
+
+For docs-only Project Memory changes, Graphify update is not required.

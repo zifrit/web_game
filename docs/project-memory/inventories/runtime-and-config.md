@@ -1,6 +1,6 @@
 # Runtime And Config Inventory
 
-Updated from code inspection on 2026-05-25.
+Updated from code inspection on 2026-05-30.
 
 ## Docker Compose services
 
@@ -26,6 +26,8 @@ Source: `backend/config/settings.py`.
 - `AUTH_USER_MODEL = "game.User"`.
 - Default DB fallback is sqlite when `DATABASE_URL` is absent.
 - Celery broker/result backend use `REDIS_URL`.
+- TOTP secret encryption uses `TOTP_ENCRYPTION_KEY`, which must be a valid
+  Fernet key generated with `Fernet.generate_key().decode()`.
 - `POLZA_AI_API_KEY` / optional `POLZA_AI_BASE_URL` are read by the image
   generation command, not by normal app request flow.
 - Beat schedule `complete-dungeon-runs` runs task
@@ -38,7 +40,8 @@ Source: `backend/config/settings.py`.
 Backend source: `backend/pyproject.toml`.
 
 - Django, DRF, SimpleJWT, Celery, Redis, PostgreSQL driver, django-storages,
-  CORS headers, Pillow, requests, Argon2, pytest tooling.
+  CORS headers, Pillow, requests, Argon2, pyotp, qrcode, cryptography,
+  pytest tooling.
 
 Frontend source: `frontend/package.json`.
 

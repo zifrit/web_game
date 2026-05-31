@@ -11,6 +11,26 @@ MESSAGES = {
         "en": "Invalid email or password",
         "ru": "Неверный email или пароль",
     },
+    "totp_already_enabled": {
+        "en": "Two-factor protection is already enabled.",
+        "ru": "Двухфакторная защита уже включена.",
+    },
+    "totp_not_configured": {
+        "en": "Two-factor protection is not configured.",
+        "ru": "Двухфакторная защита не настроена.",
+    },
+    "totp_setup_required": {
+        "en": "Start two-factor setup before confirming it.",
+        "ru": "Сначала начните настройку двухфакторной защиты.",
+    },
+    "invalid_totp_code": {
+        "en": "Invalid two-factor code.",
+        "ru": "Неверный код двухфакторной защиты.",
+    },
+    "invalid_totp_challenge": {
+        "en": "Two-factor login challenge expired. Log in again.",
+        "ru": "Проверка двухфакторного входа истекла. Войдите снова.",
+    },
     "unknown_class": {
         "en": "Unknown class",
         "ru": "Неизвестный класс",

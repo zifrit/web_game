@@ -54,6 +54,7 @@ function Sidebar({
   characterName,
   characterClass,
   characterLevel,
+  characterRank,
   userAvatar,
   characterAvatar,
   isLoadingCharacter,
@@ -65,6 +66,7 @@ function Sidebar({
   characterName?: string;
   characterClass?: string;
   characterLevel?: number;
+  characterRank?: string;
   userAvatar?: MediaAssetUrls | null;
   characterAvatar?: MediaAssetUrls | null;
   isLoadingCharacter?: boolean;
@@ -189,7 +191,7 @@ function Sidebar({
                     fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
                     fontSize: 10, color: "#64748B", letterSpacing: "0.12em", textTransform: "uppercase",
                   }}>
-                    {characterClass ?? "—"} · {t("common.levelShort")} {characterLevel ?? "—"}
+                    {characterClass ?? "—"} · {t("common.levelShort")} {characterLevel ?? "—"} · {t("common.rank")} {characterRank ?? "—"}
                   </div>
                 </>
               )}
@@ -250,10 +252,11 @@ function MobileNav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
 }
 
 /* ─── Topbar ─── */
-function Topbar({ meta, title, level, gold }: {
+function Topbar({ meta, title, level, rank, gold }: {
   meta: { section: string };
   title: string;
   level?: number;
+  rank?: string;
   gold?: number;
 }) {
   const { locale, t } = useI18n();
@@ -290,6 +293,7 @@ function Topbar({ meta, title, level, gold }: {
           }}>
             <span style={{ color: "#64748B", letterSpacing: "0.12em", textTransform: "uppercase", fontSize: 10 }}>{t("common.levelShort")}</span>
             <span style={{ color: "#F1F5F9", fontWeight: 600 }}>{level}</span>
+            {rank && <span style={{ color: "#94A3B8", fontWeight: 700 }}>{rank}</span>}
           </div>
         )}
         {gold !== undefined && (
@@ -387,6 +391,7 @@ export function RpgClient() {
           characterName={characterQuery.data?.name}
           characterClass={characterQuery.data?.class?.name}
           characterLevel={characterQuery.data?.level}
+          characterRank={characterQuery.data?.rank}
           userAvatar={activeUser?.avatar}
           characterAvatar={characterQuery.data?.avatar}
           isLoadingCharacter={characterQuery.isLoading}
@@ -403,6 +408,7 @@ export function RpgClient() {
           meta={meta}
           title={pageTitle}
           level={charLevel}
+          rank={characterQuery.data?.rank}
           gold={gold}
         />
 

@@ -1,3 +1,5 @@
+from django.db.models import Q
+
 from apps.game.i18n import DEFAULT_LOCALE
 from apps.game.models import Character
 
@@ -25,7 +27,9 @@ class LeaderboardItemSerializer:
         ]
         my_rank = None
         if my_character:
-            better = Character.objects.filter(level__gt=my_character.level).count()
-            same_level_better = Character.objects.filter(level=my_character.level, experience__gt=my_character.experience).count()
-            my_rank = {"rank": better + same_level_better + 1, "character_id": my_character.id, "level": my_character.level}
+            ahead = Character.objects.filter(
+                Q(level__gt=my_character.level)
+                | Q(level=my_character.level, experience__gt=my_character.experience)
+            ).count()
+            my_rank = {"rank": ahead + 1, "character_id": my_character.id, "level": my_character.level}
         return {"type": "level", "items": payload, "my_rank": my_rank}

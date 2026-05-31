@@ -157,17 +157,25 @@ export function LoadingLine({ label = "Loading" }: { label?: string }) {
    ItemGlyph — rarity-aware item icon cell
 ───────────────────────────────────────── */
 const rarityBorder: Record<string, string> = {
-  common:   "border-[#9CA3AF]/40",
-  uncommon: "border-[#22C55E]/50 shadow-[0_0_8px_rgba(34,197,94,0.2)]",
-  rare:     "border-[#3B82F6]/50 shadow-[0_0_8px_rgba(59,130,246,0.25)]",
-  epic:     "border-[#A855F7]/50 shadow-[0_0_10px_rgba(168,85,247,0.3)]",
+  f: "border-[#94A3B8]/40",
+  e: "border-[#22C55E]/50 shadow-[0_0_8px_rgba(34,197,94,0.2)]",
+  d: "border-[#38BDF8]/50 shadow-[0_0_8px_rgba(56,189,248,0.22)]",
+  c: "border-[#3B82F6]/50 shadow-[0_0_8px_rgba(59,130,246,0.25)]",
+  b: "border-[#A855F7]/50 shadow-[0_0_10px_rgba(168,85,247,0.3)]",
+  a: "border-[#F59E0B]/50 shadow-[0_0_10px_rgba(245,158,11,0.3)]",
+  s: "border-[#EF4444]/50 shadow-[0_0_12px_rgba(239,68,68,0.32)]",
+  ex: "border-[#F8FAFC]/70 shadow-[0_0_14px_rgba(248,250,252,0.35)]",
 };
 
 const rarityText: Record<string, string> = {
-  common:   "text-[#9CA3AF]",
-  uncommon: "text-[#22C55E]",
-  rare:     "text-[#3B82F6]",
-  epic:     "text-[#A855F7]",
+  f: "text-[#94A3B8]",
+  e: "text-[#22C55E]",
+  d: "text-[#38BDF8]",
+  c: "text-[#3B82F6]",
+  b: "text-[#A855F7]",
+  a: "text-[#F59E0B]",
+  s: "text-[#EF4444]",
+  ex: "text-[#F8FAFC]",
 };
 
 export function ItemGlyph({
@@ -183,7 +191,7 @@ export function ItemGlyph({
 }) {
   const borderClass = broken
     ? "border-[#EF4444]/60"
-    : (rarityBorder[rarity.toLowerCase()] ?? rarityBorder.common);
+    : (rarityBorder[rarity.toLowerCase()] ?? rarityBorder.f);
 
   return (
     <div
@@ -203,7 +211,7 @@ export function ItemGlyph({
         <span
           className={clsx(
             "text-xl font-bold",
-            rarityText[rarity.toLowerCase()] ?? rarityText.common
+            rarityText[rarity.toLowerCase()] ?? rarityText.f
           )}
         >
           {rarity.slice(0, 1).toUpperCase()}
@@ -226,7 +234,7 @@ export function RarityLabel({ rarity }: { rarity: string }) {
     <span
       className={clsx(
         "text-xs font-bold uppercase tracking-widest",
-        rarityText[rarity.toLowerCase()] ?? rarityText.common
+        rarityText[rarity.toLowerCase()] ?? rarityText.f
       )}
     >
       {rarity}

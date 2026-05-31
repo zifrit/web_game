@@ -94,8 +94,7 @@ stateDiagram-v2
 | `experience_min`, `experience_max` | `DungeonLocation` | Диапазон XP при успехе. |
 | `money_min_copper`, `money_max_copper` | `DungeonLocation` | Диапазон валюты при успехе. |
 | `item_drop_chance` | `DungeonLocation` | Первый бросок на выпадение предмета при успехе. |
-| `rarity_chances` | `DungeonLocation` | Взвешенный выбор редкости предмета. |
-| `DungeonLocationItemTemplate` | join table | Какие `ItemTemplate` могут выпасть в этой локации. |
+| `DungeonLocationItemTemplate.chance` | join table | Какие `ItemTemplate` могут выпасть в этой локации и с каким весом. |
 | `is_active` | `DungeonLocation` | Неактивные данжи нельзя получить в списке и запустить. |
 
 ## Откуда берётся power героя
@@ -596,11 +595,11 @@ durability_loss = GameFormulaService.durability_loss(is_success)
 DungeonRunService.finalize_due_run
   -> LootGenerationService.generate_item_reward(character, location)
       -> random.uniform(0, 100) vs location.item_drop_chance
-      -> _weighted_choice(location.rarity_chances)
+      -> DungeonLocationItemTemplate.objects.filter(location=location).select_related("item_template")
+      -> item_allowed_for_character(link.item_template, character)
+      -> _weighted_choice(link.chance)
+      -> selected ItemTemplate.rarity_key
       -> GameBalanceService.rarity_config(rarity)
-      -> ItemTemplate.objects.filter(template_locations__location=location)
-      -> item_allowed_for_character(template, character)
-      -> random.choice(template)
       -> random item_level
       -> random selected stats
       -> final stat formula
@@ -613,10 +612,12 @@ DungeonRunService.finalize_due_run
     предмет не выпал
 ```
 
-Выбор редкости:
+Выбор шаблона и редкости:
 
 ```text
-rarity = weighted_choice(location.rarity_chances)
+link = weighted_choice(location.location_item_templates, weight=chance)
+template = link.item_template
+rarity = template.rarity_key
 ```
 
 Параметры редкостей по умолчанию:
@@ -1054,8 +1055,7 @@ Serializer добавляет:
 | `DungeonLocation.experience_min/max` | Диапазон XP при успехе. |
 | `DungeonLocation.money_min/max` | Диапазон денег при успехе. |
 | `DungeonLocation.item_drop_chance` | Вероятность предмета при успехе. |
-| `DungeonLocation.rarity_chances` | Вероятность редкости предмета. |
-| `DungeonLocationItemTemplate` | Какие шаблоны предметов могут выпасть. |
+| `DungeonLocationItemTemplate.chance` | Какие шаблоны предметов могут выпасть и их вес внутри локации. |
 | `RarityConfig` | Множитель статов, item level range, stats count. |
 | `ItemTemplate.possible_stats` | Какие статы и диапазоны может получить предмет. |
 | `ItemTemplate.min/max_durability` | Максимальная прочность нового предмета. |
@@ -1084,7 +1084,7 @@ success_chance
 
 Но на награды при финализации влияют текущие данные `DungeonLocation`, потому
 что `experience_min/max`, `money_min/max`, `item_drop_chance`,
-`rarity_chances` читаются из `run.location` в момент `finalize_due_run`.
+и `DungeonLocationItemTemplate.chance` читаются в момент `finalize_due_run`.
 
 ## Идемпотентность claim
 
