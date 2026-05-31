@@ -25,7 +25,7 @@ source_of_truth:
   - frontend/components/screens/settings-screen.tsx
   - frontend/package.json
   - docker-compose.yml
-last_verified: 2026-05-28
+last_verified: 2026-05-31
 verified_from:
   - AGENTS.md
   - README.md
@@ -65,7 +65,11 @@ verified_from:
 2. Для общего понимания проекта читай `curated/`.
 3. Для точных списков API, модулей, экранов, runtime-сервисов и проверок
    открывай `inventories/`.
-4. Если память расходится с кодом, доверяй коду и обновляй память.
+4. Для codebase-вопросов используй Graphify, если есть `graphify-out/graph.json`;
+   для широкой навигации предпочитай `graphify-out/wiki/index.md`, если он
+   существует.
+5. Если память, Graphify или документация расходятся с кодом, доверяй коду и
+   обновляй память.
 
 ## Что читать по типу запроса
 
@@ -80,6 +84,9 @@ verified_from:
 - Какие gotchas нужно проверить перед изменениями:
   [curated/gotchas.md](curated/gotchas.md)
 - Какие правила git hygiene, security и handoff важны:
+  [curated/working-rules.md](curated/working-rules.md)
+- Какие правила Graphify важны для вопросов по кодовой базе и больших
+  изменений:
   [curated/working-rules.md](curated/working-rules.md)
 - Нужен список публичных API routes:
   [inventories/api-routes.md](inventories/api-routes.md)
@@ -96,6 +103,9 @@ verified_from:
 
 ## Как понимать достоверность
 
+- Приоритет доверия: текущий код; тесты, миграции, схемы, конфиги и runtime;
+  свежий Graphify-анализ; документация проекта; Project Memory; предыдущие
+  обсуждения.
 - `curated/*` - ручная память для человека: смысл, правила, навигация и места,
   где легко ошибиться.
 - `inventories/*` - generated-style markdown snapshots: списки, вручную
@@ -117,5 +127,6 @@ verified_from:
 - Память не заменяет код, `README.md` или `specs/`.
 - Память должна помогать быстро найти source-of-truth, а не дублировать его
   целиком.
+- Graphify помогает понять структуру, но текущий код остается источником истины.
 - Секреты и `.env` / `.env.*` файлы не читаются, не индексируются и не
   пересказываются.
