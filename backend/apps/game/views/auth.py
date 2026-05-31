@@ -96,6 +96,7 @@ class MeView(APIView):
         """Возвращает профиль, баланс и признак наличия созданного героя."""
 
         user = User.objects.select_related("avatar_media", "character", "two_factor").get(pk=request.user.pk)
+        self.check_object_permissions(request, user)
         return Response(
             {
                 "id": user.id,

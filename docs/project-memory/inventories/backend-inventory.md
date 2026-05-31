@@ -10,6 +10,8 @@ Updated from code inspection on 2026-05-31.
 - `backend/config/urls.py` - `admin/` and `/api/`.
 - `backend/config/celery.py` - Celery app setup.
 - `backend/apps/game/urls.py` - public API routes.
+- `backend/apps/game/permissions.py` - shared DRF owner/superuser permission
+  used as the default private API permission.
 - `backend/apps/game/two_factor.py` - encrypted TOTP secret helpers, QR data
   URL generation, login challenge signing and replay-aware TOTP verification.
 - `backend/apps/game/image_generation.py` - parsing/resizing/saving helpers for
@@ -103,6 +105,10 @@ View domains:
 - `leaderboard.py`
 
 `serializers/__init__.py` and `views/__init__.py` re-export public classes.
+
+DRF private endpoints use `apps.game.permissions.IsSuperuserOrOwner` by
+default. Existing `AllowAny` views remain public; user-scoped endpoints still
+query through `request.user`, so superuser bypass does not add impersonation.
 
 ## Admin, commands, tests
 

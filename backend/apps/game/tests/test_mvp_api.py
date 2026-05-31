@@ -8,7 +8,8 @@ import pyotp
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.game.models import CharacterClass, DungeonLocation, DungeonRunClaim, ItemTemplate, MediaAsset, UserItem, UserTwoFactor
+from apps.game.models import CharacterClass, DungeonLocation, DungeonRun, DungeonRunClaim, DungeonRunStatus, ItemTemplate, MediaAsset, UserItem, UserTwoFactor
+from apps.game.permissions import IsSuperuserOrOwner
 from apps.game.two_factor import TOTP_INTERVAL_SECONDS, current_timecode
 
 
@@ -31,6 +32,90 @@ class MvpApiTests(APITestCase):
         response = self.client.post("/api/characters", {"name": "Arthas", "class_key": class_key}, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         return response.data
+
+    def test_public_and_private_endpoint_permissions(self):
+        public_classes = self.client.get("/api/character-classes")
+        self.assertEqual(public_classes.status_code, status.HTTP_200_OK)
+
+        public_register = self.client.post("/api/auth/register", {"email": "public@example.com", "password": "strong_password_123"}, format="json")
+        self.assertEqual(public_register.status_code, status.HTTP_201_CREATED, public_register.data)
+
+        public_login = self.client.post("/api/auth/login", {"email": "public@example.com", "password": "strong_password_123"}, format="json")
+        self.assertEqual(public_login.status_code, status.HTTP_200_OK, public_login.data)
+
+        public_refresh_without_auth_header = self.client.post("/api/auth/refresh", {}, format="json")
+        self.assertEqual(public_refresh_without_auth_header.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.client.credentials()
+        for path in ("/api/auth/me", "/api/characters/me", "/api/inventory", "/api/dungeons", "/api/leaderboard?type=level"):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED, path)
+
+    def test_object_permissions_keep_user_objects_private(self):
+        owner = self.register_and_authenticate("owner@example.com")
+        self.create_character()
+        owner_character = owner.character
+        template = ItemTemplate.objects.filter(slot="weapon", item_type="sword", rarity_key="f").first()
+        item = UserItem.objects.create(
+            owner_user=owner,
+            source_character=owner_character,
+            template=template,
+            name=template.name,
+            slot=template.slot,
+            item_type=template.item_type,
+            rarity="f",
+            item_level=1,
+            stats={"attack": 5},
+            durability_current=10,
+            durability_max=10,
+        )
+        location = DungeonLocation.objects.get(name="Старый лес")
+        run = DungeonRun.objects.create(
+            character=owner_character,
+            location=location,
+            status=DungeonRunStatus.SUCCESS_WAITING_CLAIM,
+            started_at=timezone.now(),
+            ends_at=timezone.now(),
+            completed_at=timezone.now(),
+            success_chance=100,
+            is_success=True,
+            experience_reward=1,
+            money_reward_copper=1,
+            items_reward=[],
+            durability_loss=0,
+        )
+
+        owner_item = self.client.get(f"/api/inventory/items/{item.id}")
+        self.assertEqual(owner_item.status_code, status.HTTP_200_OK, owner_item.data)
+
+        intruder = self.register_and_authenticate("intruder@example.com")
+        self.create_character("mage")
+
+        intruder_item = self.client.get(f"/api/inventory/items/{item.id}")
+        self.assertEqual(intruder_item.status_code, status.HTTP_404_NOT_FOUND)
+
+        intruder_claim = self.client.post(f"/api/dungeon-runs/{run.id}/claim", {}, format="json")
+        self.assertEqual(intruder_claim.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(DungeonRunClaim.objects.filter(dungeon_run=run).exists())
+
+        self.client.credentials()
+        owner_login = self.client.post("/api/auth/login", {"email": owner.email, "password": "strong_password_123"}, format="json")
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {owner_login.data['access_token']}")
+        owner_claim = self.client.post(f"/api/dungeon-runs/{run.id}/claim", {}, format="json")
+        self.assertEqual(owner_claim.status_code, status.HTTP_200_OK, owner_claim.data)
+        self.assertTrue(DungeonRunClaim.objects.filter(dungeon_run=run, user=owner).exists())
+
+        superuser = User.objects.create_superuser(email="admin@example.com", password="strong_password_123")
+        permission = IsSuperuserOrOwner()
+        request = type("Request", (), {"user": superuser})()
+        self.assertTrue(permission.has_permission(request, None))
+        self.assertTrue(permission.has_object_permission(request, None, item))
+
+        self.client.credentials()
+        admin_login = self.client.post("/api/auth/login", {"email": superuser.email, "password": "strong_password_123"}, format="json")
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {admin_login.data['access_token']}")
+        admin_inventory = self.client.get("/api/inventory")
+        self.assertEqual(admin_inventory.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_register_create_character_and_fetch_profile(self):
         user = self.register_and_authenticate()

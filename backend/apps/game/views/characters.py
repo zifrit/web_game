@@ -41,4 +41,5 @@ class CharacterMeView(APIView):
             Character.objects.select_related("character_class", "character_class__media", "avatar_media").prefetch_related("equipped_items__template__media"),
             user=request.user,
         )
+        self.check_object_permissions(request, character)
         return Response(CharacterMeSerializer(character, context={"request": request}).data)
