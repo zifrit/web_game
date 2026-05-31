@@ -29,3 +29,4 @@ backend/assets/
 backend/apps/game/image_generation.py
 backend/apps/game/management/commands/generate_game_images.py
 backend/apps/game/tests/test_image_generation.py
+for_test/
