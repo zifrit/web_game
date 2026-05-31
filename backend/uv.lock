@@ -104,6 +104,7 @@ dependencies = [
     { name = "dj-database-url" },
     { name = "django" },
     { name = "django-cors-headers" },
+    { name = "django-extensions" },
     { name = "django-storages", extra = ["boto3"] },
     { name = "djangorestframework" },
     { name = "djangorestframework-simplejwt" },
@@ -129,6 +130,7 @@ requires-dist = [
     { name = "dj-database-url", specifier = "==2.3.0" },
     { name = "django", specifier = "==5.1.4" },
     { name = "django-cors-headers", specifier = "==4.6.0" },
+    { name = "django-extensions", specifier = ">=4.1" },
     { name = "django-storages", extras = ["boto3"], specifier = "==1.14.4" },
     { name = "djangorestframework", specifier = "==3.15.2" },
     { name = "djangorestframework-simplejwt", specifier = "==5.3.1" },
@@ -386,6 +388,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c6/e5/3b67fc05b9c02b926411436dfc553829bc00843706ce7f99752433017f47/django_cors_headers-4.6.0.tar.gz", hash = "sha256:14d76b4b4c8d39375baeddd89e4f08899051eeaf177cb02a29bd6eae8cf63aa8", size = 20961, upload-time = "2024-10-29T10:38:15.281Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/52/73/689532cf164ab10ed1521d825ea156656520cec98886c8d2ac1ce8829220/django_cors_headers-4.6.0-py3-none-any.whl", hash = "sha256:8edbc0497e611c24d5150e0055d3b178c6534b8ed826fb6f53b21c63f5d48ba3", size = 12791, upload-time = "2024-10-29T10:38:13.784Z" },
+]
+
+[[package]]
+name = "django-extensions"
+version = "4.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6d/b3/ed0f54ed706ec0b54fd251cc0364a249c6cd6c6ec97f04dc34be5e929eac/django_extensions-4.1.tar.gz", hash = "sha256:7b70a4d28e9b840f44694e3f7feb54f55d495f8b3fa6c5c0e5e12bcb2aa3cdeb", size = 283078, upload-time = "2025-04-11T01:15:39.617Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/64/96/d967ca440d6a8e3861120f51985d8e5aec79b9a8bdda16041206adfe7adc/django_extensions-4.1-py3-none-any.whl", hash = "sha256:0699a7af28f2523bf8db309a80278519362cd4b6e1fd0a8cd4bf063e1e023336", size = 232980, upload-time = "2025-04-11T01:15:37.701Z" },
 ]
 
 [[package]]
