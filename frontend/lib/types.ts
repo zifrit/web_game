@@ -131,6 +131,7 @@ export type ClaimResponse = {
   id: number;
   status: "CLAIMED";
   is_success: boolean;
+  success_chance?: number;
   rewards: {
     experience: number;
     money_copper: number;
@@ -139,6 +140,11 @@ export type ClaimResponse = {
       name: string;
       rarity: string;
       item_level: number;
+      stats: StatBlock;
+      durability: {
+        current: number;
+        max: number;
+      };
     }>;
     durability_loss: number;
   };

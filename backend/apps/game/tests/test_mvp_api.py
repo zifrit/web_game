@@ -293,11 +293,16 @@ class MvpApiTests(APITestCase):
         self.assertEqual(claim.status_code, status.HTTP_200_OK, claim.data)
         self.assertEqual(claim.data["status"], "CLAIMED")
         self.assertEqual(claim.data["is_success"], True)
+        self.assertEqual(claim.data["success_chance"], 100)
         if claim.data["rewards"]["items"]:
             item = claim.data["rewards"]["items"][0]
             self.assertFalse(item["name"].startswith(("F ", "E ", "D ", "C ", "B ", "A ", "S ", "EX ")))
             self.assertIn(item["rarity"], {"f", "e", "d", "c", "b", "a", "s", "ex"})
             self.assertGreaterEqual(item["item_level"], 1)
+            self.assertIn("stats", item)
+            self.assertIsInstance(item["stats"], dict)
+            self.assertEqual(set(item["durability"].keys()), {"current", "max"})
+            self.assertGreaterEqual(item["durability"]["max"], item["durability"]["current"])
         self.assertEqual(DungeonRunClaim.objects.count(), 1)
 
         second_claim = self.client.post(f"/api/dungeon-runs/{start.data['id']}/claim", {}, format="json")

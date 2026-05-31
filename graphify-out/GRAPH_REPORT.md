@@ -1,16 +1,16 @@
 # Graph Report - web_game  (2026-05-31)
 
 ## Corpus Check
-- 113 files · ~49,059 words
+- 114 files · ~49,490 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1515 nodes · 2397 edges · 137 communities (103 shown, 34 thin omitted)
+- 1522 nodes · 2423 edges · 134 communities (100 shown, 34 thin omitted)
 - Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 288 edges (avg confidence: 0.6)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `372f9a6a`
+- Built from commit: `ecb02ccb`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -35,7 +35,6 @@
 - [[_COMMUNITY_Community 17|Community 17]]
 - [[_COMMUNITY_Community 18|Community 18]]
 - [[_COMMUNITY_Community 19|Community 19]]
-- [[_COMMUNITY_Community 20|Community 20]]
 - [[_COMMUNITY_Community 21|Community 21]]
 - [[_COMMUNITY_Community 22|Community 22]]
 - [[_COMMUNITY_Community 23|Community 23]]
@@ -91,7 +90,6 @@
 - [[_COMMUNITY_Community 88|Community 88]]
 - [[_COMMUNITY_Community 89|Community 89]]
 - [[_COMMUNITY_Community 90|Community 90]]
-- [[_COMMUNITY_Community 91|Community 91]]
 - [[_COMMUNITY_Community 92|Community 92]]
 - [[_COMMUNITY_Community 93|Community 93]]
 - [[_COMMUNITY_Community 94|Community 94]]
@@ -135,7 +133,6 @@
 - [[_COMMUNITY_Community 132|Community 132]]
 - [[_COMMUNITY_Community 133|Community 133]]
 - [[_COMMUNITY_Community 134|Community 134]]
-- [[_COMMUNITY_Community 135|Community 135]]
 - [[_COMMUNITY_Community 136|Community 136]]
 
 ## God Nodes (most connected - your core abstractions)
@@ -143,8 +140,8 @@
 2. `TimestampedModel` - 37 edges
 3. `GameFormulaService` - 34 edges
 4. `User` - 30 edges
-5. `DungeonRunService` - 25 edges
-6. `useI18n()` - 24 edges
+5. `useI18n()` - 26 edges
+6. `DungeonRunService` - 25 edges
 7. `Character` - 24 edges
 8. `GameBalanceService` - 23 edges
 9. `Dungeon Run Flow` - 22 edges
@@ -185,7 +182,7 @@
 - **Media usage contract across screens** — code:bestMediaUrl, code:CreateCharacterScreen, code:CharacterScreen, code:DungeonsScreen, code:InventoryScreen, code:LeaderboardScreen, code:SettingsScreen, concept:MediaAssetContract [EXTRACTED 0.94]
 - **Server-authoritative gameplay boundary** — concept:ServerAuthoritativeRules, concept:CentralizedGameConfig, concept:PowerFormula, concept:SuccessChanceFormula, concept:RepairFlow, code:api-facade, code:types [EXTRACTED 0.89]
 
-## Communities (137 total, 34 thin omitted)
+## Communities (134 total, 34 thin omitted)
 
 ### Community 0 - "Community 0"
 Cohesion: 0.11
@@ -193,7 +190,7 @@ Nodes (20): AutocompleteSelect, DjangoUserAdmin, CachedSelectedAutocompleteSelec
 
 ### Community 1 - "Community 1"
 Cohesion: 0.14
-Nodes (19): Any, bool, Character, float, int, str, UserItem, InventoryService (+11 more)
+Nodes (20): Any, bool, Character, float, int, str, UserItem, message() (+12 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.10
@@ -212,12 +209,12 @@ Cohesion: 0.07
 Nodes (47): AuthScreen, CharacterScreen, ActiveExpeditionStrip, PowerHelp, CharacterScreen inventory cache merge, CreateCharacterScreen, DungeonsScreen, ActiveRunBanner (+39 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.10
-Nodes (25): AppProviders(), useI18n(), ADVENTURE_NAV, HERO_NAV, MobileNav(), PAGE_META, RpgClient(), Sidebar() (+17 more)
+Cohesion: 0.12
+Nodes (25): useI18n(), useSession(), ADVENTURE_NAV, HERO_NAV, MobileNav(), PAGE_META, RpgClient(), Tab (+17 more)
 
 ### Community 7 - "Community 7"
 Cohesion: 0.08
-Nodes (27): Character, ClaimResponse, CurrentRunResponse, DestroyPreview, DestroyResponse, Dungeon, DungeonRunStatus, EquipmentSlot (+19 more)
+Nodes (28): Character, CurrentRunResponse, DestroyPreview, DestroyResponse, Dungeon, DungeonRunStatus, EquipmentSlot, IconAsset (+20 more)
 
 ### Community 8 - "Community 8"
 Cohesion: 0.07
@@ -233,15 +230,15 @@ Nodes (27): AppProviders, Frontend Package Manifest, Home Page, ItemGlyph, Local
 
 ### Community 11 - "Community 11"
 Cohesion: 0.06
-Nodes (44): str, bool, int, str, message(), request_locale(), resolve_locale(), translate() (+36 more)
+Nodes (43): str, bool, int, str, request_locale(), resolve_locale(), translate(), create_login_challenge() (+35 more)
 
 ### Community 12 - "Community 12"
-Cohesion: 0.12
-Nodes (22): SessionProvider(), apiBase(), ApiError, apiFetch(), ApiUser, AuthPayload, Character, CharacterClass (+14 more)
+Cohesion: 0.11
+Nodes (23): SessionProvider(), apiBase(), ApiError, apiFetch(), ApiUser, AuthPayload, Character, CharacterClass (+15 more)
 
 ### Community 13 - "Community 13"
-Cohesion: 0.12
-Nodes (18): LocaleContext, LocaleContextValue, queryClient, SessionContext, SessionContextValue, setApiLocale(), Locale, makeTranslator() (+10 more)
+Cohesion: 0.14
+Nodes (12): AppProviders(), LocaleContext, LocaleContextValue, queryClient, SessionContext, SessionContextValue, Locale, AuthResponse (+4 more)
 
 ### Community 14 - "Community 14"
 Cohesion: 0.13
@@ -256,8 +253,8 @@ Cohesion: 0.11
 Nodes (5): CharacterScreenSkeleton(), InventoryScreenSkeleton(), rarityBorder, rarityText, Skeleton()
 
 ### Community 17 - "Community 17"
-Cohesion: 0.15
-Nodes (12): InventoryMutationResponse, addUniqueItem(), DragState, EQUIPMENT_SLOTS, InvCell(), mergeInventoryMutation(), POWER_WEIGHTS, RARITY_COLOR (+4 more)
+Cohesion: 0.13
+Nodes (16): Sidebar(), bestMediaUrl(), addUniqueItem(), CharacterScreen(), DragState, EQUIPMENT_SLOTS, InvCell(), mergeInventoryMutation() (+8 more)
 
 ### Community 18 - "Community 18"
 Cohesion: 0.11
@@ -266,10 +263,6 @@ Nodes (3): RankedSeedTests, Устанавливает пользователю 
 ### Community 19 - "Community 19"
 Cohesion: 0.15
 Nodes (4): TestCase, ApiSmokeTests, DungeonLifecycleTests, GameFormulaTests
-
-### Community 20 - "Community 20"
-Cohesion: 0.21
-Nodes (12): useSession(), ErrorNotice(), api, formatStatName(), CharacterClass, AuthMode, authSchema(), AuthScreen() (+4 more)
 
 ### Community 21 - "Community 21"
 Cohesion: 0.29
@@ -284,15 +277,15 @@ Cohesion: 0.22
 Nodes (9): Next Type Declarations, Runtime Stack, No .env Inspection Rule, Verification Strategy, Project Gotchas, Local Run Inventory, Runtime And Config Inventory, Verification Inventory (+1 more)
 
 ### Community 24 - "Community 24"
-Cohesion: 0.32
-Nodes (6): formatDuration(), DungeonRun, ActiveRunBanner(), formatTime(), TIER_GRADIENT, useRemainingSeconds()
+Cohesion: 0.13
+Nodes (21): DungeonRewardModal(), RARITY_COLOR, rarityLabel(), Topbar(), formatCopper(), formatDuration(), formatNumber(), formatStatName() (+13 more)
 
 ### Community 25 - "Community 25"
 Cohesion: 0.48
 Nodes (7): Django Backend Service, Celery Worker and Beat Services, Docker Compose Runtime Stack, Next Frontend Service, PostgreSQL Service, Redis Service, Django Manage Entrypoint
 
 ### Community 26 - "Community 26"
-Cohesion: 0.13
+Cohesion: 0.12
 Nodes (25): Any, bool, Character, float, ItemTemplate, str, UserItem, DungeonLocation (+17 more)
 
 ### Community 27 - "Community 27"
@@ -332,8 +325,8 @@ Cohesion: 0.17
 Nodes (9): str, media_asset_upload_path(), Безопасно возвращает URL файла из настроенного Django storage., Формирует путь файла медиа-ассета внутри настроенного хранилища., Возвращает URL оригинального файла из S3 или локального storage., Возвращает URL большой версии файла., Возвращает URL средней версии файла., Возвращает URL малой версии файла. (+1 more)
 
 ### Community 75 - "Community 75"
-Cohesion: 0.12
-Nodes (22): LoginSerializer, Формирует ответ авторизации с access/refresh токенами и данными пользователя., Сериализатор входа пользователя., Сериализатор второго шага входа по TOTP-коду., Сериализатор подтверждения TOTP-кода., Сериализатор отключения TOTP-защиты., token_response(), TotpCodeSerializer (+14 more)
+Cohesion: 0.10
+Nodes (29): str, UserItem, LoginSerializer, Формирует ответ авторизации с access/refresh токенами и данными пользователя., Сериализатор входа пользователя., Сериализатор второго шага входа по TOTP-коду., Сериализатор подтверждения TOTP-кода., Сериализатор отключения TOTP-защиты. (+21 more)
 
 ### Community 76 - "Community 76"
 Cohesion: 0.08
@@ -360,8 +353,8 @@ Cohesion: 0.11
 Nodes (18): DungeonLocationDetailView, DungeonLocationListView, DungeonRunClaimView, DungeonRunCurrentView, DungeonRunHistoryView, DungeonRunStartView, API-ручка истории завершённых забегов героя., Возвращает последние завершённые забеги без активных прохождений. (+10 more)
 
 ### Community 82 - "Community 82"
-Cohesion: 0.10
-Nodes (21): Character, int, DungeonRun, QuerySet, DungeonRunService, Идемпотентно начисляет награды за готовый забег и помечает его claimed., Идемпотентно начисляет награды за готовый забег и помечает его claimed., Повышает уровень героя, пока хватает опыта и не достигнут максимум. (+13 more)
+Cohesion: 0.08
+Nodes (24): Character, int, int, DungeonRun, complete_due_dungeon_runs(), Celery-задача завершает просроченные активные забеги в подземелья., QuerySet, DungeonRunService (+16 more)
 
 ### Community 83 - "Community 83"
 Cohesion: 0.10
@@ -376,8 +369,8 @@ Cohesion: 0.09
 Nodes (20): CharacterClassSerializer, CharacterCreateSerializer, CreateCharacterSerializer, Meta, Сериализатор публичной карточки класса героя., Возвращает стартовые характеристики класса героя одним объектом., Возвращает медиа-версии изображения класса героя., Простой сериализатор входных данных для создания героя. (+12 more)
 
 ### Community 86 - "Community 86"
-Cohesion: 0.27
-Nodes (7): Character, float, str, Считает прирост характеристик героя от уровней и профиля роста класса., Собирает итоговые характеристики героя с уровнем, экипировкой и капами., Считает показатель силы по набору характеристик и весам формулы., Считает шанс успеха забега по силе героя и требуемой силе локации.
+Cohesion: 0.29
+Nodes (9): bool, Character, float, str, GameConfigService, Сервис чтения игровых настроек с дефолтами и переопределениями из БД., Считает прирост характеристик героя от уровней и профиля роста класса., Собирает итоговые характеристики героя с уровнем, экипировкой и капами. (+1 more)
 
 ### Community 87 - "Community 87"
 Cohesion: 0.17
@@ -394,10 +387,6 @@ Nodes (10): graphify, Graphify usage, Project Memory, Security Rules, Как и�
 ### Community 90 - "Community 90"
 Cohesion: 0.20
 Nodes (8): str, BaseUserManager, Создаёт обычного пользователя с нормализованным email и паролем., Создаёт администратора с правами staff и superuser., Возвращает email как человекочитаемое имя аккаунта., Возвращает краткое описание настройки 2FA., Менеджер пользователей с авторизацией по email вместо username., UserManager
-
-### Community 91 - "Community 91"
-Cohesion: 0.22
-Nodes (8): str, UserItem, Возвращает локализованное название класса героя., localized_item_name(), localized_name(), Возвращает локализованное имя объекта или базовое поле name., Собирает локализованное имя предмета из редкости и шаблона., Преобразует результат claim в публичный API-ответ.
 
 ### Community 92 - "Community 92"
 Cohesion: 0.17
@@ -428,8 +417,8 @@ Cohesion: 0.20
 Nodes (9): API facade methods, Entrypoints, Frontend Inventory, Libraries, Media usage, Package scripts, Providers and shared UI, Screens (+1 more)
 
 ### Community 99 - "Community 99"
-Cohesion: 0.17
-Nodes (7): Проверяет email и пароль, затем кладёт пользователя в validated_data., Проверяет, что выбранный класс существует и активен., Проверяет ключ активного класса героя., Запрещает создание второго героя на одном аккаунте., Определяет локаль сериализатора из контекста или HTTP-запроса., serializer_locale(), Возвращает локализованное название предмета с учётом редкости.
+Cohesion: 0.14
+Nodes (8): Проверяет email и пароль, затем кладёт пользователя в validated_data., Возвращает локализованное название класса героя., Проверяет, что выбранный класс существует и активен., Проверяет ключ активного класса героя., Запрещает создание второго героя на одном аккаунте., Определяет локаль сериализатора из контекста или HTTP-запроса., serializer_locale(), Возвращает локализованное название предмета с учётом редкости.
 
 ### Community 100 - "Community 100"
 Cohesion: 0.22
@@ -464,8 +453,8 @@ Cohesion: 0.29
 Nodes (6): Project Memory Index, Как пользоваться, Как понимать достоверность, Контракт актуальности, Принципы этого слоя памяти, Что читать по типу запроса
 
 ### Community 108 - "Community 108"
-Cohesion: 0.21
-Nodes (10): Any, str, RarityConfig, rarity_config(), RarityConfigCache, Кэш активных RarityConfig в памяти процесса с инвалидацией по сигналу., Возвращает словарь активных редкостей по ключу, кэшированный в памяти., Возвращает активные редкости, отсортированные по sort_order. (+2 more)
+Cohesion: 0.24
+Nodes (8): Any, str, RarityConfig, rarity_config(), Возвращает словарь активных редкостей по ключу, кэшированный в памяти., Возвращает активные редкости, отсортированные по sort_order., Возвращает активную настройку по ключу, объединяя БД с DEFAULT_CONFIGS., Возвращает параметры редкости из БД или встроенного набора по умолчанию.
 
 ### Community 109 - "Community 109"
 Cohesion: 0.11
@@ -476,12 +465,12 @@ Cohesion: 0.33
 Nodes (5): API and state, Frontend Rules, Media sizing, Screens, UI intent
 
 ### Community 111 - "Community 111"
-Cohesion: 0.13
-Nodes (15): Any, Character, str, bool, int, UserItem, CharacterClass, Создаёт героя с начальными статами класса и кэширует его силу. (+7 more)
+Cohesion: 0.12
+Nodes (15): Any, Character, str, int, UserItem, CharacterClass, Создаёт героя с начальными статами класса и кэширует его силу., Возвращает параметры редкости из БД или встроенного набора по умолчанию. (+7 more)
 
 ### Community 112 - "Community 112"
-Cohesion: 0.33
-Nodes (4): DungeonRunHistorySerializer, Сериализатор строки истории завершённых забегов., Возвращает дату получения награды, если она уже была получена., Возвращает локализованное название локации из истории.
+Cohesion: 0.22
+Nodes (7): DungeonRunHistorySerializer, Сериализатор строки истории завершённых забегов., Сериализатор строки истории завершённых забегов., Возвращает дату получения награды, если она уже была получена., Возвращает локализованное название локации из истории., Возвращает дату получения награды, если она уже была получена., Возвращает локализованное название локации из истории.
 
 ### Community 113 - "Community 113"
 Cohesion: 0.40
@@ -531,10 +520,6 @@ Nodes (6): I18n Fields Migration, Localized Message Lookup, Localized Error Mess
 Cohesion: 0.50
 Nodes (4): InventoryItemUnequipView, API-ручка снятия предмета с героя., API-ручка снятия предмета с героя., Снимает предмет, если он экипирован текущим героем, и возвращает новую силу.
 
-### Community 135 - "Community 135"
-Cohesion: 0.50
-Nodes (3): int, complete_due_dungeon_runs(), Celery-задача завершает просроченные активные забеги в подземелья.
-
 ### Community 136 - "Community 136"
 Cohesion: 0.67
 Nodes (3): InventoryItemRepairView, API-ручка ремонта предмета пользователя., API-ручка ремонта предмета пользователя.
@@ -547,12 +532,12 @@ Nodes (3): InventoryItemRepairView, API-ручка ремонта предмет
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `message()` connect `Community 11` to `Community 1`, `Community 82`, `Community 99`, `Community 102`?**
-  _High betweenness centrality (0.087) - this node is a cross-community bridge._
+- **Why does `message()` connect `Community 1` to `Community 99`, `Community 82`, `Community 11`, `Community 102`?**
+  _High betweenness centrality (0.086) - this node is a cross-community bridge._
 - **Why does `RepairTransaction` connect `Community 3` to `Community 0`, `Community 1`, `Community 72`?**
-  _High betweenness centrality (0.063) - this node is a cross-community bridge._
-- **Why does `serializer_locale()` connect `Community 99` to `Community 102`, `Community 91`, `Community 75`, `Community 11`, `Community 112`, `Community 85`, `Community 27`, `Community 92`, `Community 93`, `Community 94`?**
-  _High betweenness centrality (0.025) - this node is a cross-community bridge._
+  _High betweenness centrality (0.059) - this node is a cross-community bridge._
+- **Why does `RankedSeedTests` connect `Community 18` to `Community 122`, `Community 19`, `Community 78`?**
+  _High betweenness centrality (0.028) - this node is a cross-community bridge._
 - **Are the 23 inferred relationships involving `MediaAsset` (e.g. with `str` and `str`) actually correct?**
   _`MediaAsset` has 23 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 28 inferred relationships involving `TimestampedModel` (e.g. with `str` and `str`) actually correct?**

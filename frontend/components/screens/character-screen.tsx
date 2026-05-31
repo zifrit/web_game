@@ -4,11 +4,12 @@ import { useEffect, useState, type DragEvent } from "react";
 import { useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { CircleHelp } from "lucide-react";
 import { useI18n } from "@/components/providers";
+import { DungeonRewardModal } from "@/components/dungeon-reward-modal";
 import { CharacterScreenSkeleton, ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatDuration, type Locale, type TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
-import type { Character, Dungeon, EquipmentSlot, Inventory, InventoryCard, InventoryMutationResponse } from "@/lib/types";
+import type { Character, ClaimResponse, Dungeon, EquipmentSlot, Inventory, InventoryCard, InventoryMutationResponse } from "@/lib/types";
 
 /* ── Rarity helpers ── */
 const RARITY_COLOR: Record<string, string> = {
@@ -365,9 +366,10 @@ function PowerHelp({ stats, power }: { stats: Character["stats"]; power: number 
 }
 
 /* ── Active expedition strip ── */
-function ActiveExpeditionStrip({ run, imageUrl }: {
+function ActiveExpeditionStrip({ run, imageUrl, onClaimed }: {
   run: NonNullable<Awaited<ReturnType<typeof api.currentRun>>>;
   imageUrl?: string;
+  onClaimed: (result: ClaimResponse) => void;
 }) {
   const queryClient = useQueryClient();
   const { t } = useI18n();
@@ -381,7 +383,8 @@ function ActiveExpeditionStrip({ run, imageUrl }: {
 
   const claimMut = useMutation({
     mutationFn: (id: number) => api.claimRun(id),
-    onSuccess: async () => {
+    onSuccess: async (result) => {
+      onClaimed(result);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["current-run"] }),
         queryClient.invalidateQueries({ queryKey: ["character"] }),
@@ -413,6 +416,12 @@ function ActiveExpeditionStrip({ run, imageUrl }: {
   const timeLabel = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 
   const done = waitingClaim;
+
+  useEffect(() => {
+    if (inProgress && remaining === 0) {
+      void queryClient.invalidateQueries({ queryKey: ["current-run"] });
+    }
+  }, [inProgress, queryClient, remaining]);
 
   return (
     <div className="card active-strip" style={{
@@ -466,7 +475,7 @@ function ActiveExpeditionStrip({ run, imageUrl }: {
           </div>
         </div>
         <div>
-          {done ? (
+          {done && (
             <button
               className="btn btn-primary"
               onClick={() => claimMut.mutate(run.id)}
@@ -474,16 +483,10 @@ function ActiveExpeditionStrip({ run, imageUrl }: {
             >
               {claimMut.isPending ? t("dungeons.claiming") : t("dungeons.claim")}
             </button>
-          ) : (
-            <button
-              className="btn"
-              onClick={() => queryClient.invalidateQueries({ queryKey: ["current-run"] })}
-            >
-              {t("dungeons.view")}
-            </button>
           )}
         </div>
       </div>
+      <ErrorNotice message={(claimMut.error as Error | null)?.message} />
     </div>
   );
 }
@@ -504,6 +507,7 @@ export function CharacterScreen({
   const [dragOverSlot, setDragOverSlot] = useState<EquipmentSlot | null>(null);
   const [inventoryDropActive, setInventoryDropActive] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
+  const [rewardResult, setRewardResult] = useState<ClaimResponse | null>(null);
   const characterQuery  = useQuery({ queryKey: ["character"],    queryFn: api.character });
   const dungeonsQuery   = useQuery({ queryKey: ["dungeons"],     queryFn: api.dungeons  });
   const currentRunQuery = useQuery({
@@ -810,7 +814,7 @@ export function CharacterScreen({
 
         {/* Active expedition strip */}
         {currentRunQuery.data && currentRunQuery.data.status !== "CLAIMED" && (
-          <ActiveExpeditionStrip run={currentRunQuery.data} imageUrl={activeRunImage} />
+          <ActiveExpeditionStrip run={currentRunQuery.data} imageUrl={activeRunImage} onClaimed={setRewardResult} />
         )}
 
         {/* Equipment paperdoll */}
@@ -964,6 +968,13 @@ export function CharacterScreen({
           )}
         </div>
       </div>
+
+      {rewardResult && (
+        <DungeonRewardModal
+          result={rewardResult}
+          onClose={() => setRewardResult(null)}
+        />
+      )}
 
     </div>
   );

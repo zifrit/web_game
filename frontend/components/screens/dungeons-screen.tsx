@@ -3,11 +3,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/components/providers";
+import { DungeonRewardModal } from "@/components/dungeon-reward-modal";
 import { ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatDuration } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
-import type { DungeonRun } from "@/lib/types";
+import type { ClaimResponse, DungeonRun } from "@/lib/types";
 
 /* ── Timer hook ── */
 function useRemainingSeconds(run?: DungeonRun | null) {
@@ -33,7 +34,15 @@ function formatTime(secs: number) {
 }
 
 /* ── Active run banner ── */
-function ActiveRunBanner({ run, imageUrl }: { run: DungeonRun; imageUrl?: string }) {
+function ActiveRunBanner({
+  run,
+  imageUrl,
+  onClaimed,
+}: {
+  run: DungeonRun;
+  imageUrl?: string;
+  onClaimed: (result: ClaimResponse) => void;
+}) {
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const remaining   = useRemainingSeconds(run);
@@ -51,7 +60,8 @@ function ActiveRunBanner({ run, imageUrl }: { run: DungeonRun; imageUrl?: string
 
   const claimMutation = useMutation({
     mutationFn: (id: number) => api.claimRun(id),
-    onSuccess: async () => {
+    onSuccess: async (result) => {
+      onClaimed(result);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["current-run"] }),
         queryClient.invalidateQueries({ queryKey: ["character"] }),
@@ -63,8 +73,13 @@ function ActiveRunBanner({ run, imageUrl }: { run: DungeonRun; imageUrl?: string
 
   const waitingClaim = run.status === "SUCCESS_WAITING_CLAIM" || run.status === "FAILED_WAITING_CLAIM";
   const inProgress   = run.status === "IN_PROGRESS";
-  const isSuccess    = run.result_preview?.is_success;
   const done         = waitingClaim;
+
+  useEffect(() => {
+    if (inProgress && remaining === 0) {
+      void queryClient.invalidateQueries({ queryKey: ["current-run"] });
+    }
+  }, [inProgress, queryClient, remaining]);
 
   return (
     <div className="card active-strip animate-pulse-glow" style={{
@@ -123,45 +138,6 @@ function ActiveRunBanner({ run, imageUrl }: { run: DungeonRun; imageUrl?: string
             </div>
           )}
 
-          {waitingClaim && run.result_preview && (
-            <div style={{ marginTop: 10, display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <div style={{
-                padding: "6px 12px", borderRadius: 8,
-                background: isSuccess ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
-                border: `1px solid ${isSuccess ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
-                fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", fontSize: 12,
-                color: isSuccess ? "var(--success)" : "var(--error)", fontWeight: 600,
-              }}>
-                {isSuccess ? t("dungeons.success") : t("dungeons.failed")}
-              </div>
-              <div style={{
-                padding: "6px 12px", borderRadius: 8,
-                background: "var(--bg-3)", border: "1px solid var(--line-soft)",
-                fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", fontSize: 12,
-                color: "var(--primary-bright)",
-              }}>
-                +{run.result_preview.experience} XP
-              </div>
-              <div style={{
-                padding: "6px 12px", borderRadius: 8,
-                background: "var(--bg-3)", border: "1px solid var(--line-soft)",
-                fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", fontSize: 12,
-                color: "var(--gold)",
-              }}>
-                +{run.result_preview.money_copper}c
-              </div>
-              {run.result_preview.items_count > 0 && (
-                <div style={{
-                  padding: "6px 12px", borderRadius: 8,
-                  background: "rgba(168,85,247,0.12)", border: "1px solid rgba(168,85,247,0.3)",
-                  fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", fontSize: 12,
-                  color: "#A855F7",
-                }}>
-                  {t("common.items", { count: run.result_preview.items_count })}
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
@@ -172,14 +148,6 @@ function ActiveRunBanner({ run, imageUrl }: { run: DungeonRun; imageUrl?: string
               onClick={() => claimMutation.mutate(run.id)}
             >
               {claimMutation.isPending ? t("dungeons.claiming") : t("dungeons.claim")}
-            </button>
-          )}
-          {inProgress && remaining === 0 && (
-            <button
-              className="btn"
-              onClick={() => void queryClient.invalidateQueries({ queryKey: ["current-run"] })}
-            >
-              {t("dungeons.checkResult")}
             </button>
           )}
         </div>
@@ -209,6 +177,7 @@ function getTier(required_power: number) {
 export function DungeonsScreen() {
   const queryClient   = useQueryClient();
   const { locale, t } = useI18n();
+  const [rewardResult, setRewardResult] = useState<ClaimResponse | null>(null);
   const dungeonsQuery = useQuery({ queryKey: ["dungeons"],     queryFn: api.dungeons  });
   const currentRun    = useQuery({
     queryKey: ["current-run"],
@@ -234,7 +203,7 @@ export function DungeonsScreen() {
     <div className="col animate-fade-in">
 
       {/* Active run banner */}
-      {hasRun && currentRun.data && <ActiveRunBanner run={currentRun.data} imageUrl={activeRunImage} />}
+      {hasRun && currentRun.data && <ActiveRunBanner run={currentRun.data} imageUrl={activeRunImage} onClaimed={setRewardResult} />}
 
       <ErrorNotice message={
         (dungeonsQuery.error as Error | null)?.message ??
@@ -345,6 +314,12 @@ export function DungeonsScreen() {
           );
         })}
       </div>
+      {rewardResult && (
+        <DungeonRewardModal
+          result={rewardResult}
+          onClose={() => setRewardResult(null)}
+        />
+      )}
     </div>
   );
 }

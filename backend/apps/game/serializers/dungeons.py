@@ -131,11 +131,19 @@ class ClaimResponseSerializer:
             "id": result.run.id,
             "status": result.run.status,
             "is_success": result.run.is_success,
+            "success_chance": result.run.success_chance,
             "rewards": {
                 "experience": result.claim.experience_claimed,
                 "money_copper": result.claim.money_claimed_copper,
                 "items": [
-                    {"id": item.id, "name": localized_item_name(item, locale, item_context), "rarity": item.rarity, "item_level": item.item_level}
+                    {
+                        "id": item.id,
+                        "name": localized_item_name(item, locale, item_context),
+                        "rarity": item.rarity,
+                        "item_level": item.item_level,
+                        "stats": item.stats or {},
+                        "durability": {"current": item.durability_current, "max": item.durability_max},
+                    }
                     for item in result.items
                 ],
                 "durability_loss": result.run.durability_loss or 0,
