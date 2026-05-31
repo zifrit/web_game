@@ -214,7 +214,7 @@ class GameConfigAdmin(admin.ModelAdmin):
 
 @admin.register(DungeonRun)
 class DungeonRunAdmin(admin.ModelAdmin):
-    list_display = ("id", "character", "location", "status", "started_at", "ends_at", "is_success")
+    list_display = ("id", "character", "location", "status", "started_at", "ends_at", "is_success","success_chance")
     list_filter = ("status", "location", "is_success")
     search_fields = ("id", "character__name", "character__user__email", "location__name", "status")
     autocomplete_fields = ("character", "location")
