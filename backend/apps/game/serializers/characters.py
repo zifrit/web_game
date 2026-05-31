@@ -2,8 +2,8 @@ from rest_framework import serializers
 
 from apps.game.i18n import message
 from apps.game.models import Character, CharacterClass
-from apps.game.ranks import rank_for_level
 from apps.game.services import GameFormulaService
+from apps.game.services.ranks import rank_for_level
 
 from .common import localized_name, media_payload, serializer_locale
 from .inventory import UserItemSummarySerializer

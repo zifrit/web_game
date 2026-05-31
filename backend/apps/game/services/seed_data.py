@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from apps.game.models import ItemTemplate
-from apps.game.ranks import RANKS, RankConfig
+from pydantic import BaseModel, ConfigDict
+
+from .ranks import RANKS, RankConfig
 
 
-@dataclass(frozen=True)
-class EquipmentKind:
+class EquipmentKind(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     key: str
     slot: str
     item_type: str
@@ -17,60 +18,60 @@ class EquipmentKind:
 
 EQUIPMENT_KINDS: tuple[EquipmentKind, ...] = (
     EquipmentKind(
-        "sword",
-        "weapon",
-        "sword",
-        ["warrior"],
-        {"attack": {"min": 4, "max": 8}, "defense": {"min": 1, "max": 3}},
+        key="sword",
+        slot="weapon",
+        item_type="sword",
+        allowed_classes=["warrior"],
+        stats={"attack": {"min": 4, "max": 8}, "defense": {"min": 1, "max": 3}},
     ),
     EquipmentKind(
-        "dagger",
-        "weapon",
-        "dagger",
-        ["assassin"],
-        {"attack": {"min": 4, "max": 8}, "critical_chance": {"min": 1, "max": 4}},
+        key="dagger",
+        slot="weapon",
+        item_type="dagger",
+        allowed_classes=["assassin"],
+        stats={"attack": {"min": 4, "max": 8}, "critical_chance": {"min": 1, "max": 4}},
     ),
     EquipmentKind(
-        "staff",
-        "weapon",
-        "staff",
-        ["mage"],
-        {"attack": {"min": 5, "max": 9}, "critical_chance": {"min": 1, "max": 3}},
+        key="staff",
+        slot="weapon",
+        item_type="staff",
+        allowed_classes=["mage"],
+        stats={"attack": {"min": 5, "max": 9}, "critical_chance": {"min": 1, "max": 3}},
     ),
     EquipmentKind(
-        "bow",
-        "weapon",
-        "bow",
-        ["archer"],
-        {"attack": {"min": 4, "max": 8}, "evasion": {"min": 1, "max": 3}},
+        key="bow",
+        slot="weapon",
+        item_type="bow",
+        allowed_classes=["archer"],
+        stats={"attack": {"min": 4, "max": 8}, "evasion": {"min": 1, "max": 3}},
     ),
     EquipmentKind(
-        "ring",
-        "ring",
-        "ring",
-        None,
-        {"critical_chance": {"min": 1, "max": 3}, "health": {"min": 4, "max": 10}},
+        key="ring",
+        slot="ring",
+        item_type="ring",
+        allowed_classes=None,
+        stats={"critical_chance": {"min": 1, "max": 3}, "health": {"min": 4, "max": 10}},
     ),
     EquipmentKind(
-        "armor",
-        "armor",
-        "armor",
-        None,
-        {"health": {"min": 10, "max": 22}, "defense": {"min": 2, "max": 6}},
+        key="armor",
+        slot="armor",
+        item_type="armor",
+        allowed_classes=None,
+        stats={"health": {"min": 10, "max": 22}, "defense": {"min": 2, "max": 6}},
     ),
     EquipmentKind(
-        "boots",
-        "boots",
-        "boots",
-        None,
-        {"evasion": {"min": 1, "max": 4}, "defense": {"min": 1, "max": 3}},
+        key="boots",
+        slot="boots",
+        item_type="boots",
+        allowed_classes=None,
+        stats={"evasion": {"min": 1, "max": 4}, "defense": {"min": 1, "max": 3}},
     ),
     EquipmentKind(
-        "helmet",
-        "helmet",
-        "helmet",
-        None,
-        {"health": {"min": 6, "max": 14}, "defense": {"min": 1, "max": 4}},
+        key="helmet",
+        slot="helmet",
+        item_type="helmet",
+        allowed_classes=None,
+        stats={"health": {"min": 6, "max": 14}, "defense": {"min": 1, "max": 4}},
     ),
 )
 
@@ -166,11 +167,11 @@ def seed_ranked_item_templates(*, deactivate_legacy: bool = True) -> list[ItemTe
 
                 template, _ = ItemTemplate.objects.update_or_create(
                     name=ru_name,
+                    rarity_key=rank.key,
+                    item_type=kind.item_type,
                     defaults={
                         "name_i18n": {"en": en_name, "ru": ru_name},
                         "slot": kind.slot,
-                        "item_type": kind.item_type,
-                        "rarity_key": rank.key,
                         "allowed_classes": kind.allowed_classes,
                         "possible_stats": kind.stats,
                         "min_durability": min_durability,

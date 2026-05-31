@@ -1,6 +1,6 @@
 # Backend Inventory
 
-Updated from code inspection on 2026-05-30.
+Updated from code inspection on 2026-05-31.
 
 ## Entrypoints
 
@@ -34,7 +34,20 @@ Updated from code inspection on 2026-05-30.
 
 ## Services
 
-`backend/apps/game/services.py` contains:
+`backend/apps/game/services/` contains a compatibility facade in `__init__.py`
+and domain modules:
+
+- `config.py` - `DEFAULT_CONFIGS`, `DEFAULT_RARITIES`, config/rarity caches and
+  `GameConfigService`
+- `balance.py` - `GameBalanceService`
+- `formulas.py` - `GameFormulaService`
+- `loot.py` - `LootGenerationService` and `item_allowed_for_character`
+- `dungeon_runs.py` - `DungeonRunService`, `ClaimResult`
+- `inventory.py` - `InventoryService`
+- `ranks.py` - F/E/D/C/B/A/S/EX rank ranges and helpers
+- `seed_data.py` - ranked item template seed helpers
+
+The `apps.game.services` facade exports:
 
 - `GameConfigService`
 - `GameBalanceService`
@@ -47,8 +60,8 @@ Updated from code inspection on 2026-05-30.
 
 Inventory economy notes:
 
-- `apps.game.ranks` maps level ranges to F/E/D/C/B/A/S/EX for both hero level
-  and item level; current hero max level is 80.
+- `apps.game.services.ranks` maps level ranges to F/E/D/C/B/A/S/EX for both
+  hero level and item level; current hero max level is 80.
 - `LootGenerationService` first rolls `DungeonLocation.item_drop_chance`, then
   chooses a linked `DungeonLocationItemTemplate` by `chance`; generated item
   level and template rank stay aligned through `ItemTemplate.rarity_key`.

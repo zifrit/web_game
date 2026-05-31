@@ -8,9 +8,9 @@ from apps.game.models import (
     GameConfig,
     RarityConfig,
 )
-from apps.game.ranks import MAX_RANK_LEVEL, RANKS
-from apps.game.seed_data import seed_ranked_item_templates
 from apps.game.services import DEFAULT_CONFIGS
+from apps.game.services.ranks import MAX_RANK_LEVEL, RANKS
+from apps.game.services.seed_data import seed_ranked_item_templates
 
 
 GROWTH = {

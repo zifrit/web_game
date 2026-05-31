@@ -10,8 +10,9 @@
 - `backend/apps/game/models/` - доменные модели, разбитые по файлам.
 - `backend/apps/game/serializers/` - DRF serializers/renderers по доменам.
 - `backend/apps/game/views/` - DRF API views по доменам.
-- `backend/apps/game/services.py` - центральное место для формул, транзакций и
-  game-domain operations.
+- `backend/apps/game/services/` - package для формул, транзакций,
+  game-domain operations, рангов и seed helpers; `__init__.py` сохраняет
+  compatibility imports из `apps.game.services`.
 - `backend/apps/game/tasks.py` - Celery tasks.
 - `backend/apps/game/management/commands/seed_game.py` - seed data.
 - `backend/apps/game/image_generation.py` и
@@ -21,9 +22,9 @@
 - `backend/generated_assets/` - локальный output генерации; он игнорируется
   git и не является source-of-truth для кода.
 
-`apps.game.models`, `apps.game.serializers` и `apps.game.views` являются
-package-директориями. Их `__init__.py` реэкспортируют публичные классы для
-compatibility imports.
+`apps.game.models`, `apps.game.serializers`, `apps.game.views` и
+`apps.game.services` являются package-директориями. Их `__init__.py`
+реэкспортируют публичные классы для compatibility imports.
 
 ## Frontend
 

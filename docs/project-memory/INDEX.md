@@ -9,8 +9,8 @@ source_of_truth:
   - backend/config/urls.py
   - backend/config/celery.py
   - backend/apps/game/urls.py
-  - backend/apps/game/ranks.py
-  - backend/apps/game/seed_data.py
+  - backend/apps/game/services/ranks.py
+  - backend/apps/game/services/seed_data.py
   - backend/apps/game/views/auth.py
   - backend/apps/game/image_generation.py
   - backend/apps/game/management/commands/seed_game.py
@@ -35,8 +35,8 @@ verified_from:
   - backend/apps/game/urls.py
   - backend/apps/game/tasks.py
   - backend/apps/game/models/base.py
-  - backend/apps/game/ranks.py
-  - backend/apps/game/seed_data.py
+  - backend/apps/game/services/ranks.py
+  - backend/apps/game/services/seed_data.py
   - backend/apps/game/serializers/common.py
   - backend/apps/game/serializers/inventory.py
   - backend/apps/game/views/auth.py

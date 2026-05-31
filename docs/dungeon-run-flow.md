@@ -15,7 +15,7 @@
 | API routes | `backend/apps/game/urls.py` | Маппит HTTP endpoints на views. |
 | Dungeon views | `backend/apps/game/views/dungeons.py` | Тонкий HTTP-слой: валидирует запрос, вызывает сервисы, отдаёт serializer response. |
 | Dungeon serializers | `backend/apps/game/serializers/dungeons.py` | Формирует публичные payloads и preview-расчёты для UI. |
-| Формулы и lifecycle | `backend/apps/game/services.py` | Основной слой: power, success chance, loot, start, finalize, claim, durability. |
+| Формулы и lifecycle | `backend/apps/game/services/` | Основной слой: power, success chance, loot, start, finalize, claim, durability. |
 | Модели данжей | `backend/apps/game/models/dungeons.py` | `DungeonLocation`, `DungeonRun`, `DungeonRunClaim`, статусы. |
 | Celery task | `backend/apps/game/tasks.py` | Периодически завершает просроченные runs. |
 | Celery schedule | `backend/config/settings.py` | Запускает `complete_due_dungeon_runs` каждые 5 секунд. |

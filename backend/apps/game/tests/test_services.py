@@ -8,8 +8,8 @@ from rest_framework.test import APIClient
 
 from apps.game.management.commands.seed_game import Command as SeedCommand
 from apps.game.models import CharacterClass, DungeonLocation, DungeonLocationItemTemplate, DungeonRun, ItemTemplate, RarityConfig, User, UserItem
-from apps.game.ranks import RANKS, rank_for_level
 from apps.game.services import DungeonRunService, GameBalanceService, GameFormulaService, InventoryService, LootGenerationService
+from apps.game.services.ranks import RANKS, rank_for_level
 
 
 class GameFormulaTests(TestCase):
@@ -222,12 +222,12 @@ class RankedSeedTests(TestCase):
 
         self.assertEqual(ItemTemplate.objects.filter(is_active=True, rarity_key__in=[rank.key for rank in RANKS]).count(), 176)
 
-    def test_rank_template_names_are_rank_specific(self):
+    def test_rank_template_names_stay_clean_and_rank_is_separate(self):
         f_swords = set(ItemTemplate.objects.filter(rarity_key="f", item_type="sword", is_active=True).values_list("name", flat=True))
         e_swords = set(ItemTemplate.objects.filter(rarity_key="e", item_type="sword", is_active=True).values_list("name", flat=True))
 
-        self.assertEqual(f_swords, {"F Меч новичка", "F Меч странника", "F Меч ополченца"})
-        self.assertEqual(e_swords, {"E Меч разведчика", "E Меч стража", "E Меч железной клятвы"})
+        self.assertEqual(f_swords, {"Меч новичка", "Меч странника", "Меч ополченца"})
+        self.assertEqual(e_swords, {"Меч разведчика", "Меч стража", "Меч железной клятвы"})
         self.assertTrue(f_swords.isdisjoint(e_swords))
 
     def test_seed_item_templates_deactivates_previous_ranked_names(self):
@@ -352,7 +352,7 @@ class RankedSeedTests(TestCase):
         DungeonLocationItemTemplate.objects.create(location=location, item_template=high, chance=99)
         location.item_drop_chance = 100
 
-        with patch("apps.game.services.random.uniform", side_effect=[0, 50]):
+        with patch("apps.game.services.loot.random.uniform", side_effect=[0, 50]):
             draft = LootGenerationService.generate_item_reward(character, location)
 
         self.assertEqual(draft["template_id"], high.id)
@@ -368,7 +368,7 @@ class RankedSeedTests(TestCase):
         location.item_drop_chance = 100
         GameBalanceService.rarity_config("f")
 
-        with patch("apps.game.services.random.uniform", side_effect=[0, 0]):
+        with patch("apps.game.services.loot.random.uniform", side_effect=[0, 0]):
             with self.assertNumQueries(1):
                 draft = LootGenerationService.generate_item_reward(character, location)
 
