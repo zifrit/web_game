@@ -245,13 +245,6 @@ export function DungeonsScreen() {
                     style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
                   />
                 )}
-                <span style={{
-                  position: "absolute", top: 10, right: 10,
-                  fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", fontSize: 10,
-                  padding: "3px 8px", background: "var(--bg-1)",
-                  border: "1px solid var(--line)", borderRadius: 2,
-                  color: "var(--text-dim)", letterSpacing: "0.12em",
-                }}>T{tier}</span>
               </div>
 
               {/* Body */}
@@ -262,7 +255,7 @@ export function DungeonsScreen() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
                   <h3 style={{
                     fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
-                    fontSize: 20, fontWeight: 600, margin: 0,
+                    fontSize: 23, fontWeight: 600, margin: 0,
                     lineHeight: 1.2, letterSpacing: "0.03em",
                     textWrap: "balance" as React.CSSProperties["textWrap"],
                     minWidth: 0, flex: 1, color: "var(--bone)",
@@ -270,7 +263,7 @@ export function DungeonsScreen() {
                     {dungeon.name}
                   </h3>
                   <span className="mono" style={{
-                    fontSize: 10, color: "var(--text-mute)", letterSpacing: "0.12em",
+                    fontSize: 12, color: "var(--text-mute)", letterSpacing: "0.12em",
                     whiteSpace: "nowrap", paddingTop: 6, flexShrink: 0,
                   }}>
                     {t("common.power")} {dungeon.required_power}+
@@ -279,7 +272,7 @@ export function DungeonsScreen() {
 
                 {dungeon.description && (
                   <p style={{
-                    color: "var(--text-dim)", fontSize: 12, margin: 0, lineHeight: 1.5,
+                    color: "var(--text-dim)", fontSize: 14, margin: 0, lineHeight: 1.5,
                     overflow: "hidden", display: "-webkit-box",
                     WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as React.CSSProperties["WebkitBoxOrient"],
                   }}>
@@ -290,7 +283,7 @@ export function DungeonsScreen() {
                 <div style={{
                   display: "flex", gap: 14,
                   fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
-                  fontSize: 11, color: "var(--text-mute)",
+                  fontSize: 13, color: "var(--text-mute)",
                 }}>
                   <span>⏱ <strong style={{ color: "var(--bone)", fontWeight: 500 }}>{durLabel}</strong></span>
                   <span>XP <strong style={{ color: "var(--bone)", fontWeight: 500 }}>{dungeon.rewards_preview?.experience?.max ?? "?"}</strong></span>

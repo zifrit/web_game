@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cinzel, Inter, JetBrains_Mono } from "next/font/google";
+import { Forum, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
@@ -8,15 +8,17 @@ const inter = Inter({
   display: "swap",
 });
 
-const cinzel = Cinzel({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+// Display serif. Cinzel has no Cyrillic glyphs, so Russian titles fell back
+// to Times. Forum is an engraved-capitals serif (same feel) WITH Cyrillic.
+const cinzel = Forum({
+  subsets: ["latin", "cyrillic"],
+  weight: "400",
   variable: "--font-cinzel",
   display: "swap",
 });
 
 const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
+  subsets: ["latin", "cyrillic"],
   weight: ["400", "500", "600"],
   variable: "--font-mono",
   display: "swap",
