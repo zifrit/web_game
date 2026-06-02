@@ -28,9 +28,11 @@ Updated from code inspection on 2026-05-31.
   `EquipmentSlotConfig`, `GameConfig`.
 - `items.py` - `ItemTemplate` with `rarity_key`, `UserItem`,
   `RepairTransaction`.
-- `dungeons.py` - `DungeonLocation`, `DungeonLocationItemTemplate` with
-  per-location item `chance` weights,
-  `DungeonRunStatus`, `DungeonRun`, `DungeonRunClaim`, `DungeonRunClaimItem`.
+- `dungeons.py` - `DungeonLocation` with `has_mini_game` and optional
+  `mini_game_config`,
+  `DungeonLocationItemTemplate` with per-location item `chance` weights,
+  `DungeonMiniGameConfig`, `DungeonMiniGameAttempt`, `DungeonRunStatus`,
+  `DungeonRun`, `DungeonRunClaim`, `DungeonRunClaimItem`.
 
 `models/__init__.py` exports public model classes and `UserManager`.
 
@@ -45,6 +47,8 @@ and domain modules:
 - `formulas.py` - `GameFormulaService`
 - `loot.py` - `LootGenerationService` and `item_allowed_for_character`
 - `dungeon_runs.py` - `DungeonRunService`, `ClaimResult`
+- `mini_games.py` - `DungeonMiniGameService` for memory-pairs attempts,
+  timers, history and run time reduction rewards
 - `inventory.py` - `InventoryService`
 - `ranks.py` - F/E/D/C/B/A/S/EX rank ranges and helpers
 - `seed_data.py` - ranked item template seed helpers
@@ -56,6 +60,7 @@ The `apps.game.services` facade exports:
 - `GameFormulaService`
 - `LootGenerationService`
 - `DungeonRunService`
+- `DungeonMiniGameService`
 - `InventoryService`
 - `ClaimResult`
 - `item_allowed_for_character`

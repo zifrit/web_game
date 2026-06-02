@@ -37,6 +37,9 @@ Dungeons:
 - `POST /api/dungeon-runs`
 - `GET /api/dungeon-runs/current`
 - `POST /api/dungeon-runs/<id>/claim`
+- `POST /api/dungeon-runs/<id>/mini-game/start`
+- `POST /api/dungeon-mini-games/<id>/complete`
+- `GET /api/dungeon-mini-games/history`
 - `GET /api/dungeon-runs/history`
 
 Inventory:

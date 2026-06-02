@@ -37,6 +37,8 @@ picker через `api.iconAssets()` / `api.updateAvatar()`.
 - Интерфейс должен быть actual game UI, не marketing/landing page.
 - Клиент может форматировать display values, но не должен считать критичные
   игровые формулы, rewards, economy или server-authoritative results.
+- Memory-pairs mini-game на Dungeons screen может считать локальные клики/пары,
+  но доступность, таймер попытки и ускорение run применяются backend API.
 - Inventory должен показывать минимум 24 cells и догружать следующие страницы,
   если `pagination.has_next` true.
 - Backend возвращает деньги в `money_copper`; frontend разбивает баланс на

@@ -17,6 +17,7 @@
 - `GameFormulaService`
 - `LootGenerationService`
 - `DungeonRunService`
+- `DungeonMiniGameService`
 - `InventoryService`
 
 Views и serializers должны оставаться тонкими. Claim, repair, equip, unequip и
@@ -29,6 +30,10 @@ start dungeon run требуют явных transactional boundaries там, г�
 - Completion гибридный: Celery Beat завершает due runs периодически, а
   `GET /api/dungeon-runs/current` и claim flow завершают due runs on demand.
 - Claim должен быть idempotent.
+- Мини-игра ускорения доступна только для активного run, если у локации
+  `has_mini_game=true` и назначен активный `DungeonMiniGameConfig`.
+- Успех мини-игры сокращает оставшееся время run на процент из конфигурации;
+  таймер и история попыток хранятся на backend.
 
 ## Inventory and durability
 

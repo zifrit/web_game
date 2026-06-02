@@ -25,3 +25,6 @@
   sandbox.
 - `docker-compose.yml` использует `postgres:17.9`; при изменении verify cold
   start.
+- В старой локальной dev-БД `game.0011_dungeon_mini_games` мог быть применён до
+  появления `DungeonMiniGameAttempt.matched_card_ids`; `0012_ensure_mini_game_matched_card_ids`
+  держит такую БД совместимой с текущим кодом.

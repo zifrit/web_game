@@ -64,6 +64,7 @@ Updated from code inspection on 2026-05-30.
   `disableTwoFactor`
 - `characterClasses`, `createCharacter`, `character`
 - `dungeons`, `startRun`, `currentRun`, `claimRun`
+- `startMiniGame`, `completeMiniGame`, `miniGameHistory`
 - `inventory`, `item`, `repairPreview`, `repair`, `destroyPreview`,
   `destroy`, `equip`, `unequip`
 - `leaderboard`
