@@ -4,6 +4,7 @@ from apps.game.models import (
     CharacterClass,
     DungeonLocation,
     DungeonLocationItemTemplate,
+    DungeonMiniGameConfig,
     EquipmentSlotConfig,
     GameConfig,
     RarityConfig,
@@ -93,13 +94,34 @@ class Command(BaseCommand):
         for template in item_templates:
             templates_by_rank.setdefault(template.rarity_key, []).append(template)
 
+        mini_games = [
+            ("6", "Memory 6/6", 6, 45, 60),
+            ("8", "Memory 8/8", 8, 60, 120),
+            ("10", "Memory 10/10", 10, 75, 180),
+            ("12", "Memory 12/12", 12, 90, 240),
+        ]
+        mini_game_configs = {}
+        for index, (difficulty, name, pairs_count, time_limit_seconds, reduction_seconds) in enumerate(mini_games):
+            config, _ = DungeonMiniGameConfig.objects.update_or_create(
+                difficulty=difficulty,
+                defaults={
+                    "name": name,
+                    "pairs_count": pairs_count,
+                    "time_limit_seconds": time_limit_seconds,
+                    "reward_duration_reduction_seconds": reduction_seconds,
+                    "is_active": True,
+                    "sort_order": index,
+                },
+            )
+            mini_game_configs[difficulty] = config
+
         dungeons = [
-            ({"en": "Old Forest", "ru": "Старый лес"}, {"en": "A safe starting location.", "ru": "Безопасная стартовая локация."}, 15, 50, 5, 8, 30, 60, 10, {"f": 90, "e": 10}),
-            ({"en": "Abandoned Trail", "ru": "Заброшенная тропа"}, {"en": "Light risk and quick farming.", "ru": "Легкий риск и быстрый фарм."}, 30, 70, 8, 14, 45, 90, 15, {"f": 70, "e": 25, "d": 5}),
-            ({"en": "Damp Cave", "ru": "Сырая пещера"}, {"en": "A risky early dungeon.", "ru": "Рискованный early dungeon."}, 300, 100, 18, 35, 120, 220, 25, {"f": 45, "e": 35, "d": 15, "c": 4, "b": 1}),
+            ({"en": "Old Forest", "ru": "Старый лес"}, {"en": "A safe starting location.", "ru": "Безопасная стартовая локация."}, 15, 50, 5, 8, 30, 60, 10, True, "6", {"f": 90, "e": 10}),
+            ({"en": "Abandoned Trail", "ru": "Заброшенная тропа"}, {"en": "Light risk and quick farming.", "ru": "Легкий риск и быстрый фарм."}, 30, 70, 8, 14, 45, 90, 15, True, "8", {"f": 70, "e": 25, "d": 5}),
+            ({"en": "Damp Cave", "ru": "Сырая пещера"}, {"en": "A risky early dungeon.", "ru": "Рискованный early dungeon."}, 300, 100, 18, 35, 120, 220, 25, True, "12", {"f": 45, "e": 35, "d": 15, "c": 4, "b": 1}),
         ]
         for index, data in enumerate(dungeons):
-            names, descriptions, duration, power, exp_min, exp_max, money_min, money_max, drop, template_chances = data
+            names, descriptions, duration, power, exp_min, exp_max, money_min, money_max, drop, has_mini_game, mini_game_difficulty, template_chances = data
             dungeon, _ = DungeonLocation.objects.update_or_create(
                 name=names["ru"],
                 defaults={
@@ -113,6 +135,8 @@ class Command(BaseCommand):
                     "money_min_copper": money_min,
                     "money_max_copper": money_max,
                     "item_drop_chance": drop,
+                    "has_mini_game": has_mini_game,
+                    "mini_game_config": mini_game_configs.get(mini_game_difficulty),
                     "is_active": True,
                     "sort_order": index,
                 },

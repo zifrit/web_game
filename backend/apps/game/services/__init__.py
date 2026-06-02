@@ -11,12 +11,14 @@ from .dungeon_runs import ClaimResult, DungeonRunService
 from .formulas import GameFormulaService
 from .inventory import InventoryService
 from .loot import LootGenerationService, item_allowed_for_character
+from .mini_games import DungeonMiniGameService
 
 __all__ = [
     "ClaimResult",
     "DEFAULT_CONFIGS",
     "DEFAULT_RARITIES",
     "DungeonRunService",
+    "DungeonMiniGameService",
     "GameBalanceService",
     "GameConfigService",
     "GameFormulaService",

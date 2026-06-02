@@ -63,6 +63,34 @@ MESSAGES = {
         "en": "Dungeon run is not ready to claim.",
         "ru": "Поход еще не готов к получению награды.",
     },
+    "mini_game_not_available": {
+        "en": "Mini-game is not available for this dungeon run.",
+        "ru": "Мини-игра недоступна для этого похода.",
+    },
+    "mini_game_run_not_active": {
+        "en": "Mini-game can only be started during an active dungeon run.",
+        "ru": "Мини-игру можно запустить только во время активного похода.",
+    },
+    "mini_game_already_finished": {
+        "en": "Mini-game attempt for this dungeon run is already finished.",
+        "ru": "Попытка мини-игры для этого похода уже завершена.",
+    },
+    "mini_game_attempt_not_found": {
+        "en": "Mini-game attempt not found.",
+        "ru": "Попытка мини-игры не найдена.",
+    },
+    "mini_game_invalid_move": {
+        "en": "Invalid mini-game move.",
+        "ru": "Недопустимый ход мини-игры.",
+    },
+    "mini_game_card_already_matched": {
+        "en": "This mini-game card is already matched.",
+        "ru": "Эта карточка мини-игры уже найдена.",
+    },
+    "mini_game_expired": {
+        "en": "Mini-game timer expired.",
+        "ru": "Таймер мини-игры истек.",
+    },
     "item_fully_repaired": {
         "en": "Item is already fully repaired.",
         "ru": "Предмет уже полностью отремонтирован.",

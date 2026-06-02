@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict
 from apps.game.i18n import DEFAULT_LOCALE, message
 from apps.game.models import (
     Character,
+    DungeonMiniGameAttemptStatus,
     DungeonLocation,
     DungeonRun,
     DungeonRunClaim,
@@ -61,7 +62,7 @@ class DungeonRunService:
         if character.equipped_items.filter(durability_current=0).exists():
             raise serializers.ValidationError(message("broken_items_block_run", locale))
         try:
-            location = DungeonLocation.objects.get(pk=location_id, is_active=True)
+            location = DungeonLocation.objects.select_related("mini_game_config").get(pk=location_id, is_active=True)
         except DungeonLocation.DoesNotExist as exc:
             raise serializers.ValidationError(message("dungeon_not_found", locale)) from exc
 
@@ -95,6 +96,11 @@ class DungeonRunService:
         item_reward = LootGenerationService.generate_item_reward(run.character, location) if is_success else None
         run.items_reward = [item_reward] if item_reward else []
         run.durability_loss = GameFormulaService.durability_loss(is_success)
+        run.mini_game_attempts.filter(status=DungeonMiniGameAttemptStatus.IN_PROGRESS).update(
+            status=DungeonMiniGameAttemptStatus.FAILED,
+            completed_at=now,
+            updated_at=now,
+        )
         run.save(
             update_fields=[
                 "is_success",
@@ -213,7 +219,11 @@ class DungeonRunService:
         completed = 0
         for run_id in due_ids:
             with transaction.atomic():
-                run = DungeonRun.objects.select_for_update().select_related("location", "character", "character__character_class").get(pk=run_id)
+                run = (
+                    DungeonRun.objects.select_for_update()
+                    .select_related("location", "character", "character__character_class")
+                    .get(pk=run_id)
+                )
                 before = run.status
                 cls.finalize_due_run(run)
                 if before != run.status:

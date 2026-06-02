@@ -25,6 +25,15 @@ class DungeonLocation(TimestampedModel):
     money_min_copper = models.PositiveIntegerField("Минимум медных монет")
     money_max_copper = models.PositiveIntegerField("Максимум медных монет")
     item_drop_chance = models.FloatField("Шанс выпадения предмета")
+    has_mini_game = models.BooleanField("Доступна мини-игра", default=False)
+    mini_game_config = models.ForeignKey(
+        "DungeonMiniGameConfig",
+        verbose_name="Настройка мини-игры",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="locations",
+    )
     is_active = models.BooleanField("Активна", default=True)
     sort_order = models.PositiveIntegerField("Порядок сортировки", default=0)
 
@@ -89,6 +98,51 @@ class DungeonRunStatus(models.TextChoices):
     CLAIMED = "CLAIMED", "Claimed"
 
 
+class DungeonMiniGameDifficulty(models.TextChoices):
+    """Доступные размеры memory-pairs мини-игры."""
+
+    SIX = "6", "6/6"
+    EIGHT = "8", "8/8"
+    TEN = "10", "10/10"
+    TWELVE = "12", "12/12"
+
+
+class DungeonMiniGameConfig(TimestampedModel):
+    """Настройки мини-игры: сложность, таймер и ускорение прохождения."""
+
+    name = models.CharField("Название", max_length=120)
+    difficulty = models.CharField("Сложность", max_length=8, choices=DungeonMiniGameDifficulty.choices, unique=True)
+    pairs_count = models.PositiveSmallIntegerField("Количество пар")
+    time_limit_seconds = models.PositiveIntegerField("Лимит времени в секундах")
+    reward_duration_reduction_seconds = models.PositiveIntegerField("Фиксированное сокращение времени в секундах", default=30)
+    is_active = models.BooleanField("Активна", default=True)
+    sort_order = models.PositiveIntegerField("Порядок сортировки", default=0)
+
+    class Meta:
+        ordering = ["sort_order", "pairs_count"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(pairs_count__in=[6, 8, 10, 12]),
+                name="dungeon_mini_game_pairs_count_allowed",
+            ),
+        ]
+        verbose_name = "Настройка мини-игры данжа"
+        verbose_name_plural = "Настройки мини-игр данжей"
+
+    def __str__(self) -> str:
+        """Возвращает человекочитаемую сложность мини-игры."""
+
+        return f"{self.name} ({self.get_difficulty_display()})"
+
+
+class DungeonMiniGameAttemptStatus(models.TextChoices):
+    """Статусы попытки прохождения мини-игры."""
+
+    IN_PROGRESS = "IN_PROGRESS", "In progress"
+    SUCCESS = "SUCCESS", "Success"
+    FAILED = "FAILED", "Failed"
+
+
 class DungeonRun(TimestampedModel):
     """Один запуск героя в подземелье с таймером, шансом успеха и наградами."""
 
@@ -126,6 +180,42 @@ class DungeonRun(TimestampedModel):
         """Возвращает краткое описание забега героя в подземелье."""
 
         return f"{self.character} @ {self.location} [{self.status}]"
+
+
+class DungeonMiniGameAttempt(TimestampedModel):
+    """История одной попытки пройти мини-игру ускорения для забега."""
+
+    IN_PROGRESS = DungeonMiniGameAttemptStatus.IN_PROGRESS
+    SUCCESS = DungeonMiniGameAttemptStatus.SUCCESS
+    FAILED = DungeonMiniGameAttemptStatus.FAILED
+
+    dungeon_run = models.ForeignKey(DungeonRun, verbose_name="Забег", related_name="mini_game_attempts", on_delete=models.CASCADE)
+    config = models.ForeignKey(DungeonMiniGameConfig, verbose_name="Настройка", related_name="attempts", on_delete=models.PROTECT)
+    user = models.ForeignKey(User, verbose_name="Пользователь", related_name="dungeon_mini_game_attempts", on_delete=models.CASCADE)
+    character = models.ForeignKey(Character, verbose_name="Герой", related_name="dungeon_mini_game_attempts", on_delete=models.CASCADE)
+    status = models.CharField("Статус", max_length=32, choices=DungeonMiniGameAttemptStatus.choices, default=DungeonMiniGameAttemptStatus.IN_PROGRESS)
+    started_at = models.DateTimeField("Дата старта", default=timezone.now)
+    expires_at = models.DateTimeField("Дата истечения таймера")
+    completed_at = models.DateTimeField("Дата завершения", null=True, blank=True)
+    board = models.JSONField("Карточки поля")
+    matched_card_ids = models.JSONField("Открытые совпавшие карточки", default=list, blank=True)
+    open_card_id = models.CharField("Текущая открытая карточка", max_length=64, blank=True, default="")
+    moves_count = models.PositiveIntegerField("Количество ходов", default=0)
+    matched_pairs_count = models.PositiveSmallIntegerField("Найдено пар", default=0)
+    duration_reduction_seconds = models.PositiveIntegerField("Сокращение времени в секундах", default=0)
+
+    class Meta:
+        ordering = ["-started_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["dungeon_run"], name="unique_mini_game_attempt_per_dungeon_run"),
+        ]
+        verbose_name = "Попытка мини-игры данжа"
+        verbose_name_plural = "Попытки мини-игр данжей"
+
+    def __str__(self) -> str:
+        """Возвращает краткое описание попытки мини-игры."""
+
+        return f"Mini-game #{self.pk} for run #{self.dungeon_run_id} [{self.status}]"
 
 
 class DungeonRunClaim(models.Model):

@@ -4,15 +4,20 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.game.i18n import request_locale
-from apps.game.models import Character, DungeonLocation, DungeonRun, DungeonRunStatus
+from apps.game.models import Character, DungeonLocation, DungeonMiniGameAttempt, DungeonRun, DungeonRunStatus
 from apps.game.serializers import (
     ClaimResponseSerializer,
+    DungeonMiniGameAttemptHistorySerializer,
+    DungeonMiniGameAttemptResponseSerializer,
+    DungeonMiniGameMoveResponseSerializer,
+    DungeonMiniGameMoveSerializer,
+    DungeonMiniGameRevealSerializer,
     DungeonLocationSerializer,
     DungeonRunHistorySerializer,
     DungeonRunSerializer,
     DungeonRunStartSerializer,
 )
-from apps.game.services import DungeonRunService, GameFormulaService
+from apps.game.services import DungeonMiniGameService, DungeonRunService, GameFormulaService
 
 
 class DungeonLocationListView(APIView):
@@ -28,7 +33,7 @@ class DungeonLocationListView(APIView):
             character_power = GameFormulaService.character_stats(character)["power"]
         except Character.DoesNotExist:
             pass
-        locations = DungeonLocation.objects.filter(is_active=True).select_related("media")
+        locations = DungeonLocation.objects.filter(is_active=True).select_related("media", "mini_game_config")
         return Response(DungeonLocationSerializer(locations, many=True, context={"request": request, "character": character, "character_power": character_power}).data)
 
 
@@ -45,7 +50,7 @@ class DungeonLocationDetailView(APIView):
             character_power = GameFormulaService.character_stats(character)["power"]
         except Character.DoesNotExist:
             pass
-        location = get_object_or_404(DungeonLocation.objects.select_related("media"), pk=pk, is_active=True)
+        location = get_object_or_404(DungeonLocation.objects.select_related("media", "mini_game_config"), pk=pk, is_active=True)
         return Response(DungeonLocationSerializer(location, context={"request": request, "character": character, "character_power": character_power}).data)
 
 
@@ -69,7 +74,7 @@ class DungeonRunCurrentView(APIView):
         """Возвращает активный забег и при необходимости завершает его на лету."""
 
         run = (
-            DungeonRun.objects.select_related("location", "character", "character__character_class")
+            DungeonRun.objects.select_related("location", "location__mini_game_config", "character", "character__character_class")
             .filter(
                 character__user=request.user,
                 status__in=[
@@ -99,6 +104,54 @@ class DungeonRunClaimView(APIView):
         return Response(ClaimResponseSerializer.render(result, locale=locale))
 
 
+class DungeonMiniGameStartView(APIView):
+    """API-ручка запуска мини-игры ускорения для активного забега."""
+
+    def post(self, request, pk):
+        """Создаёт попытку memory-pairs мини-игры или возвращает активную."""
+
+        locale = request_locale(request)
+        attempt = DungeonMiniGameService.start_attempt(request.user, pk, locale=locale)
+        return Response(DungeonMiniGameAttemptResponseSerializer.render(attempt), status=status.HTTP_201_CREATED)
+
+
+class DungeonMiniGameMoveView(APIView):
+    """API-ручка серверной проверки хода мини-игры."""
+
+    def post(self, request, pk):
+        """Принимает две карточки, проверяет пару и завершает игру только на backend."""
+
+        serializer = DungeonMiniGameMoveSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        locale = request_locale(request)
+        result = DungeonMiniGameService.make_move(
+            request.user,
+            pk,
+            first_card_id=serializer.validated_data["first_card_id"],
+            second_card_id=serializer.validated_data["second_card_id"],
+            locale=locale,
+        )
+        return Response(DungeonMiniGameMoveResponseSerializer.render(result))
+
+
+class DungeonMiniGameRevealView(APIView):
+    """API-ручка открытия первой карточки мини-игры."""
+
+    def post(self, request, pk):
+        """Возвращает лицо одной выбранной карточки без раскрытия всей доски."""
+
+        serializer = DungeonMiniGameRevealSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        locale = request_locale(request)
+        card = DungeonMiniGameService.reveal_card(
+            request.user,
+            pk,
+            card_id=serializer.validated_data["card_id"],
+            locale=locale,
+        )
+        return Response(card)
+
+
 class DungeonRunHistoryView(APIView):
     """API-ручка истории завершённых забегов героя."""
 
@@ -113,3 +166,20 @@ class DungeonRunHistoryView(APIView):
             .order_by("-started_at")[:limit]
         )
         return Response(DungeonRunHistorySerializer(runs, many=True, context={"request": request}).data)
+
+
+class DungeonMiniGameHistoryView(APIView):
+    """API-ручка истории прохождений мини-игры."""
+
+    def get(self, request):
+        """Возвращает последние попытки memory-pairs мини-игры пользователя."""
+
+        limit = min(int(request.query_params.get("limit", 20)), 100)
+        attempts = (
+            DungeonMiniGameAttempt.objects.filter(user=request.user)
+            .select_related("config", "dungeon_run", "dungeon_run__location")
+            .order_by("-started_at")[:limit]
+        )
+        for attempt in attempts:
+            DungeonMiniGameService.expire_attempt_if_needed(attempt)
+        return Response(DungeonMiniGameAttemptHistorySerializer(attempts, many=True, context={"request": request}).data)

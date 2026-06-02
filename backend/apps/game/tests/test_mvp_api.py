@@ -8,7 +8,7 @@ import pyotp
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.game.models import CharacterClass, DungeonLocation, DungeonRun, DungeonRunClaim, DungeonRunStatus, ItemTemplate, MediaAsset, UserItem, UserTwoFactor
+from apps.game.models import CharacterClass, DungeonLocation, DungeonMiniGameAttempt, DungeonRun, DungeonRunClaim, DungeonRunStatus, ItemTemplate, MediaAsset, UserItem, UserTwoFactor
 from apps.game.permissions import IsSuperuserOrOwner
 from apps.game.two_factor import TOTP_INTERVAL_SECONDS, current_timecode
 
@@ -309,6 +309,90 @@ class MvpApiTests(APITestCase):
         self.assertEqual(second_claim.status_code, status.HTTP_200_OK, second_claim.data)
         self.assertEqual(DungeonRunClaim.objects.count(), 1)
 
+    def test_dungeon_mini_game_accelerates_active_run_and_has_history(self):
+        self.register_and_authenticate("mini-game@example.com")
+        self.create_character()
+        location = DungeonLocation.objects.get(name="Старый лес")
+        location.duration_seconds = 120
+        location.has_mini_game = True
+        location.save(update_fields=["duration_seconds", "has_mini_game", "updated_at"])
+
+        start = self.client.post("/api/dungeon-runs", {"location_id": location.id}, format="json")
+        self.assertEqual(start.status_code, status.HTTP_201_CREATED, start.data)
+        self.assertTrue(start.data["location"]["has_mini_game"])
+        self.assertTrue(start.data["mini_game"]["available"])
+        self.assertFalse(start.data["mini_game"]["started"])
+        self.assertNotIn("config", start.data["mini_game"])
+        self.assertNotIn("attempt", start.data["mini_game"])
+
+        attempt = self.client.post(f"/api/dungeon-runs/{start.data['id']}/mini-game/start", {}, format="json")
+        self.assertEqual(attempt.status_code, status.HTTP_201_CREATED, attempt.data)
+        self.assertEqual(len(attempt.data["board"]), attempt.data["config"]["pairs_count"] * 2)
+        self.assertTrue(all(card["state"] == "hidden" for card in attempt.data["board"]))
+        self.assertTrue(all(card["face"] is None for card in attempt.data["board"]))
+        self.assertTrue(all(card["image_url"] is None for card in attempt.data["board"]))
+        self.assertTrue(all("pair_key" not in card for card in attempt.data["board"]))
+
+        current_started = self.client.get("/api/dungeon-runs/current")
+        self.assertEqual(current_started.status_code, status.HTTP_200_OK, current_started.data)
+        self.assertFalse(current_started.data["mini_game"]["available"])
+        self.assertTrue(current_started.data["mini_game"]["started"])
+        self.assertEqual(current_started.data["mini_game"]["status"], DungeonMiniGameAttempt.IN_PROGRESS)
+        self.assertNotIn("config", current_started.data["mini_game"])
+        self.assertNotIn("attempt", current_started.data["mini_game"])
+
+        existing_attempt = self.client.post(f"/api/dungeon-runs/{start.data['id']}/mini-game/start", {}, format="json")
+        self.assertEqual(existing_attempt.status_code, status.HTTP_201_CREATED, existing_attempt.data)
+        self.assertEqual(existing_attempt.data["id"], attempt.data["id"])
+        self.assertEqual(len(existing_attempt.data["board"]), attempt.data["config"]["pairs_count"] * 2)
+
+        run_before = DungeonRun.objects.get(pk=start.data["id"])
+        attempt_model = DungeonMiniGameAttempt.objects.get(pk=attempt.data["id"])
+        pairs = {}
+        for card in attempt_model.board:
+            pairs.setdefault(card["pair_key"], []).append(card["id"])
+
+        complete = None
+        for card_ids in pairs.values():
+            reveal = self.client.post(
+                f"/api/dungeon-mini-games/{attempt.data['id']}/reveal",
+                {"card_id": card_ids[0]},
+                format="json",
+            )
+            self.assertEqual(reveal.status_code, status.HTTP_200_OK, reveal.data)
+            self.assertEqual(reveal.data["id"], card_ids[0])
+            self.assertIsNotNone(reveal.data["face"])
+            self.assertTrue(reveal.data["image_url"].endswith(".svg"))
+            complete = self.client.post(
+                f"/api/dungeon-mini-games/{attempt.data['id']}/move",
+                {"first_card_id": card_ids[0], "second_card_id": card_ids[1]},
+                format="json",
+            )
+            self.assertEqual(complete.status_code, status.HTTP_200_OK, complete.data)
+            self.assertTrue(complete.data["matched"])
+
+        self.assertIsNotNone(complete)
+        self.assertEqual(complete.data["attempt"]["status"], DungeonMiniGameAttempt.SUCCESS)
+        self.assertGreater(complete.data["attempt"]["duration_reduction_seconds"], 0)
+        self.assertTrue(complete.data["reward_granted"])
+        forbidden_complete = self.client.post(
+            f"/api/dungeon-mini-games/{attempt.data['id']}/complete",
+            {"success": True},
+            format="json",
+        )
+        self.assertEqual(forbidden_complete.status_code, status.HTTP_404_NOT_FOUND)
+        run_after = DungeonRun.objects.get(pk=start.data["id"])
+        self.assertLess(run_after.ends_at, run_before.ends_at)
+
+        current = self.client.get("/api/dungeon-runs/current")
+        self.assertEqual(current.status_code, status.HTTP_200_OK, current.data)
+        self.assertFalse(current.data["mini_game"]["available"])
+
+        history = self.client.get("/api/dungeon-mini-games/history")
+        self.assertEqual(history.status_code, status.HTTP_200_OK, history.data)
+        self.assertEqual(history.data[0]["status"], DungeonMiniGameAttempt.SUCCESS)
+        self.assertEqual(history.data[0]["location_name"], "Old Forest")
+
     def test_inventory_equip_repair_and_unequip(self):
         user = self.register_and_authenticate()
         self.create_character()
@@ -503,6 +587,7 @@ class MvpApiTests(APITestCase):
         self.assertEqual(dungeons.status_code, status.HTTP_200_OK)
         self.assertEqual(dungeons.data[0]["name"], "Old Forest")
         self.assertEqual(dungeons.data[0]["description"], "A safe starting location.")
+        self.assertIn("has_mini_game", dungeons.data[0])
         self.assertTrue(dungeons.data[0]["media"]["medium_url"])
         self.assertNotIn("original_url", dungeons.data[0]["media"])
 

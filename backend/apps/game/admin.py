@@ -7,6 +7,8 @@ from .models import (
     CharacterClass,
     DungeonLocation,
     DungeonLocationItemTemplate,
+    DungeonMiniGameAttempt,
+    DungeonMiniGameConfig,
     DungeonRun,
     DungeonRunClaim,
     DungeonRunClaimItem,
@@ -160,11 +162,51 @@ class DungeonLocationItemTemplateInline(admin.TabularInline):
 
 @admin.register(DungeonLocation)
 class DungeonLocationAdmin(admin.ModelAdmin):
-    list_display = ("name", "duration_seconds", "required_power", "item_drop_chance", "is_active", "sort_order")
-    list_filter = ("is_active",)
+    list_display = ("name", "duration_seconds", "required_power", "item_drop_chance", "has_mini_game", "mini_game_config", "is_active", "sort_order")
+    list_filter = ("has_mini_game", "is_active")
     search_fields = ("name", "description")
-    autocomplete_fields = ("media",)
+    autocomplete_fields = ("media", "mini_game_config")
     inlines = [DungeonLocationItemTemplateInline]
+
+
+@admin.register(DungeonMiniGameConfig)
+class DungeonMiniGameConfigAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "difficulty",
+        "pairs_count",
+        "time_limit_seconds",
+        "reward_duration_reduction_seconds",
+        "is_active",
+        "sort_order",
+    )
+    list_filter = ("difficulty", "is_active")
+    search_fields = ("name",)
+
+
+@admin.register(DungeonMiniGameAttempt)
+class DungeonMiniGameAttemptAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "dungeon_run",
+        "user",
+        "status",
+        "difficulty",
+        "moves_count",
+        "matched_pairs_count",
+        "duration_reduction_seconds",
+        "started_at",
+        "completed_at",
+    )
+    list_filter = ("status", "config__difficulty")
+    search_fields = ("id", "user__email", "character__name", "dungeon_run__location__name")
+    autocomplete_fields = ("dungeon_run", "config", "user", "character")
+    list_select_related = ("dungeon_run", "dungeon_run__location", "config", "user", "character")
+    readonly_fields = ("created_at", "updated_at")
+
+    @admin.display(ordering="config__difficulty", description="Сложность")
+    def difficulty(self, obj):
+        return obj.config.get_difficulty_display()
 
 
 @admin.register(DungeonLocationItemTemplate)

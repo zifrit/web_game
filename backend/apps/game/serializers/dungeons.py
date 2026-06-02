@@ -2,8 +2,8 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.game.i18n import DEFAULT_LOCALE, translate
-from apps.game.models import DungeonLocation, DungeonRun, DungeonRunStatus
-from apps.game.services import GameFormulaService
+from apps.game.models import DungeonLocation, DungeonMiniGameAttempt, DungeonRun, DungeonRunStatus
+from apps.game.services import DungeonMiniGameService, GameFormulaService
 
 from .common import localized_item_name, localized_name, media_payload, serializer_locale
 
@@ -27,6 +27,7 @@ class DungeonLocationSerializer(serializers.ModelSerializer):
             "required_power",
             "success_chance",
             "item_drop_chance",
+            "has_mini_game",
             "media",
             "rewards_preview",
         ]
@@ -73,6 +74,7 @@ class DungeonRunSerializer(serializers.ModelSerializer):
     location = serializers.SerializerMethodField()
     remaining_seconds = serializers.SerializerMethodField()
     result_preview = serializers.SerializerMethodField()
+    mini_game = serializers.SerializerMethodField()
 
     class Meta:
         model = DungeonRun
@@ -85,12 +87,17 @@ class DungeonRunSerializer(serializers.ModelSerializer):
             "remaining_seconds",
             "success_chance",
             "result_preview",
+            "mini_game",
         ]
 
     def get_location(self, obj):
         """Возвращает краткую локализованную карточку локации забега."""
 
-        return {"id": obj.location_id, "name": localized_name(obj.location, serializer_locale(self.context))}
+        return {
+            "id": obj.location_id,
+            "name": localized_name(obj.location, serializer_locale(self.context)),
+            "has_mini_game": obj.location.has_mini_game,
+        }
 
     def get_remaining_seconds(self, obj):
         """Возвращает оставшиеся секунды до конца активного забега."""
@@ -112,11 +119,49 @@ class DungeonRunSerializer(serializers.ModelSerializer):
             "durability_loss": obj.durability_loss or 0,
         }
 
+    def get_mini_game(self, obj):
+        """Возвращает состояние мини-игры ускорения для активного забега."""
+
+        return DungeonMiniGameService.mini_game_payload(obj)
+
 
 class DungeonRunStartSerializer(serializers.Serializer):
     """Сериализатор запроса на запуск подземелья."""
 
     location_id = serializers.IntegerField(min_value=1)
+
+
+class DungeonMiniGameMoveSerializer(serializers.Serializer):
+    """Сериализатор хода мини-игры."""
+
+    first_card_id = serializers.CharField()
+    second_card_id = serializers.CharField()
+
+
+class DungeonMiniGameRevealSerializer(serializers.Serializer):
+    """Сериализатор открытия первой карточки хода."""
+
+    card_id = serializers.CharField()
+
+
+class DungeonMiniGameAttemptResponseSerializer:
+    """Рендер ответа по попытке мини-игры."""
+
+    @staticmethod
+    def render(attempt, include_board=True):
+        """Преобразует попытку мини-игры в публичный API-ответ."""
+
+        return DungeonMiniGameService.attempt_payload(attempt, include_board=include_board)
+
+
+class DungeonMiniGameMoveResponseSerializer:
+    """Рендер ответа по ходу мини-игры."""
+
+    @staticmethod
+    def render(result):
+        """Возвращает результат проверенного backend хода."""
+
+        return result
 
 
 class ClaimResponseSerializer:
@@ -172,3 +217,41 @@ class DungeonRunHistorySerializer(serializers.ModelSerializer):
         """Возвращает локализованное название локации из истории."""
 
         return localized_name(obj.location, serializer_locale(self.context))
+
+
+class DungeonMiniGameAttemptHistorySerializer(serializers.ModelSerializer):
+    """Сериализатор строки истории попыток мини-игры."""
+
+    dungeon_run_id = serializers.IntegerField(source="dungeon_run.id")
+    location_name = serializers.SerializerMethodField()
+    difficulty = serializers.SerializerMethodField()
+    reward_duration_reduction_seconds = serializers.IntegerField(source="config.reward_duration_reduction_seconds")
+    pairs_count = serializers.IntegerField(source="config.pairs_count")
+
+    class Meta:
+        model = DungeonMiniGameAttempt
+        fields = [
+            "id",
+            "dungeon_run_id",
+            "location_name",
+            "status",
+            "difficulty",
+            "pairs_count",
+            "reward_duration_reduction_seconds",
+            "started_at",
+            "expires_at",
+            "completed_at",
+            "moves_count",
+            "matched_pairs_count",
+            "duration_reduction_seconds",
+        ]
+
+    def get_location_name(self, obj):
+        """Возвращает локализованное название локации из истории мини-игры."""
+
+        return localized_name(obj.dungeon_run.location, serializer_locale(self.context))
+
+    def get_difficulty(self, obj):
+        """Возвращает label сложности мини-игры."""
+
+        return obj.config.get_difficulty_display()
