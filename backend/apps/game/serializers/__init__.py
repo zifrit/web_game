@@ -3,6 +3,7 @@ from .characters import CharacterClassSerializer, CharacterCreateSerializer, Cha
 from .common import localized_item_name, localized_name, media_payload, serializer_locale
 from .dungeons import (
     ClaimResponseSerializer,
+    DungeonLootItemSerializer,
     DungeonMiniGameAttemptHistorySerializer,
     DungeonMiniGameAttemptResponseSerializer,
     DungeonMiniGameMoveResponseSerializer,
@@ -21,6 +22,7 @@ __all__ = [
     "CharacterCreateSerializer",
     "CharacterMeSerializer",
     "ClaimResponseSerializer",
+    "DungeonLootItemSerializer",
     "DungeonMiniGameAttemptHistorySerializer",
     "DungeonMiniGameAttemptResponseSerializer",
     "DungeonMiniGameMoveResponseSerializer",

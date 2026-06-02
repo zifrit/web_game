@@ -2,7 +2,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.game.i18n import DEFAULT_LOCALE, translate
-from apps.game.models import DungeonLocation, DungeonMiniGameAttempt, DungeonRun, DungeonRunStatus
+from apps.game.models import DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonRun, DungeonRunStatus
 from apps.game.services import DungeonMiniGameService, GameFormulaService
 
 from .common import localized_item_name, localized_name, media_payload, serializer_locale
@@ -255,3 +255,49 @@ class DungeonMiniGameAttemptHistorySerializer(serializers.ModelSerializer):
         """Возвращает label сложности мини-игры."""
 
         return obj.config.get_difficulty_display()
+
+
+class DungeonLootItemSerializer(serializers.ModelSerializer):
+    """Сериализатор одного предмета из таблицы лута данжа."""
+
+    name = serializers.SerializerMethodField()
+    slot = serializers.CharField(source="item_template.slot")
+    item_type = serializers.CharField(source="item_template.item_type")
+    rarity = serializers.CharField(source="item_template.rarity_key")
+    allowed_classes = serializers.SerializerMethodField()
+    possible_stats = serializers.SerializerMethodField()
+    min_durability = serializers.IntegerField(source="item_template.min_durability")
+    max_durability = serializers.IntegerField(source="item_template.max_durability")
+
+    class Meta:
+        model = DungeonLocationItemTemplate
+        fields = [
+            "name",
+            "slot",
+            "item_type",
+            "rarity",
+            "allowed_classes",
+            "possible_stats",
+            "min_durability",
+            "max_durability",
+            "chance",
+        ]
+
+    def get_name(self, obj):
+        """Возвращает локализованное название предмета-шаблона."""
+
+        return localized_name(obj.item_template, serializer_locale(self.context))
+
+    def get_allowed_classes(self, obj):
+        """Возвращает локализованные имена разрешённых классов или пустой список."""
+
+        keys = obj.item_template.allowed_classes or []
+        if not keys:
+            return []
+        classes_map: dict = self.context.get("character_classes", {})
+        return [classes_map.get(k, k) for k in keys]
+
+    def get_possible_stats(self, obj):
+        """Возвращает словарь возможных характеристик с диапазонами."""
+
+        return obj.item_template.possible_stats or {}

@@ -4,9 +4,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.game.i18n import request_locale
-from apps.game.models import Character, DungeonLocation, DungeonMiniGameAttempt, DungeonRun, DungeonRunStatus
+from apps.game.models import Character, CharacterClass, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonRun, DungeonRunStatus
 from apps.game.serializers import (
     ClaimResponseSerializer,
+    DungeonLootItemSerializer,
+    localized_name,
     DungeonMiniGameAttemptHistorySerializer,
     DungeonMiniGameAttemptResponseSerializer,
     DungeonMiniGameMoveResponseSerializer,
@@ -52,6 +54,29 @@ class DungeonLocationDetailView(APIView):
             pass
         location = get_object_or_404(DungeonLocation.objects.select_related("media", "mini_game_config"), pk=pk, is_active=True)
         return Response(DungeonLocationSerializer(location, context={"request": request, "character": character, "character_power": character_power}).data)
+
+
+class DungeonLocationLootView(APIView):
+    """API-ручка таблицы лута подземелья."""
+
+    def get(self, request, pk):
+        """Возвращает список шаблонов предметов, которые можно получить в данже."""
+
+        get_object_or_404(DungeonLocation, pk=pk, is_active=True)
+        locale = request_locale(request)
+        classes_map = {c.key: localized_name(c, locale) for c in CharacterClass.objects.all()}
+        templates = (
+            DungeonLocationItemTemplate.objects
+            .filter(location_id=pk)
+            .select_related("item_template")
+            .order_by("item_template__slot")
+        )
+        return Response(
+            DungeonLootItemSerializer(
+                templates, many=True,
+                context={"request": request, "character_classes": classes_map},
+            ).data
+        )
 
 
 class DungeonRunStartView(APIView):

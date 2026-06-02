@@ -13,6 +13,7 @@ from .auth import (
 )
 from .characters import CharacterClassListView, CharacterCreateView, CharacterMeView
 from .dungeons import (
+    DungeonLocationLootView,
     DungeonMiniGameHistoryView,
     DungeonMiniGameMoveView,
     DungeonMiniGameRevealView,
@@ -42,6 +43,7 @@ __all__ = [
     "CharacterClassListView",
     "CharacterCreateView",
     "CharacterMeView",
+    "DungeonLocationLootView",
     "DungeonMiniGameHistoryView",
     "DungeonMiniGameMoveView",
     "DungeonMiniGameRevealView",
