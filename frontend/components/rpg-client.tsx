@@ -7,6 +7,7 @@ import { AuthScreen } from "@/components/screens/auth-screen";
 import { CharacterScreen } from "@/components/screens/character-screen";
 import { CreateCharacterScreen } from "@/components/screens/create-character-screen";
 import { DungeonsScreen } from "@/components/screens/dungeons-screen";
+import { GuidebookScreen } from "@/components/screens/guide-screen";
 import { InventoryScreen } from "@/components/screens/inventory-screen";
 import { LeaderboardScreen } from "@/components/screens/leaderboard-screen";
 import { SettingsScreen } from "@/components/screens/settings-screen";
@@ -17,9 +18,9 @@ import { formatNumber, splitCopper, type TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
 import type { MediaAssetUrls } from "@/lib/types";
 
-type Tab = "character" | "dungeons" | "inventory" | "leaderboard" | "settings";
+type Tab = "character" | "dungeons" | "inventory" | "leaderboard" | "settings" | "guide";
 
-const VALID_TABS: Tab[] = ["character", "dungeons", "inventory", "leaderboard", "settings"];
+const VALID_TABS: Tab[] = ["character", "dungeons", "inventory", "leaderboard", "settings", "guide"];
 
 function getInitialTab(): Tab {
   if (typeof window === "undefined") return "character";
@@ -33,9 +34,10 @@ const ADVENTURE_NAV: Array<{ key: Tab; labelKey: "nav.character" | "nav.dungeons
   { key: "dungeons",    labelKey: "nav.dungeons",  glyph: "⌬" },
 ];
 
-const HERO_NAV: Array<{ key: Tab; labelKey: "nav.inventory" | "nav.leaderboard" | "nav.settings"; glyph: string }> = [
+const HERO_NAV: Array<{ key: Tab; labelKey: "nav.inventory" | "nav.leaderboard" | "nav.settings" | "nav.guide"; glyph: string }> = [
   { key: "inventory",   labelKey: "nav.inventory",   glyph: "◊" },
   { key: "leaderboard", labelKey: "nav.leaderboard", glyph: "☰" },
+  { key: "guide",       labelKey: "nav.guide",       glyph: "◈" },
   { key: "settings",    labelKey: "nav.settings",    glyph: "⚙" },
 ];
 
@@ -45,6 +47,7 @@ const PAGE_META: Record<Tab, { sectionKey: TranslationKey; titleKey: Translation
   inventory:   { sectionKey: "page.inventory.section",    titleKey: "page.inventory.title" },
   leaderboard: { sectionKey: "page.leaderboard.section",  titleKey: "page.leaderboard.title" },
   settings:    { sectionKey: "page.settings.section",     titleKey: "page.settings.title" },
+  guide:       { sectionKey: "page.guide.section",        titleKey: "page.guide.title" },
 };
 
 /* ─── Sidebar ─── */
@@ -430,6 +433,7 @@ export function RpgClient() {
             {tab === "inventory"   && <InventoryScreen />}
             {tab === "leaderboard" && <LeaderboardScreen />}
             {tab === "settings"    && <SettingsScreen />}
+            {tab === "guide"       && <GuidebookScreen />}
           </div>
         </div>
       </div>

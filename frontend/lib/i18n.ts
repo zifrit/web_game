@@ -256,6 +256,9 @@ const dictionaries = {
     "rarity.a": "A",
     "rarity.s": "S",
     "rarity.ex": "EX",
+    "nav.guide": "Guide",
+    "page.guide.section": "Adventurer's Codex",
+    "page.guide.title": "Field Guide",
   },
   ru: {
     "nav.adventure": "Приключения",
@@ -506,6 +509,9 @@ const dictionaries = {
     "rarity.a": "A",
     "rarity.s": "S",
     "rarity.ex": "EX",
+    "nav.guide": "Гайд",
+    "page.guide.section": "Кодекс искателя",
+    "page.guide.title": "Руководство",
   },
 } satisfies Record<Locale, Record<string, string>>;
 
