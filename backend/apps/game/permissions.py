@@ -26,10 +26,14 @@ class IsSuperuserOrOwner(BasePermission):
             return True
         if self._matches_user_id(getattr(obj, "owner_id", None), user):
             return True
+        if self._matches_user_id(getattr(obj, "owner_user_id", None), user):
+            return True
 
         if self._related_user_matches(obj, "user", user):
             return True
         if self._related_user_matches(obj, "owner", user):
+            return True
+        if self._related_user_matches(obj, "owner_user", user):
             return True
         if self._related_character_matches(obj, user):
             return True
