@@ -100,6 +100,18 @@ export type RangeValue = {
   max: number;
 };
 
+export type DungeonLootItem = {
+  name: string;
+  slot: string;
+  item_type: string;
+  rarity: string | null;
+  allowed_classes: string[];
+  possible_stats: Record<string, RangeValue>;
+  min_durability: number;
+  max_durability: number;
+  chance: number;
+};
+
 export type DungeonRunStatus =
   | "IN_PROGRESS"
   | "SUCCESS_WAITING_CLAIM"
