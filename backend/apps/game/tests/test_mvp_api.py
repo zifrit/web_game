@@ -8,7 +8,7 @@ import pyotp
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.game.models import CharacterClass, DungeonLocation, DungeonMiniGameAttempt, DungeonRun, DungeonRunClaim, DungeonRunStatus, ItemTemplate, MediaAsset, UserItem, UserTwoFactor
+from apps.game.models import CharacterClass, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonRun, DungeonRunClaim, DungeonRunStatus, ItemTemplate, MediaAsset, UserItem, UserTwoFactor
 from apps.game.permissions import IsSuperuserOrOwner
 from apps.game.two_factor import TOTP_INTERVAL_SECONDS, current_timecode
 
@@ -599,3 +599,203 @@ class MvpApiTests(APITestCase):
         bad_board = self.client.get("/api/leaderboard?type=gold", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(bad_board.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(bad_board.data["detail"], "В MVP доступен только рейтинг по уровню.")
+
+
+class DungeonLootApiTests(APITestCase):
+    """Тесты эндпоинта GET /api/dungeons/<pk>/loot."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_game", verbosity=0)
+        cls.location = DungeonLocation.objects.filter(is_active=True).first()
+
+    def _auth(self, email="loot_tester@example.com"):
+        self.client.post("/api/auth/register", {"email": email, "password": "strong_password_123"}, format="json")
+        login = self.client.post("/api/auth/login", {"email": email, "password": "strong_password_123"}, format="json")
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access_token']}")
+
+    # ── Доступ ──────────────────────────────────────────────────────────────
+
+    def test_unauthenticated_returns_401(self):
+        response = self.client.get(f"/api/dungeons/{self.location.pk}/loot")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_nonexistent_dungeon_returns_404(self):
+        self._auth()
+        response = self.client.get("/api/dungeons/999999/loot")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_inactive_dungeon_returns_404(self):
+        inactive = DungeonLocation.objects.create(
+            name="Hidden Vault",
+            duration_seconds=60,
+            required_power=1,
+            experience_min=1, experience_max=2,
+            money_min_copper=1, money_max_copper=2,
+            item_drop_chance=10,
+            is_active=False,
+        )
+        self._auth("inactive_tester@example.com")
+        response = self.client.get(f"/api/dungeons/{inactive.pk}/loot")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # ── Структура ответа ─────────────────────────────────────────────────────
+
+    def test_returns_list_of_loot_items(self):
+        self._auth("structure_tester@example.com")
+        response = self.client.get(f"/api/dungeons/{self.location.pk}/loot")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(response.data, list)
+
+    def test_loot_item_has_required_fields(self):
+        self._auth("fields_tester@example.com")
+        location_with_loot = DungeonLocation.objects.filter(
+            is_active=True,
+            location_item_templates__isnull=False,
+        ).first()
+        if not location_with_loot:
+            self.skipTest("No dungeon with loot templates in seed data")
+
+        response = self.client.get(f"/api/dungeons/{location_with_loot.pk}/loot")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreater(len(response.data), 0)
+
+        item = response.data[0]
+        for field in ("name", "slot", "item_type", "rarity", "allowed_classes",
+                      "possible_stats", "min_durability", "max_durability", "chance"):
+            self.assertIn(field, item, f"Missing field: {field}")
+
+    def test_chance_is_within_valid_range(self):
+        self._auth("chance_tester@example.com")
+        location_with_loot = DungeonLocation.objects.filter(
+            is_active=True,
+            location_item_templates__isnull=False,
+        ).first()
+        if not location_with_loot:
+            self.skipTest("No dungeon with loot templates in seed data")
+
+        response = self.client.get(f"/api/dungeons/{location_with_loot.pk}/loot")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        for item in response.data:
+            self.assertGreaterEqual(item["chance"], 1)
+            self.assertLessEqual(item["chance"], 100)
+
+    def test_possible_stats_is_dict(self):
+        self._auth("stats_tester@example.com")
+        location_with_loot = DungeonLocation.objects.filter(
+            is_active=True,
+            location_item_templates__isnull=False,
+        ).first()
+        if not location_with_loot:
+            self.skipTest("No dungeon with loot templates in seed data")
+
+        response = self.client.get(f"/api/dungeons/{location_with_loot.pk}/loot")
+        for item in response.data:
+            self.assertIsInstance(item["possible_stats"], dict)
+            for stat_range in item["possible_stats"].values():
+                self.assertIn("min", stat_range)
+                self.assertIn("max", stat_range)
+
+    def test_allowed_classes_is_list(self):
+        self._auth("classes_tester@example.com")
+        location_with_loot = DungeonLocation.objects.filter(
+            is_active=True,
+            location_item_templates__isnull=False,
+        ).first()
+        if not location_with_loot:
+            self.skipTest("No dungeon with loot templates in seed data")
+
+        response = self.client.get(f"/api/dungeons/{location_with_loot.pk}/loot")
+        for item in response.data:
+            self.assertIsInstance(item["allowed_classes"], list)
+
+    # ── Локализация ──────────────────────────────────────────────────────────
+
+    def test_name_is_localized_ru(self):
+        self._auth("locale_tester@example.com")
+        location_with_loot = DungeonLocation.objects.filter(
+            is_active=True,
+            location_item_templates__isnull=False,
+        ).first()
+        if not location_with_loot:
+            self.skipTest("No dungeon with loot templates in seed data")
+
+        en = self.client.get(f"/api/dungeons/{location_with_loot.pk}/loot", HTTP_ACCEPT_LANGUAGE="en")
+        ru = self.client.get(f"/api/dungeons/{location_with_loot.pk}/loot", HTTP_ACCEPT_LANGUAGE="ru")
+        self.assertEqual(en.status_code, status.HTTP_200_OK)
+        self.assertEqual(ru.status_code, status.HTTP_200_OK)
+
+        if en.data and ru.data:
+            en_name = en.data[0]["name"]
+            ru_name = ru.data[0]["name"]
+            # Если у шаблона есть RU перевод — имена должны отличаться
+            template = DungeonLocationItemTemplate.objects.filter(
+                location=location_with_loot
+            ).select_related("item_template").first()
+            if template and template.item_template.name_i18n.get("ru"):
+                self.assertNotEqual(en_name, ru_name)
+
+    def test_allowed_classes_resolved_to_names_in_ru(self):
+        """Разрешённые классы возвращаются как имена, а не ключи."""
+        self._auth("classname_tester@example.com")
+        template = ItemTemplate.objects.filter(
+            allowed_classes__isnull=False,
+        ).first()
+        if not template:
+            self.skipTest("No item template with class restrictions in seed data")
+
+        location = DungeonLocation.objects.filter(is_active=True).first()
+        DungeonLocationItemTemplate.objects.get_or_create(
+            location=location, item_template=template, defaults={"chance": 50}
+        )
+
+        response = self.client.get(
+            f"/api/dungeons/{location.pk}/loot",
+            HTTP_ACCEPT_LANGUAGE="ru",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        item_with_classes = next(
+            (i for i in response.data if i["allowed_classes"]), None
+        )
+        if item_with_classes:
+            # Классы должны быть именами, а не slug-ключами
+            for class_name in item_with_classes["allowed_classes"]:
+                self.assertFalse(
+                    class_name.islower() and "_" not in class_name and " " not in class_name
+                    and len(class_name) < 10,
+                    f"Expected class name, got key-like string: {class_name!r}",
+                )
+
+    # ── Сортировка ───────────────────────────────────────────────────────────
+
+    def test_items_ordered_by_slot(self):
+        self._auth("order_tester@example.com")
+        location_with_loot = DungeonLocation.objects.filter(
+            is_active=True,
+            location_item_templates__isnull=False,
+        ).first()
+        if not location_with_loot:
+            self.skipTest("No dungeon with loot templates in seed data")
+
+        response = self.client.get(f"/api/dungeons/{location_with_loot.pk}/loot")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        slots = [item["slot"] for item in response.data]
+        self.assertEqual(slots, sorted(slots))
+
+    # ── Пустой лут ───────────────────────────────────────────────────────────
+
+    def test_dungeon_without_loot_returns_empty_list(self):
+        self._auth("empty_tester@example.com")
+        empty_location = DungeonLocation.objects.create(
+            name="Empty Dungeon",
+            duration_seconds=60,
+            required_power=1,
+            experience_min=1, experience_max=2,
+            money_min_copper=1, money_max_copper=2,
+            item_drop_chance=0,
+            is_active=True,
+        )
+        response = self.client.get(f"/api/dungeons/{empty_location.pk}/loot")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [])
