@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { LogOut } from "lucide-react";
+import { Backpack, BookOpen, Compass, LogOut, Settings2, Swords, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AuthScreen } from "@/components/screens/auth-screen";
 import { CharacterScreen } from "@/components/screens/character-screen";
@@ -28,18 +28,27 @@ function getInitialTab(): Tab {
   return saved && VALID_TABS.includes(saved) ? saved : "character";
 }
 
-/* ── nav structure matching the HTML prototype ── */
-const ADVENTURE_NAV: Array<{ key: Tab; labelKey: "nav.character" | "nav.dungeons"; glyph: string }> = [
-  { key: "character",   labelKey: "nav.character", glyph: "✦" },
-  { key: "dungeons",    labelKey: "nav.dungeons",  glyph: "⌬" },
+/* ── nav structure ── */
+const ADVENTURE_NAV: Array<{ key: Tab; labelKey: "nav.character" | "nav.dungeons" }> = [
+  { key: "character", labelKey: "nav.character" },
+  { key: "dungeons",  labelKey: "nav.dungeons"  },
 ];
 
-const HERO_NAV: Array<{ key: Tab; labelKey: "nav.inventory" | "nav.leaderboard" | "nav.settings" | "nav.guide"; glyph: string }> = [
-  { key: "inventory",   labelKey: "nav.inventory",   glyph: "◊" },
-  { key: "leaderboard", labelKey: "nav.leaderboard", glyph: "☰" },
-  { key: "guide",       labelKey: "nav.guide",       glyph: "◈" },
-  { key: "settings",    labelKey: "nav.settings",    glyph: "⚙" },
+const HERO_NAV: Array<{ key: Tab; labelKey: "nav.inventory" | "nav.leaderboard" | "nav.settings" | "nav.guide" }> = [
+  { key: "inventory",   labelKey: "nav.inventory"   },
+  { key: "leaderboard", labelKey: "nav.leaderboard" },
+  { key: "guide",       labelKey: "nav.guide"       },
+  { key: "settings",    labelKey: "nav.settings"    },
 ];
+
+const NAV_ICONS: Record<Tab, React.ReactNode> = {
+  character:   <Swords    size={15} strokeWidth={1.7} />,
+  dungeons:    <Compass   size={15} strokeWidth={1.7} />,
+  inventory:   <Backpack  size={15} strokeWidth={1.7} />,
+  leaderboard: <Trophy    size={15} strokeWidth={1.7} />,
+  guide:       <BookOpen  size={15} strokeWidth={1.7} />,
+  settings:    <Settings2 size={15} strokeWidth={1.7} />,
+};
 
 const PAGE_META: Record<Tab, { sectionKey: TranslationKey; titleKey: TranslationKey }> = {
   character:   { sectionKey: "page.character.section",    titleKey: "page.character.title" },
@@ -98,10 +107,19 @@ function Sidebar({
         display: "flex", alignItems: "center", gap: 10,
         padding: "0 6px 22px", borderBottom: "1px solid #243150", marginBottom: 18,
       }}>
+        <div style={{
+          width: 32, height: 32, flexShrink: 0,
+          background: "linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%)",
+          borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
+          border: "1px solid rgba(96,165,250,0.35)",
+          boxShadow: "0 0 16px rgba(59,130,246,0.28), inset 0 1px 0 rgba(255,255,255,0.1)",
+        }}>
+          <Swords size={15} color="#93C5FD" strokeWidth={1.7} />
+        </div>
         <div>
           <div style={{
             fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
-            fontSize: 22, fontWeight: 600, letterSpacing: "0.02em",
+            fontSize: 20, fontWeight: 600, letterSpacing: "0.02em",
           }}>Ashreach</div>
         </div>
       </div>
@@ -120,10 +138,9 @@ function Sidebar({
           className={`nav-item ${tab === item.key ? "active" : ""}`}
         >
           <span style={{
-            width: 18, textAlign: "center",
-            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
-            fontSize: 13, color: tab === item.key ? "#60A5FA" : "#64748B",
-          }}>{item.glyph}</span>
+            width: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            color: tab === item.key ? "#60A5FA" : "#4B5E7A",
+          }}>{NAV_ICONS[item.key]}</span>
           <span>{t(item.labelKey)}</span>
         </button>
       ))}
@@ -142,10 +159,9 @@ function Sidebar({
           className={`nav-item ${tab === item.key ? "active" : ""}`}
         >
           <span style={{
-            width: 18, textAlign: "center",
-            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
-            fontSize: 13, color: tab === item.key ? "#60A5FA" : "#64748B",
-          }}>{item.glyph}</span>
+            width: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            color: tab === item.key ? "#60A5FA" : "#4B5E7A",
+          }}>{NAV_ICONS[item.key]}</span>
           <span>{t(item.labelKey)}</span>
         </button>
       ))}
@@ -246,7 +262,9 @@ function MobileNav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
             transition: "all 150ms ease",
           }}
         >
-          <span style={{ fontSize: 16 }}>{item.glyph}</span>
+          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 18, height: 18 }}>
+            {NAV_ICONS[item.key]}
+          </span>
           {t(item.labelKey)}
         </button>
       ))}

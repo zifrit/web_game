@@ -1,6 +1,7 @@
 "use client";
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { Check, ShieldCheck, Wrench } from "lucide-react";
 import { useEffect, useState, type UIEvent } from "react";
 import { useI18n } from "@/components/providers";
 import { ErrorNotice, InventoryScreenSkeleton, LoadingLine } from "@/components/ui";
@@ -80,15 +81,15 @@ function PackCell({
           <div className="inv-icon" />
         )
       )}
-      {equipped && <div className="equipped-tag">E</div>}
-      {item?.is_broken && <div className="broken-tag">!</div>}
+      {equipped && <div className="equipped-tag"><ShieldCheck size={9} strokeWidth={2.5} /></div>}
+      {item?.is_broken && <div className="broken-tag"><Wrench size={9} strokeWidth={2.5} /></div>}
       {multiSelected && (
         <div style={{
           position: "absolute", right: 5, bottom: 5, width: 18, height: 18,
           borderRadius: 999, background: "var(--success)", color: "#fff",
-          display: "grid", placeItems: "center", fontSize: 12, fontWeight: 800,
+          display: "grid", placeItems: "center",
           border: "1px solid rgba(255,255,255,0.5)",
-        }}>✓</div>
+        }}><Check size={11} strokeWidth={3} /></div>
       )}
     </button>
   );
