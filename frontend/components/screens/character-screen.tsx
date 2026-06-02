@@ -2,14 +2,15 @@
 
 import { useEffect, useState, type DragEvent } from "react";
 import { useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
-import { CircleHelp } from "lucide-react";
+import { CircleHelp, Zap } from "lucide-react";
+import { canOpenMiniGame, DungeonMiniGameModal } from "@/components/dungeon-mini-game-modal";
 import { useI18n } from "@/components/providers";
 import { DungeonRewardModal } from "@/components/dungeon-reward-modal";
 import { CharacterScreenSkeleton, ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatDuration, type Locale, type TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
-import type { Character, ClaimResponse, Dungeon, EquipmentSlot, Inventory, InventoryCard, InventoryMutationResponse } from "@/lib/types";
+import type { Character, ClaimResponse, Dungeon, DungeonMiniGameAttempt, EquipmentSlot, Inventory, InventoryCard, InventoryMutationResponse } from "@/lib/types";
 
 /* ── Rarity helpers ── */
 const RARITY_COLOR: Record<string, string> = {
@@ -366,10 +367,12 @@ function PowerHelp({ stats, power }: { stats: Character["stats"]; power: number 
 }
 
 /* ── Active expedition strip ── */
-function ActiveExpeditionStrip({ run, imageUrl, onClaimed }: {
+function ActiveExpeditionStrip({ run, imageUrl, onClaimed, onSpeedUp, speedUpPending }: {
   run: NonNullable<Awaited<ReturnType<typeof api.currentRun>>>;
   imageUrl?: string;
   onClaimed: (result: ClaimResponse) => void;
+  onSpeedUp: () => void;
+  speedUpPending: boolean;
 }) {
   const queryClient = useQueryClient();
   const { t } = useI18n();
@@ -396,6 +399,7 @@ function ActiveExpeditionStrip({ run, imageUrl, onClaimed }: {
 
   const waitingClaim = run.status === "SUCCESS_WAITING_CLAIM" || run.status === "FAILED_WAITING_CLAIM";
   const inProgress   = run.status === "IN_PROGRESS";
+  const canStartMiniGame = canOpenMiniGame(run);
 
   let remaining  = 0;
   let totalSecs  = 1;
@@ -474,7 +478,17 @@ function ActiveExpeditionStrip({ run, imageUrl, onClaimed }: {
             </div>
           </div>
         </div>
-        <div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
+          {canStartMiniGame && (
+            <button
+              className="btn btn-secondary"
+              disabled={speedUpPending}
+              onClick={onSpeedUp}
+            >
+              <Zap size={16} />
+              {speedUpPending ? t("miniGame.starting") : t("miniGame.speedUp")}
+            </button>
+          )}
           {done && (
             <button
               className="btn btn-primary"
@@ -508,6 +522,7 @@ export function CharacterScreen({
   const [inventoryDropActive, setInventoryDropActive] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
   const [rewardResult, setRewardResult] = useState<ClaimResponse | null>(null);
+  const [miniGameAttempt, setMiniGameAttempt] = useState<DungeonMiniGameAttempt | null>(null);
   const characterQuery  = useQuery({ queryKey: ["character"],    queryFn: api.character });
   const dungeonsQuery   = useQuery({ queryKey: ["dungeons"],     queryFn: api.dungeons  });
   const currentRunQuery = useQuery({
@@ -522,6 +537,11 @@ export function CharacterScreen({
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["current-run"] });
     },
+  });
+
+  const startMiniGameMutation = useMutation({
+    mutationFn: (runId: number) => api.startMiniGame(runId),
+    onSuccess: (attempt) => setMiniGameAttempt(attempt),
   });
 
   const patchInventoryCaches = (result: InventoryMutationResponse) => {
@@ -814,7 +834,13 @@ export function CharacterScreen({
 
         {/* Active expedition strip */}
         {currentRunQuery.data && currentRunQuery.data.status !== "CLAIMED" && (
-          <ActiveExpeditionStrip run={currentRunQuery.data} imageUrl={activeRunImage} onClaimed={setRewardResult} />
+          <ActiveExpeditionStrip
+            run={currentRunQuery.data}
+            imageUrl={activeRunImage}
+            onClaimed={setRewardResult}
+            onSpeedUp={() => startMiniGameMutation.mutate(currentRunQuery.data!.id)}
+            speedUpPending={startMiniGameMutation.isPending}
+          />
         )}
 
         {/* Equipment paperdoll */}
@@ -975,6 +1001,17 @@ export function CharacterScreen({
           onClose={() => setRewardResult(null)}
         />
       )}
+      {miniGameAttempt && (
+        <DungeonMiniGameModal
+          attempt={miniGameAttempt}
+          onClose={() => setMiniGameAttempt(null)}
+          onFinished={(attempt) => {
+            setMiniGameAttempt(attempt);
+            void queryClient.invalidateQueries({ queryKey: ["current-run"] });
+          }}
+        />
+      )}
+      <ErrorNotice message={(startMiniGameMutation.error as Error | null)?.message} />
 
     </div>
   );

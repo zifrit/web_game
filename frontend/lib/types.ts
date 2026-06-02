@@ -87,6 +87,7 @@ export type Dungeon = {
   required_power: number;
   success_chance: number;
   item_drop_chance: number;
+  has_mini_game: boolean;
   media?: MediaAssetUrls | null;
   rewards_preview?: {
     experience?: RangeValue;
@@ -111,6 +112,7 @@ export type DungeonRun = {
   location: {
     id: number;
     name: string;
+    has_mini_game?: boolean;
   };
   started_at?: string;
   ends_at?: string;
@@ -123,9 +125,77 @@ export type DungeonRun = {
     items_count: number;
     durability_loss: number;
   };
+  mini_game?: DungeonMiniGameState | null;
 };
 
 export type CurrentRunResponse = DungeonRun | null;
+
+export type DungeonMiniGameConfig = {
+  id: number;
+  difficulty: string;
+  pairs_count: number;
+  time_limit_seconds: number;
+  reward_duration_reduction_seconds: number;
+};
+
+export type DungeonMiniGameCard = {
+  id: string;
+  position: number;
+  state: "hidden" | "temporary_open" | "matched";
+  face?: string | null;
+  image_url?: string | null;
+};
+
+export type DungeonMiniGameAttemptStatus =
+  | "IN_PROGRESS"
+  | "SUCCESS"
+  | "FAILED";
+
+export type DungeonMiniGameAttempt = {
+  id: number;
+  status: DungeonMiniGameAttemptStatus;
+  config: DungeonMiniGameConfig;
+  started_at: string;
+  expires_at: string;
+  completed_at?: string | null;
+  board?: DungeonMiniGameCard[];
+  moves_count: number;
+  matched_pairs_count: number;
+  duration_reduction_seconds: number;
+};
+
+export type DungeonMiniGameMoveResponse = {
+  matched: boolean;
+  attempt: DungeonMiniGameAttempt;
+  opened_cards: DungeonMiniGameCard[];
+  reward_granted: boolean;
+  reward?: {
+    type: "dungeon_time_boost_seconds";
+    value: number;
+  } | null;
+};
+
+export type DungeonMiniGameState = {
+  available: boolean;
+  started: boolean;
+  status?: DungeonMiniGameAttemptStatus | null;
+};
+
+export type DungeonMiniGameHistoryItem = {
+  id: number;
+  dungeon_run_id: number;
+  location_name: string;
+  status: DungeonMiniGameAttemptStatus;
+  difficulty: string;
+  pairs_count: number;
+  reward_duration_reduction_seconds: number;
+  started_at: string;
+  expires_at: string;
+  completed_at?: string | null;
+  moves_count: number;
+  matched_pairs_count: number;
+  duration_reduction_seconds: number;
+};
 
 export type ClaimResponse = {
   id: number;

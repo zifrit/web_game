@@ -1,14 +1,16 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { canOpenMiniGame, DungeonMiniGameModal } from "@/components/dungeon-mini-game-modal";
 import { useI18n } from "@/components/providers";
 import { DungeonRewardModal } from "@/components/dungeon-reward-modal";
 import { ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatDuration } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
-import type { ClaimResponse, DungeonRun } from "@/lib/types";
+import type { ClaimResponse, DungeonMiniGameAttempt, DungeonRun } from "@/lib/types";
 
 /* ── Timer hook ── */
 function useRemainingSeconds(run?: DungeonRun | null) {
@@ -46,6 +48,7 @@ function ActiveRunBanner({
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const remaining   = useRemainingSeconds(run);
+  const [miniGameAttempt, setMiniGameAttempt] = useState<DungeonMiniGameAttempt | null>(null);
 
   const totalSecs = useMemo(() => {
     if (run.ends_at && run.started_at) {
@@ -71,9 +74,17 @@ function ActiveRunBanner({
     },
   });
 
+  const startMiniGame = useMutation({
+    mutationFn: () => api.startMiniGame(run.id),
+    onSuccess: (attempt) => {
+      setMiniGameAttempt(attempt);
+    },
+  });
+
   const waitingClaim = run.status === "SUCCESS_WAITING_CLAIM" || run.status === "FAILED_WAITING_CLAIM";
   const inProgress   = run.status === "IN_PROGRESS";
   const done         = waitingClaim;
+  const canStartMiniGame = canOpenMiniGame(run);
 
   useEffect(() => {
     if (inProgress && remaining === 0) {
@@ -141,6 +152,16 @@ function ActiveRunBanner({
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
+          {canStartMiniGame && (
+            <button
+              className="btn btn-secondary"
+              disabled={startMiniGame.isPending}
+              onClick={() => startMiniGame.mutate()}
+            >
+              <Zap size={16} />
+              {startMiniGame.isPending ? t("miniGame.starting") : t("miniGame.speedUp")}
+            </button>
+          )}
           {waitingClaim && (
             <button
               className="btn btn-primary"
@@ -152,7 +173,17 @@ function ActiveRunBanner({
           )}
         </div>
       </div>
-      <ErrorNotice message={(claimMutation.error as Error | null)?.message} />
+      {miniGameAttempt && (
+        <DungeonMiniGameModal
+          attempt={miniGameAttempt}
+          onClose={() => setMiniGameAttempt(null)}
+          onFinished={(attempt) => {
+            setMiniGameAttempt(attempt);
+            void queryClient.invalidateQueries({ queryKey: ["current-run"] });
+          }}
+        />
+      )}
+      <ErrorNotice message={(claimMutation.error as Error | null)?.message ?? (startMiniGame.error as Error | null)?.message} />
     </div>
   );
 }

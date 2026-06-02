@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="gate">
+  <rect width="128" height="128" rx="18" fill="#111827"/>
+  <path d="M30 110V51c0-22 14-36 34-36s34 14 34 36v59H30Z" fill="#334155" stroke="#94a3b8" stroke-width="5"/>
+  <path d="M64 17v93M34 60h60M34 82h60" stroke="#64748b" stroke-width="5"/>
+  <circle cx="76" cy="76" r="4" fill="#fbbf24"/>
+</svg>

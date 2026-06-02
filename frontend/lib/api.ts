@@ -42,6 +42,7 @@ export type Dungeon = {
   required_power: number;
   success_chance: number;
   item_drop_chance: number;
+  has_mini_game: boolean;
   rewards_preview: {
     experience: { min: number; max: number };
     money_copper: { min: number; max: number };
@@ -302,6 +303,24 @@ export const api = {
   },
   claimRun(runId: number) {
     return apiFetch<AppTypes.ClaimResponse>(`/dungeon-runs/${runId}/claim`, { method: "POST" });
+  },
+  startMiniGame(runId: number) {
+    return apiFetch<AppTypes.DungeonMiniGameAttempt>(`/dungeon-runs/${runId}/mini-game/start`, { method: "POST" });
+  },
+  revealMiniGameCard(attemptId: number, cardId: string) {
+    return apiFetch<AppTypes.DungeonMiniGameCard>(`/dungeon-mini-games/${attemptId}/reveal`, {
+      method: "POST",
+      body: JSON.stringify({ card_id: cardId }),
+    });
+  },
+  moveMiniGame(attemptId: number, payload: { first_card_id: string; second_card_id: string }) {
+    return apiFetch<AppTypes.DungeonMiniGameMoveResponse>(`/dungeon-mini-games/${attemptId}/move`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  miniGameHistory(limit = 20) {
+    return apiFetch<AppTypes.DungeonMiniGameHistoryItem[]>(`/dungeon-mini-games/history?limit=${limit}`);
   },
   inventory(page = 1, pageSize = 24) {
     return apiFetch<AppTypes.Inventory>(`/inventory?page=${page}&page_size=${pageSize}`);
