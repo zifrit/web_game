@@ -1,10 +1,15 @@
 from datetime import timedelta
 from pathlib import Path
 import os
+import sys
 
 import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Тестовый прогон: pytest или manage.py test. В тестах не требуем Redis
+# и не ограничиваем частоту запросов, чтобы наборы тестов не упирались в лимиты.
+TESTING = "pytest" in sys.modules or "test" in sys.argv
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-secret-key")
 TOTP_ENCRYPTION_KEY = os.getenv("TOTP_ENCRYPTION_KEY", "")
@@ -105,6 +110,24 @@ CORS_ALLOWED_ORIGINS = [
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
     "DEFAULT_PERMISSION_CLASSES": ("apps.game.permissions.IsSuperuserOrOwner",),
+    # ScopedRateThrottle применяется только к view с заданным throttle_scope,
+    # поэтому высокочастотные игровые ручки без скоупа не ограничиваются.
+    "DEFAULT_THROTTLE_CLASSES": () if TESTING else ("rest_framework.throttling.ScopedRateThrottle",),
+    "DEFAULT_THROTTLE_RATES": {
+        # Аутентификация: ключ по IP (анонимные запросы) — защита от перебора.
+        "auth_login": "10/min",
+        "auth_register": "5/min",
+        "auth_totp": "10/min",
+        "auth_refresh": "30/min",
+        # Чувствительные операции 2FA: ключ по пользователю.
+        "two_factor": "10/min",
+        # Игровая экономика и запись инвентаря — защита от фарма/эксплойтов.
+        "economy": "60/min",
+        "dungeon_write": "60/min",
+        "inventory_write": "60/min",
+        # Мини-игра допускает частые ходы, но всё же ограничена.
+        "mini_game": "120/min",
+    },
 }
 
 SIMPLE_JWT = {
@@ -120,6 +143,30 @@ SIMPLE_JWT = {
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
+
+# Кэш ответов и backend для DRF-троттлинга. По умолчанию берём тот же хост, что и
+# брокер Celery (REDIS_URL), но отдельную базу (db 1), чтобы не смешивать ключи.
+def _derive_cache_url(redis_url: str) -> str:
+    """Возвращает URL Redis с подменой номера базы данных на 1."""
+
+    base, _, _ = redis_url.rpartition("/")
+    if base.startswith("redis://") or base.startswith("rediss://"):
+        return f"{base}/1"
+    return redis_url.rstrip("/") + "/1"
+
+
+REDIS_CACHE_URL = os.getenv("REDIS_CACHE_URL") or _derive_cache_url(REDIS_URL)
+if TESTING:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_CACHE_URL,
+            "KEY_PREFIX": "webgame",
+            "TIMEOUT": 300,
+        }
+    }
 CELERY_BEAT_SCHEDULE = {
     "complete-dungeon-runs": {
         "task": "apps.game.tasks.complete_due_dungeon_runs",

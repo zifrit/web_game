@@ -15,3 +15,14 @@ class GameConfig(AppConfig):
         post_save.connect(services._invalidate_rarity_config_cache, sender=models.RarityConfig)
         post_delete.connect(services._invalidate_rarity_config_cache, sender=models.RarityConfig)
 
+        # Инвалидация кэша справочных ответов при изменении исходных данных.
+        for model in (
+            models.CharacterClass,
+            models.MediaAsset,
+            models.DungeonLocation,
+            models.DungeonLocationItemTemplate,
+            models.ItemTemplate,
+        ):
+            post_save.connect(services.bump_reference_cache, sender=model)
+            post_delete.connect(services.bump_reference_cache, sender=model)
+

@@ -6,9 +6,11 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.game.i18n import message, request_locale
 from apps.game.models import MediaAsset, User, UserTwoFactor
+from apps.game.services import cached_response
 from apps.game.serializers import (
     LoginSerializer,
     RegisterSerializer,
@@ -33,10 +35,17 @@ from apps.game.two_factor import (
 )
 
 
+class ThrottledTokenRefreshView(TokenRefreshView):
+    """Обновление JWT-токена с ограничением частоты запросов по IP."""
+
+    throttle_scope = "auth_refresh"
+
+
 class RegisterView(APIView):
     """API-ручка регистрации пользователя и выдачи JWT-токенов."""
 
     permission_classes = [permissions.AllowAny]
+    throttle_scope = "auth_register"
 
     def post(self, request):
         """Создаёт аккаунт по email и паролю, затем возвращает токены авторизации."""
@@ -51,6 +60,7 @@ class LoginView(APIView):
     """API-ручка входа пользователя по email и паролю."""
 
     permission_classes = [permissions.AllowAny]
+    throttle_scope = "auth_login"
 
     def post(self, request):
         """Проверяет учётные данные и возвращает новую пару JWT-токенов."""
@@ -68,6 +78,7 @@ class TotpLoginView(APIView):
     """API-ручка второго шага входа с TOTP-кодом."""
 
     permission_classes = [permissions.AllowAny]
+    throttle_scope = "auth_totp"
 
     def post(self, request):
         """Проверяет login challenge и TOTP-код, затем выдаёт JWT-токены."""
@@ -123,6 +134,8 @@ class TwoFactorStatusView(APIView):
 class TwoFactorSetupView(APIView):
     """API-ручка запуска настройки TOTP-защиты."""
 
+    throttle_scope = "two_factor"
+
     def post(self, request):
         """Создаёт pending TOTP-секрет и возвращает QR + manual key."""
 
@@ -141,6 +154,8 @@ class TwoFactorSetupView(APIView):
 
 class TwoFactorConfirmView(APIView):
     """API-ручка подтверждения pending TOTP-секрета."""
+
+    throttle_scope = "two_factor"
 
     def post(self, request):
         """Проверяет код из pending секрета и включает TOTP-защиту."""
@@ -181,6 +196,8 @@ class TwoFactorConfirmView(APIView):
 
 class TwoFactorDisableView(APIView):
     """API-ручка отключения TOTP-защиты."""
+
+    throttle_scope = "two_factor"
 
     def post(self, request):
         """Отключает TOTP после проверки пароля и текущего TOTP-кода."""
@@ -244,14 +261,17 @@ class IconAssetsView(APIView):
     """API-ручка получения списка иконок для выбора аватара."""
 
     def get(self, request):
-        """Возвращает все медиа-ассеты с типом ICONS."""
+        """Возвращает все медиа-ассеты с типом ICONS (кэшируется, admin-only данные)."""
 
-        assets = MediaAsset.objects.filter(asset_type=MediaAsset.AssetType.ICONS).only("id", "name", "large", "medium", "small").order_by("name", "pk")
-        ctx = {"request": request}
-        return Response([
-            {"id": a.pk, "name": a.name, **media_payload(a, ctx)}
-            for a in assets
-        ])
+        def build():
+            assets = MediaAsset.objects.filter(asset_type=MediaAsset.AssetType.ICONS).only("id", "name", "large", "medium", "small").order_by("name", "pk")
+            ctx = {"request": request}
+            return [
+                {"id": a.pk, "name": a.name, **media_payload(a, ctx)}
+                for a in assets
+            ]
+
+        return Response(cached_response("media_icons", build))
 
 
 class LogoutView(APIView):

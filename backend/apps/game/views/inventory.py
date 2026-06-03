@@ -70,6 +70,8 @@ class InventoryItemRepairPreviewView(APIView):
 class InventoryItemRepairView(APIView):
     """API-ручка ремонта предмета пользователя."""
 
+    throttle_scope = "inventory_write"
+
     def post(self, request, item_id):
         """Ремонтирует один предмет через массовую логику и списывает медные монеты."""
 
@@ -92,6 +94,8 @@ class InventoryItemsRepairPreviewView(APIView):
 class InventoryItemsRepairView(APIView):
     """API-ручка массового ремонта предметов пользователя."""
 
+    throttle_scope = "inventory_write"
+
     def post(self, request):
         """Ремонтирует выбранные предметы до максимальной прочности."""
 
@@ -110,6 +114,8 @@ class InventoryItemsDestroyPreviewView(APIView):
 class InventoryItemsDestroyView(APIView):
     """API-ручка массового уничтожения предметов пользователя."""
 
+    throttle_scope = "inventory_write"
+
     def post(self, request):
         """Удаляет выбранные предметы и начисляет возврат."""
 
@@ -118,6 +124,8 @@ class InventoryItemsDestroyView(APIView):
 
 class InventoryItemEquipView(APIView):
     """API-ручка экипировки предмета на героя."""
+
+    throttle_scope = "inventory_write"
 
     def post(self, request, item_id):
         """Экипирует предмет в соответствующий слот и возвращает новую силу героя."""
@@ -138,6 +146,8 @@ class InventoryItemEquipView(APIView):
 
 class InventoryItemUnequipView(APIView):
     """API-ручка снятия предмета с героя."""
+
+    throttle_scope = "inventory_write"
 
     def post(self, request, item_id):
         """Снимает предмет, если он экипирован текущим героем, и возвращает новую силу."""

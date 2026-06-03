@@ -12,6 +12,12 @@ from .formulas import GameFormulaService
 from .inventory import InventoryService
 from .loot import LootGenerationService, item_allowed_for_character
 from .mini_games import DungeonMiniGameService
+from .reference_cache import (
+    LEADERBOARD_TIMEOUT,
+    REFERENCE_TIMEOUT,
+    bump_reference_cache,
+    cached_response,
+)
 
 __all__ = [
     "ClaimResult",
@@ -23,9 +29,13 @@ __all__ = [
     "GameConfigService",
     "GameFormulaService",
     "InventoryService",
+    "LEADERBOARD_TIMEOUT",
     "LootGenerationService",
+    "REFERENCE_TIMEOUT",
     "RarityConfigCache",
     "_invalidate_game_config_cache",
     "_invalidate_rarity_config_cache",
+    "bump_reference_cache",
+    "cached_response",
     "item_allowed_for_character",
 ]

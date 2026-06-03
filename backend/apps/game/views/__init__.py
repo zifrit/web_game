@@ -1,5 +1,6 @@
 from .auth import (
     IconAssetsView,
+    ThrottledTokenRefreshView,
     LoginView,
     LogoutView,
     MeView,
@@ -55,6 +56,7 @@ __all__ = [
     "DungeonRunHistoryView",
     "DungeonRunStartView",
     "IconAssetsView",
+    "ThrottledTokenRefreshView",
     "InventoryItemDetailView",
     "InventoryItemEquipView",
     "InventoryItemRepairPreviewView",

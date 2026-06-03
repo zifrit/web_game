@@ -19,7 +19,7 @@ from apps.game.serializers import (
     DungeonRunSerializer,
     DungeonRunStartSerializer,
 )
-from apps.game.services import DungeonMiniGameService, DungeonRunService, GameFormulaService
+from apps.game.services import DungeonMiniGameService, DungeonRunService, GameFormulaService, cached_response
 
 
 class DungeonLocationListView(APIView):
@@ -60,27 +60,31 @@ class DungeonLocationLootView(APIView):
     """API-ручка таблицы лута подземелья."""
 
     def get(self, request, pk):
-        """Возвращает список шаблонов предметов, которые можно получить в данже."""
+        """Возвращает таблицу лута данжа (кэшируется, admin-only данные)."""
 
         get_object_or_404(DungeonLocation, pk=pk, is_active=True)
         locale = request_locale(request)
-        classes_map = {c.key: localized_name(c, locale) for c in CharacterClass.objects.all()}
-        templates = (
-            DungeonLocationItemTemplate.objects
-            .filter(location_id=pk)
-            .select_related("item_template")
-            .order_by("item_template__slot")
-        )
-        return Response(
-            DungeonLootItemSerializer(
+
+        def build():
+            classes_map = {c.key: localized_name(c, locale) for c in CharacterClass.objects.all()}
+            templates = (
+                DungeonLocationItemTemplate.objects
+                .filter(location_id=pk)
+                .select_related("item_template")
+                .order_by("item_template__slot")
+            )
+            return DungeonLootItemSerializer(
                 templates, many=True,
                 context={"request": request, "character_classes": classes_map},
             ).data
-        )
+
+        return Response(cached_response("dungeon_loot", build, parts=(pk, locale)))
 
 
 class DungeonRunStartView(APIView):
     """API-ручка запуска героя в подземелье."""
+
+    throttle_scope = "dungeon_write"
 
     def post(self, request):
         """Создаёт новый забег, если у героя нет активного забега и сломанных вещей."""
@@ -121,6 +125,8 @@ class DungeonRunCurrentView(APIView):
 class DungeonRunClaimView(APIView):
     """API-ручка получения наград за завершённый забег."""
 
+    throttle_scope = "economy"
+
     def post(self, request, pk):
         """Идемпотентно начисляет опыт, деньги, предметы и потерю прочности."""
 
@@ -132,6 +138,8 @@ class DungeonRunClaimView(APIView):
 class DungeonMiniGameStartView(APIView):
     """API-ручка запуска мини-игры ускорения для активного забега."""
 
+    throttle_scope = "mini_game"
+
     def post(self, request, pk):
         """Создаёт попытку memory-pairs мини-игры или возвращает активную."""
 
@@ -142,6 +150,8 @@ class DungeonMiniGameStartView(APIView):
 
 class DungeonMiniGameMoveView(APIView):
     """API-ручка серверной проверки хода мини-игры."""
+
+    throttle_scope = "mini_game"
 
     def post(self, request, pk):
         """Принимает две карточки, проверяет пару и завершает игру только на backend."""
@@ -161,6 +171,8 @@ class DungeonMiniGameMoveView(APIView):
 
 class DungeonMiniGameRevealView(APIView):
     """API-ручка открытия первой карточки мини-игры."""
+
+    throttle_scope = "mini_game"
 
     def post(self, request, pk):
         """Возвращает лицо одной выбранной карточки без раскрытия всей доски."""
