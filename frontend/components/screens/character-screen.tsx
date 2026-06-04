@@ -796,7 +796,7 @@ export function CharacterScreen({
   const xpMax = character.experience_to_next_level ?? 1000;
   const xp    = character.experience;
   const hpMax = character.stats?.health ?? 220;
-  const hpCur = Math.round(hpMax * 0.84);
+  const hpCur = hpMax;
 
   const invItems = inventoryQuery.data?.items ?? [];
   const inventoryCount = inventoryQuery.data?.items_count ?? invItems.length;
