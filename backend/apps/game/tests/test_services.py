@@ -467,7 +467,7 @@ class ApiSmokeTests(TestCase):
         self.assertEqual(response.status_code, 201)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access_token']}")
 
-        response = self.client.post("/api/characters", {"name": "ApiHero", "class_key": "warrior"}, format="json")
+        response = self.client.post("/api/characters", {"name": "ApiHero", "class_key": "warrior", "gender": "male"}, format="json")
         self.assertEqual(response.status_code, 201)
 
         response = self.client.get("/api/dungeons")

@@ -32,6 +32,10 @@
 считаться частью текущего frontend-состояния. Он управляет языком и avatar
 picker через `api.iconAssets()` / `api.updateAvatar()`.
 
+Create-character screen требует выбор пола (`male`/`female`) и переключает
+картинки классов между `male_media` и `female_media`; после создания shell
+должен предпочитать `Character.avatar` перед `User.avatar`.
+
 ## UI intent
 
 - Интерфейс должен быть actual game UI, не marketing/landing page.
@@ -63,6 +67,7 @@ picker через `api.iconAssets()` / `api.updateAvatar()`.
 - `large` используется для dungeon artwork на вкладке dungeons, портрета героя
   и детальной карточки предмета.
 - `medium` используется для предметов в equipment slots, списка inventory и
-  карточек классов при создании персонажа.
+  карточек классов при создании персонажа, выбирая поле медиа по выбранному
+  полу героя.
 - `small` используется для мини-инвентаря героя, quick dungeon rows, sidebar
   avatar и leaderboard avatar.

@@ -18,7 +18,7 @@ class CharacterClassListView(APIView):
         """Возвращает активные классы героев (кэшируется, admin-only данные)."""
 
         def build():
-            classes = CharacterClass.objects.filter(is_active=True).select_related("media").order_by("sort_order", "key")
+            classes = CharacterClass.objects.filter(is_active=True).select_related("male_media", "female_media").order_by("sort_order", "key")
             return CharacterClassSerializer(classes, many=True, context={"request": request}).data
 
         return Response(cached_response("character_classes", build, parts=(request_locale(request),)))
@@ -43,7 +43,12 @@ class CharacterMeView(APIView):
         """Возвращает героя с классом, характеристиками и экипировкой."""
 
         character = get_object_or_404(
-            Character.objects.select_related("character_class", "character_class__media", "avatar_media").prefetch_related("equipped_items__template__media"),
+            Character.objects.select_related(
+                "character_class",
+                "character_class__male_media",
+                "character_class__female_media",
+                "avatar_media",
+            ).prefetch_related("equipped_items__template__media"),
             user=request.user,
         )
         self.check_object_permissions(request, character)

@@ -44,6 +44,10 @@ Updated from code inspection on 2026-05-30.
 - Small: character mini-inventory, quick dungeon rows, sidebar avatar,
   leaderboard avatar.
 
+Create-character class cards choose `male_media` or `female_media` from
+`GET /api/character-classes` based on the selected gender and submit that
+gender through `api.createCharacter()`.
+
 ## Settings and avatar
 
 - Settings screen fetches current user/character and lists icon assets only when

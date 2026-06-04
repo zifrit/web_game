@@ -85,7 +85,7 @@ function Sidebar({
   onLogout: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
-  const footerAvatarUrl = bestMediaUrl(userAvatar, ["small_url", "medium_url", "large_url"]);
+  const footerAvatarUrl = bestMediaUrl(characterAvatar ?? userAvatar, ["small_url", "medium_url", "large_url"]);
 
   return (
     <aside style={{

@@ -73,6 +73,11 @@ start dungeon run требуют явных transactional boundaries там, г�
 - Публичный media payload возвращает только `large_url`, `medium_url`,
   `small_url`; `original_url` остается внутренним/админским URL.
 - Краткие предметы inventory/equipment возвращают `media`, а не `icon_url`.
+- `CharacterClass` хранит раздельные портреты `male_media`/`female_media`;
+  публичный `/api/character-classes` временно сохраняет `media` как alias
+  мужского портрета для совместимости. При создании героя `gender` обязателен,
+  а `Character.avatar_media` ставится из медиа выбранного класса и пола с
+  fallback на доступный портрет класса.
 - `asset_type=icons` используется для picker аватара пользователя:
   `GET /api/media/icons` возвращает только ICONS-ассеты, а
   `PATCH /api/auth/me/avatar` принимает `avatar_media_id` и отклоняет не-icons.

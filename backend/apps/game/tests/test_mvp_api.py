@@ -28,8 +28,8 @@ class MvpApiTests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access_token']}")
         return User.objects.get(email=email)
 
-    def create_character(self, class_key="warrior"):
-        response = self.client.post("/api/characters", {"name": "Arthas", "class_key": class_key}, format="json")
+    def create_character(self, class_key="warrior", gender="male"):
+        response = self.client.post("/api/characters", {"name": "Arthas", "class_key": class_key, "gender": gender}, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         return response.data
 
@@ -140,12 +140,16 @@ class MvpApiTests(APITestCase):
         self.assertNotIn("original_url", me_user.data["avatar"])
         self.assertNotIn("icon_url", me_user.data["avatar"])
 
-        class_media = MediaAsset.objects.create(name="Warrior class art")
-        class_media.medium.save("warrior-medium.png", ContentFile(b"medium-art"), save=True)
-        class_media.small.save("warrior-small.png", ContentFile(b"small-art"), save=True)
+        male_class_media = MediaAsset.objects.create(name="Warrior male class art")
+        male_class_media.medium.save("warrior-male-medium.png", ContentFile(b"medium-art"), save=True)
+        male_class_media.small.save("warrior-male-small.png", ContentFile(b"small-art"), save=True)
+        female_class_media = MediaAsset.objects.create(name="Warrior female class art")
+        female_class_media.medium.save("warrior-female-medium.png", ContentFile(b"female-medium-art"), save=True)
+        female_class_media.small.save("warrior-female-small.png", ContentFile(b"female-small-art"), save=True)
         warrior_class = CharacterClass.objects.get(key="warrior")
-        warrior_class.media = class_media
-        warrior_class.save(update_fields=["media"])
+        warrior_class.male_media = male_class_media
+        warrior_class.female_media = female_class_media
+        warrior_class.save(update_fields=["male_media", "female_media"])
 
         classes = self.client.get("/api/character-classes")
         self.assertEqual(classes.status_code, status.HTTP_200_OK)
@@ -154,6 +158,11 @@ class MvpApiTests(APITestCase):
         self.assertIn("media", classes.data[0])
         self.assertTrue(classes.data[0]["media"]["medium_url"])
         self.assertEqual(set(classes.data[0]["media"].keys()), {"large_url", "medium_url", "small_url"})
+        self.assertIn("male_media", classes.data[0])
+        self.assertIn("female_media", classes.data[0])
+        self.assertTrue(classes.data[0]["male_media"]["medium_url"])
+        self.assertTrue(classes.data[0]["female_media"]["medium_url"])
+        self.assertEqual(classes.data[0]["media"], classes.data[0]["male_media"])
 
         classes_ru = self.client.get("/api/character-classes", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(classes_ru.status_code, status.HTTP_200_OK)
@@ -161,22 +170,21 @@ class MvpApiTests(APITestCase):
 
         character = self.create_character()
         self.assertEqual(character["class_key"], "warrior")
+        self.assertEqual(character["gender"], "male")
 
-        avatar_media = MediaAsset.objects.create(name="Hero avatar")
-        avatar_media.large.save("hero-large.png", ContentFile(b"large-avatar"), save=True)
         hero = User.objects.get(email="hero@example.com").character
-        hero.avatar_media = avatar_media
-        hero.save(update_fields=["avatar_media"])
+        self.assertEqual(hero.avatar_media_id, male_class_media.id)
 
         me = self.client.get("/api/characters/me")
         self.assertEqual(me.status_code, status.HTTP_200_OK)
         self.assertEqual(me.data["class"]["key"], "warrior")
         self.assertEqual(me.data["class"]["name"], "Warrior")
+        self.assertEqual(me.data["gender"], "male")
         self.assertEqual(me.data["rank"], "F")
         self.assertIn("media", me.data["class"])
         self.assertTrue(me.data["class"]["media"]["medium_url"])
         self.assertIn("avatar", me.data)
-        self.assertTrue(me.data["avatar"]["large_url"])
+        self.assertTrue(me.data["avatar"]["medium_url"])
         self.assertNotIn("original_url", me.data["avatar"])
         self.assertNotIn("icon_url", me.data["avatar"])
         self.assertGreater(me.data["stats"]["power"], 0)
@@ -185,6 +193,31 @@ class MvpApiTests(APITestCase):
         me_ru = self.client.get("/api/characters/me", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(me_ru.status_code, status.HTTP_200_OK)
         self.assertEqual(me_ru.data["class"]["name"], "Воин")
+
+    def test_create_character_sets_female_avatar_and_validates_gender(self):
+        self.register_and_authenticate("female@example.com")
+        warrior_class = CharacterClass.objects.get(key="warrior")
+        male_media = MediaAsset.objects.create(name="Male art")
+        male_media.medium.save("male-medium.png", ContentFile(b"male"), save=True)
+        female_media = MediaAsset.objects.create(name="Female art")
+        female_media.medium.save("female-medium.png", ContentFile(b"female"), save=True)
+        warrior_class.male_media = male_media
+        warrior_class.female_media = female_media
+        warrior_class.save(update_fields=["male_media", "female_media"])
+
+        invalid = self.client.post("/api/characters", {"name": "Arthas", "class_key": "warrior", "gender": "other"}, format="json")
+        self.assertEqual(invalid.status_code, status.HTTP_400_BAD_REQUEST)
+
+        character = self.create_character(gender="female")
+        self.assertEqual(character["gender"], "female")
+        hero = User.objects.get(email="female@example.com").character
+        self.assertEqual(hero.gender, "female")
+        self.assertEqual(hero.avatar_media_id, female_media.id)
+
+        me = self.client.get("/api/characters/me")
+        self.assertEqual(me.status_code, status.HTTP_200_OK)
+        self.assertEqual(me.data["gender"], "female")
+        self.assertEqual(me.data["avatar"], me.data["class"]["media"])
 
     @override_settings(TOTP_ENCRYPTION_KEY=Fernet.generate_key().decode())
     def test_totp_two_factor_login_lifecycle(self):

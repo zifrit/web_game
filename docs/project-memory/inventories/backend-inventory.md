@@ -23,7 +23,8 @@ Updated from code inspection on 2026-05-31.
   `original`/`large`/`medium`/`small` files.
 - `users.py` - `UserManager`, custom `User`, `UserTwoFactor` for opt-in TOTP
   protection.
-- `characters.py` - `CharacterClass`, `Character`.
+- `characters.py` - `CharacterClass` with gendered class media,
+  `Character` with `gender` and hero avatar media.
 - `config.py` - `RarityConfig` with stat/economy multipliers,
   `EquipmentSlotConfig`, `GameConfig`.
 - `items.py` - `ItemTemplate` with `rarity_key`, `UserItem`,
@@ -94,8 +95,9 @@ Serializer domains:
 - `common.py`
 
 Media API payloads are built in `common.py` and expose only `large_url`,
-`medium_url`, `small_url`. Inventory item summaries expose `media` instead of
-legacy `icon_url`.
+`medium_url`, `small_url`. Character classes expose `male_media` and
+`female_media`, with `media` retained as a male-media compatibility alias.
+Inventory item summaries expose `media` instead of legacy `icon_url`.
 
 Auth views also include avatar media endpoints: `IconAssetsView` lists
 `asset_type=icons` assets and `UserAvatarUpdateView` updates `User.avatar_media`

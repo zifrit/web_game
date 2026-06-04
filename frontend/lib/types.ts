@@ -57,6 +57,8 @@ export type CharacterClass = {
   name: string;
   start_stats: StatBlock;
   media?: MediaAssetUrls | null;
+  male_media?: MediaAssetUrls | null;
+  female_media?: MediaAssetUrls | null;
 };
 
 export type EquipmentSlot = "weapon" | "helmet" | "armor" | "boots" | "ring";
@@ -64,6 +66,7 @@ export type EquipmentSlot = "weapon" | "helmet" | "armor" | "boots" | "ring";
 export type Character = {
   id: number;
   name: string;
+  gender?: "male" | "female";
   avatar?: MediaAssetUrls | null;
   class?: {
     key: string;

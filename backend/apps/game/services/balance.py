@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from apps.game.models import Character, CharacterClass
+from apps.game.models import Character, CharacterClass, MediaAsset
 
 from .config import rarity_config
 from .formulas import GameFormulaService
@@ -12,13 +12,21 @@ class GameBalanceService:
     """Сервис базового баланса: создание героя и параметры редкостей."""
 
     @staticmethod
-    def create_character(user, name: str, character_class: CharacterClass) -> Character:
+    def create_character(
+        user,
+        name: str,
+        character_class: CharacterClass,
+        gender: str = Character.Gender.MALE,
+        avatar_media: MediaAsset | None = None,
+    ) -> Character:
         """Создаёт героя с начальными статами класса и кэширует его силу."""
 
         character = Character.objects.create(
             user=user,
             name=name,
             character_class=character_class,
+            gender=gender,
+            avatar_media=avatar_media,
             base_health=character_class.start_health,
             base_attack=character_class.start_attack,
             base_defense=character_class.start_defense,

@@ -21,12 +21,17 @@ export type CharacterClass = {
   key: string;
   name: string;
   start_stats: Record<string, number>;
+  media?: AppTypes.MediaAssetUrls | null;
+  male_media?: AppTypes.MediaAssetUrls | null;
+  female_media?: AppTypes.MediaAssetUrls | null;
 };
 
 export type Character = {
   id: number;
   name: string;
-  class: { key: string; name: string };
+  gender?: "male" | "female";
+  avatar?: AppTypes.MediaAssetUrls | null;
+  class: { key: string; name: string; media?: AppTypes.MediaAssetUrls | null };
   level: number;
   experience: number;
   experience_to_next_level: number;
@@ -278,10 +283,10 @@ export const api = {
   characterClasses() {
     return apiFetch<AppTypes.CharacterClass[]>("/character-classes");
   },
-  createCharacter(name: string, class_key: string) {
+  createCharacter(name: string, class_key: string, gender: "male" | "female") {
     return apiFetch<AppTypes.Character>("/characters", {
       method: "POST",
-      body: JSON.stringify({ name, class_key }),
+      body: JSON.stringify({ name, class_key, gender }),
     });
   },
   character() {

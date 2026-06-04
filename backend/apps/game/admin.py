@@ -114,16 +114,16 @@ class UserTwoFactorAdmin(admin.ModelAdmin):
 
 @admin.register(CharacterClass)
 class CharacterClassAdmin(admin.ModelAdmin):
-    list_display = ("key", "name", "is_active", "sort_order")
+    list_display = ("key", "name", "male_media", "female_media", "is_active", "sort_order")
     list_filter = ("is_active",)
     search_fields = ("key", "name")
-    autocomplete_fields = ("media",)
+    autocomplete_fields = ("male_media", "female_media")
 
 
 @admin.register(Character)
 class CharacterAdmin(admin.ModelAdmin):
-    list_display = ("name", "user", "character_class", "level", "experience", "power_cached")
-    list_filter = ("character_class", "level")
+    list_display = ("name", "user", "character_class", "gender", "level", "experience", "power_cached")
+    list_filter = ("character_class", "gender", "level")
     search_fields = ("name", "user__email")
     autocomplete_fields = ("user", "character_class", "avatar_media")
     list_select_related = ("user", "character_class", "avatar_media")
