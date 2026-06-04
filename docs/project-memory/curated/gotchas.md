@@ -28,3 +28,8 @@
 - В старой локальной dev-БД `game.0011_dungeon_mini_games` мог быть применён до
   появления `DungeonMiniGameAttempt.matched_card_ids`; `0012_ensure_mini_game_matched_card_ids`
   держит такую БД совместимой с текущим кодом.
+- Мини-игра держит live-стейт в Redis (`caches["default"]`, db 1): если Redis
+  недоступен/ключ потерян, активная партия закрывается как `SUCCESS` с
+  `system_error=true`. SVG-лица карт — в БД (`MiniGameCardFace`); сиды и
+  data-миграция читают `backend/apps/game/data/memory_faces/` (фронтовый
+  `public/memory-faces/` бэкенду в контейнере недоступен).

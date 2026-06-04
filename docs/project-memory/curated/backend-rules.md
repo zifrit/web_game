@@ -30,10 +30,17 @@ start dungeon run требуют явных transactional boundaries там, г�
 - Completion гибридный: Celery Beat завершает due runs периодически, а
   `GET /api/dungeon-runs/current` и claim flow завершают due runs on demand.
 - Claim должен быть idempotent.
-- Мини-игра ускорения доступна только для активного run, если у локации
-  `has_mini_game=true` и назначен активный `DungeonMiniGameConfig`.
-- Успех мини-игры сокращает оставшееся время run на процент из конфигурации;
-  таймер и история попыток хранятся на backend.
+- Мини-игра ускорения доступна для активного run, если у локации
+  `has_mini_game=true`; сложность (`config_id`) выбирает игрок при старте и она
+  фиксируется на run (одна попытка на run).
+- Live-состояние партии (доска, счётчики) живёт в Redis; в БД пишется один
+  финальный снимок. Подсчёт server-authoritative, ходы идемпотентны.
+- Успех сокращает время run на `reward_duration_reduction_percent` от полной
+  длительности данжа, с потолком `max_reduction_seconds` и клампом не раньше
+  старта; правка `ends_at` — под `select_for_update(run)` и только при
+  `IN_PROGRESS`.
+- При потере Redis-ключа активной партии она закрывается как `SUCCESS` с
+  `system_error=true` и полным ускорением.
 
 ## Inventory and durability
 

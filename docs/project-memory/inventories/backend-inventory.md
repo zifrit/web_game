@@ -28,10 +28,12 @@ Updated from code inspection on 2026-05-31.
   `EquipmentSlotConfig`, `GameConfig`.
 - `items.py` - `ItemTemplate` with `rarity_key`, `UserItem`,
   `RepairTransaction`.
-- `dungeons.py` - `DungeonLocation` with `has_mini_game` and optional
-  `mini_game_config`,
+- `dungeons.py` - `DungeonLocation` with `has_mini_game` (gates availability;
+  no FK to a config anymore),
   `DungeonLocationItemTemplate` with per-location item `chance` weights,
-  `DungeonMiniGameConfig`, `DungeonMiniGameAttempt`, `DungeonRunStatus`,
+  `DungeonMiniGameConfig` (percent reward + `max_reduction_seconds` +
+  `card_face_codes`), `MiniGameCardFace` (inline-SVG catalog),
+  `DungeonMiniGameAttempt` (with `system_error`), `DungeonRunStatus`,
   `DungeonRun`, `DungeonRunClaim`, `DungeonRunClaimItem`.
 
 `models/__init__.py` exports public model classes and `UserManager`.
@@ -47,8 +49,11 @@ and domain modules:
 - `formulas.py` - `GameFormulaService`
 - `loot.py` - `LootGenerationService` and `item_allowed_for_character`
 - `dungeon_runs.py` - `DungeonRunService`, `ClaimResult`
-- `mini_games.py` - `DungeonMiniGameService` for memory-pairs attempts,
-  timers, history and run time reduction rewards
+- `mini_games.py` - `DungeonMiniGameService`; live memory-pairs state lives in
+  Redis during play, with a single DB flush on finish (server-authoritative
+  scoring, percent run-time reduction capped by `max_reduction_seconds`)
+- `mini_game_store.py` - `MiniGameStore` (Redis state + per-run lock)
+- `mini_game_faces.py` - loads seed SVG faces from `apps/game/data/memory_faces/`
 - `inventory.py` - `InventoryService`
 - `ranks.py` - F/E/D/C/B/A/S/EX rank ranges and helpers
 - `seed_data.py` - ranked item template seed helpers

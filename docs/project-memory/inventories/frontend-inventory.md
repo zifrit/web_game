@@ -64,7 +64,9 @@ Updated from code inspection on 2026-05-30.
   `disableTwoFactor`
 - `characterClasses`, `createCharacter`, `character`
 - `dungeons`, `startRun`, `currentRun`, `claimRun`
-- `startMiniGame`, `completeMiniGame`, `miniGameHistory`
+- `startMiniGame` (config_id), `revealMiniGameCard`, `moveMiniGame`,
+  `miniGameConfigs`, `miniGameCardFaces`, `miniGameHistory`
+  (SVG-каталог кешируется хуком `useCardFaces` в localStorage по версии)
 - `inventory`, `item`, `repairPreview`, `repair`, `destroyPreview`,
   `destroy`, `equip`, `unequip`
 - `leaderboard`

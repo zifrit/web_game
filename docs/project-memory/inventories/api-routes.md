@@ -37,9 +37,12 @@ Dungeons:
 - `POST /api/dungeon-runs`
 - `GET /api/dungeon-runs/current`
 - `POST /api/dungeon-runs/<id>/claim`
-- `POST /api/dungeon-runs/<id>/mini-game/start`
-- `POST /api/dungeon-mini-games/<id>/complete`
+- `POST /api/dungeon-runs/<id>/mini-game/start` (body `config_id` — выбранная сложность)
+- `POST /api/dungeon-mini-games/<id>/reveal`
+- `POST /api/dungeon-mini-games/<id>/move`
 - `GET /api/dungeon-mini-games/history`
+- `GET /api/mini-game/configs` (каталог сложностей с процентом ускорения)
+- `GET /api/mini-game/card-faces` (каталог SVG-лиц, ETag/версия)
 - `GET /api/dungeon-runs/history`
 
 Inventory:

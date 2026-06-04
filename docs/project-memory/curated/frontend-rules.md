@@ -37,8 +37,17 @@ picker через `api.iconAssets()` / `api.updateAvatar()`.
 - Интерфейс должен быть actual game UI, не marketing/landing page.
 - Клиент может форматировать display values, но не должен считать критичные
   игровые формулы, rewards, economy или server-authoritative results.
-- Memory-pairs mini-game на Dungeons screen может считать локальные клики/пары,
-  но доступность, таймер попытки и ускорение run применяются backend API.
+- Memory-pairs mini-game: «Ускорить» открывает модалку выбора сложности
+  (проценты из `GET /mini-game/configs`), выбор шлёт `config_id` в start;
+  доступность, таймер, подсчёт и ускорение run — server-authoritative.
+- Доска приходит по `code`; SVG-лица резолвятся локально из каталога
+  `GET /mini-game/card-faces` (хук `useCardFaces`, кеш в localStorage по версии,
+  фоллбэк на статику `public/memory-faces/`). `reveal`/`move` возвращают флаг
+  `finished`; при `finished` показать result-модалку.
+- Result-модалка: зелёная при SUCCESS с фактическим `duration_reduction_seconds`,
+  красная при таймауте только если игровая модалка ещё открыта. Доска должна
+  оставаться локально стабильной: не заменять весь board после хода, обновлять
+  только выбранные/совпавшие карточки.
 - Inventory должен показывать минимум 24 cells и догружать следующие страницы,
   если `pagination.has_next` true.
 - Backend возвращает деньги в `money_copper`; frontend разбивает баланс на

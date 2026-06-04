@@ -25,8 +25,13 @@ source_of_truth:
   - frontend/components/screens/settings-screen.tsx
   - frontend/package.json
   - docker-compose.yml
-last_verified: 2026-05-31
+last_verified: 2026-06-04
 verified_from:
+  - backend/apps/game/services/mini_games.py
+  - backend/apps/game/services/mini_game_store.py
+  - backend/apps/game/services/mini_game_faces.py
+  - backend/apps/game/models/dungeons.py
+  - backend/apps/game/views/dungeons.py
   - AGENTS.md
   - README.md
   - specs/
