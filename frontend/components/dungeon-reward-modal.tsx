@@ -3,18 +3,8 @@
 import { useI18n } from "@/components/providers";
 import { ErrorNotice } from "@/components/ui";
 import { formatCopper, formatNumber, formatStatName, type TranslationKey } from "@/lib/i18n";
+import { rarityColor } from "@/lib/rarity";
 import type { ClaimResponse } from "@/lib/types";
-
-const RARITY_COLOR: Record<string, string> = {
-  f: "#94A3B8",
-  e: "#22C55E",
-  d: "#38BDF8",
-  c: "#3B82F6",
-  b: "#A855F7",
-  a: "#F59E0B",
-  s: "#EF4444",
-  ex: "#F8FAFC",
-};
 
 function rarityLabel(rarity: string, t: (key: TranslationKey) => string) {
   return t(`rarity.${rarity.toLowerCase()}` as TranslationKey);
@@ -100,12 +90,12 @@ export function DungeonRewardModal({
                   <div>
                     <div className="reward-item-name">{item.name}</div>
                     <div className="mono reward-item-meta">
-                      {t("common.rank")} <span style={{ color: RARITY_COLOR[rarity] ?? RARITY_COLOR.f }}>{rarityLabel(item.rarity, t)}</span>
+                      {t("common.rank")} <span style={{ color: rarityColor(rarity) }}>{rarityLabel(item.rarity, t)}</span>
                       {" · "}
                       {t("common.itemLevel")} {item.item_level}
                     </div>
                   </div>
-                  <div className="reward-rank-badge" style={{ borderColor: RARITY_COLOR[rarity] ?? RARITY_COLOR.f }}>
+                  <div className="reward-rank-badge" style={{ borderColor: rarityColor(rarity) }}>
                     {rarityLabel(item.rarity, t)}
                   </div>
                 </div>

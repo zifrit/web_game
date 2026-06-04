@@ -10,7 +10,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.game.i18n import message, request_locale
 from apps.game.models import MediaAsset, User, UserTwoFactor
-from apps.game.services import cached_response
+from apps.game.services import cached_response, request_host_part
 from apps.game.serializers import (
     LoginSerializer,
     RegisterSerializer,
@@ -271,7 +271,7 @@ class IconAssetsView(APIView):
                 for a in assets
             ]
 
-        return Response(cached_response("media_icons", build))
+        return Response(cached_response("media_icons", build, parts=(request_host_part(request),)))
 
 
 class LogoutView(APIView):

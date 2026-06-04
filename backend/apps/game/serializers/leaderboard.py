@@ -29,26 +29,35 @@ class LeaderboardItemSerializer:
 
     @staticmethod
     def my_rank(my_character, metric="level"):
-        """Вычисляет персональную позицию героя — считается на каждый запрос."""
+        """Вычисляет персональную позицию героя — считается на каждый запрос.
+
+        Тай-брейки совпадают с порядком списка (см. LeaderboardView), чтобы
+        my_rank не расходился с фактической позицией героя в таблице.
+        """
 
         if not my_character:
             return None
         if metric == "power":
+            # Список: (power_cached desc nulls_last, -level, created_at).
             my_power = my_character.power_cached or 0
-            ahead = Character.objects.filter(power_cached__gt=my_power).count()
+            ahead = Character.objects.filter(
+                Q(power_cached__gt=my_power)
+                | Q(power_cached=my_power, level__gt=my_character.level)
+                | Q(
+                    power_cached=my_power,
+                    level=my_character.level,
+                    created_at__lt=my_character.created_at,
+                )
+            ).count()
             return {"rank": ahead + 1, "character_id": my_character.id, "power": my_power}
+        # Список: (-level, -experience, created_at).
         ahead = Character.objects.filter(
             Q(level__gt=my_character.level)
             | Q(level=my_character.level, experience__gt=my_character.experience)
+            | Q(
+                level=my_character.level,
+                experience=my_character.experience,
+                created_at__lt=my_character.created_at,
+            )
         ).count()
         return {"rank": ahead + 1, "character_id": my_character.id, "level": my_character.level}
-
-    @staticmethod
-    def render(items, my_character, locale=DEFAULT_LOCALE, request=None):
-        """Формирует топ героев и позицию текущего героя относительно топа."""
-
-        return {
-            "type": "level",
-            "items": LeaderboardItemSerializer.render_items(items, locale=locale, request=request),
-            "my_rank": LeaderboardItemSerializer.my_rank(my_character),
-        }

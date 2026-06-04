@@ -30,6 +30,19 @@ def reference_version() -> int:
     return int(version)
 
 
+def request_host_part(request) -> str:
+    """Часть ключа кэша, учитывающая схему+хост запроса.
+
+    Ответы с абсолютными URL (media_payload → build_absolute_uri) зависят от
+    хоста и схемы запроса. Без этой части первый запрос «запекает» свой хост в
+    значение, и остальные хосты/схемы получают чужие ссылки до истечения TTL.
+    """
+
+    if request is None:
+        return ""
+    return f"{request.scheme}://{request.get_host()}"
+
+
 def bump_reference_cache(*_args, **_kwargs) -> None:
     """Инвалидирует весь справочный кэш, увеличивая версию (обработчик сигналов)."""
 

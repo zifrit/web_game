@@ -7,55 +7,9 @@ import { api } from "@/lib/api";
 import type { Dungeon } from "@/lib/types";
 import { useI18n } from "@/components/providers";
 import { LoadingLine } from "@/components/ui";
-import { formatDuration, formatStatName } from "@/lib/i18n";
-import type { Locale, TranslationKey } from "@/lib/i18n";
-
-function formatCopperCompact(value: number | undefined, locale: Locale): string {
-  if (value === undefined || value === null) return "?";
-  const gold   = Math.floor(value / 10000);
-  const silver = Math.floor((value % 10000) / 100);
-  const copper = value % 100;
-  const L = locale === "ru"
-    ? { gold: "з", silver: "с", copper: "м" }
-    : { gold: "g", silver: "s", copper: "c" };
-  const parts: string[] = [];
-  if (gold   > 0) parts.push(`${gold}${L.gold}`);
-  if (silver > 0) parts.push(`${silver}${L.silver}`);
-  if (copper > 0 || parts.length === 0) parts.push(`${copper}${L.copper}`);
-  return parts.join(" ");
-}
-
-/* ── Rarity palette (matches dungeon-reward-modal.tsx) ── */
-const RARITY_COLOR: Record<string, string> = {
-  f: "#94A3B8",
-  e: "#22C55E",
-  d: "#38BDF8",
-  c: "#3B82F6",
-  b: "#A855F7",
-  a: "#F59E0B",
-  s: "#EF4444",
-  ex: "#F8FAFC",
-};
-const RARITY_BG: Record<string, string> = {
-  f: "rgba(148,163,184,0.05)",
-  e: "rgba(34,197,94,0.06)",
-  d: "rgba(56,189,248,0.06)",
-  c: "rgba(59,130,246,0.07)",
-  b: "rgba(168,85,247,0.08)",
-  a: "rgba(245,158,11,0.08)",
-  s: "rgba(239,68,68,0.08)",
-  ex: "rgba(248,250,252,0.08)",
-};
-const RARITY_BORDER: Record<string, string> = {
-  f: "rgba(148,163,184,0.15)",
-  e: "rgba(34,197,94,0.22)",
-  d: "rgba(56,189,248,0.22)",
-  c: "rgba(59,130,246,0.24)",
-  b: "rgba(168,85,247,0.28)",
-  a: "rgba(245,158,11,0.3)",
-  s: "rgba(239,68,68,0.3)",
-  ex: "rgba(248,250,252,0.28)",
-};
+import { formatCopperCompact, formatDuration, formatStatName } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n";
+import { RARITY_BG, RARITY_BORDER, RARITY_COLOR } from "@/lib/rarity";
 
 function getRarityStyle(rarity: string | null) {
   const key = (rarity ?? "f").toLowerCase();

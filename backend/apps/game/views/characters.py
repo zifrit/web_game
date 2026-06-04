@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from apps.game.i18n import request_locale
 from apps.game.models import Character, CharacterClass
 from apps.game.serializers import CharacterClassSerializer, CharacterCreateSerializer, CharacterMeSerializer
-from apps.game.services import cached_response
+from apps.game.services import cached_response, request_host_part
 
 
 class CharacterClassListView(APIView):
@@ -21,7 +21,7 @@ class CharacterClassListView(APIView):
             classes = CharacterClass.objects.filter(is_active=True).select_related("male_media", "female_media").order_by("sort_order", "key")
             return CharacterClassSerializer(classes, many=True, context={"request": request}).data
 
-        return Response(cached_response("character_classes", build, parts=(request_locale(request),)))
+        return Response(cached_response("character_classes", build, parts=(request_host_part(request), request_locale(request))))
 
 
 class CharacterCreateView(APIView):

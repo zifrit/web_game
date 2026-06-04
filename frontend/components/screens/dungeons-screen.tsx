@@ -9,7 +9,7 @@ import { useI18n } from "@/components/providers";
 import { DungeonRewardModal } from "@/components/dungeon-reward-modal";
 import { ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
-import { formatDuration } from "@/lib/i18n";
+import { formatDuration, formatTime } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
 import type { ClaimResponse, Dungeon, DungeonMiniGameAttempt, DungeonRun } from "@/lib/types";
 
@@ -26,14 +26,6 @@ function useRemainingSeconds(run?: DungeonRun | null) {
     if (run.ends_at) return Math.max(0, Math.ceil((new Date(run.ends_at).getTime() - now) / 1000));
     return Math.max(0, run.remaining_seconds ?? 0);
   }, [now, run]);
-}
-
-function formatTime(secs: number) {
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
-  if (h > 0) return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 /* ── Active run banner ── */

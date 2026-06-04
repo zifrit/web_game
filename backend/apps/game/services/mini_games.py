@@ -79,10 +79,19 @@ class DungeonMiniGameService:
         if run.status != DungeonRunStatus.IN_PROGRESS or not run.location.has_mini_game:
             return None
         attempt = run.mini_game_attempts.order_by("-started_at").first()
+        status = attempt.status if attempt else None
+        if (
+            attempt
+            and status == DungeonMiniGameAttemptStatus.IN_PROGRESS
+            and attempt.expires_at <= timezone.now()
+        ):
+            # Таймер мини-игры истёк раньше завершения забега: играть уже нельзя.
+            # БД-запись добьёт finalize_due_run при завершении забега.
+            status = DungeonMiniGameAttemptStatus.FAILED
         return {
             "available": attempt is None,
             "started": attempt is not None,
-            "status": attempt.status if attempt else None,
+            "status": status,
             "attempt_id": attempt.id if attempt else None,
         }
 

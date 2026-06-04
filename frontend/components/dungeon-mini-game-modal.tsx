@@ -5,17 +5,9 @@ import { Info, X, Zap } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/components/providers";
 import { api } from "@/lib/api";
-import { formatDuration } from "@/lib/i18n";
+import { formatDuration, formatTime } from "@/lib/i18n";
 import { useCardFaces } from "@/lib/use-card-faces";
 import type { DungeonMiniGameAttempt, DungeonMiniGameCard, DungeonRun } from "@/lib/types";
-
-function formatTime(secs: number) {
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
-  if (h > 0) return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
 
 function useAttemptSeconds(attempt?: DungeonMiniGameAttempt | null) {
   const [now, setNow] = useState(() => Date.now());
@@ -36,13 +28,12 @@ export function canOpenMiniGame(run: DungeonRun) {
   return Boolean(state?.available || (state?.started && state.status === "IN_PROGRESS"));
 }
 
-/** Карточка лица: рендерит inline-SVG из каталога, с фоллбэком на статику. */
+/** Карточка лица: рендерит inline-SVG из каталога, который приходит с backend. */
 function CardFace({ code, svg }: { code: string; svg?: string }) {
   if (svg) {
     return <span className="mini-card-face" aria-hidden dangerouslySetInnerHTML={{ __html: svg }} />;
   }
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img src={`/memory-faces/${code}.svg`} alt="" draggable={false} />;
+  return <span className="mini-card-loading" aria-label={code} />;
 }
 
 export function DungeonMiniGameDifficultyModal({
@@ -177,7 +168,7 @@ export function DungeonMiniGameModal({
     setVisibleCards((current) =>
       current.map((item) =>
         cardIds.includes(item.id) && item.state !== "matched"
-          ? { ...item, state: "hidden", code: null }
+          ? { ...item, state: "hidden" }
           : item
       )
     );

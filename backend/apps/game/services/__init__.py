@@ -17,6 +17,7 @@ from .reference_cache import (
     REFERENCE_TIMEOUT,
     bump_reference_cache,
     cached_response,
+    request_host_part,
 )
 
 __all__ = [
@@ -37,5 +38,6 @@ __all__ = [
     "_invalidate_rarity_config_cache",
     "bump_reference_cache",
     "cached_response",
+    "request_host_part",
     "item_allowed_for_character",
 ]

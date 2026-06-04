@@ -30,7 +30,13 @@ from apps.game.serializers import (
     DungeonRunSerializer,
     DungeonRunStartSerializer,
 )
-from apps.game.services import DungeonMiniGameService, DungeonRunService, GameFormulaService, cached_response
+from apps.game.services import (
+    DungeonMiniGameService,
+    DungeonRunService,
+    GameFormulaService,
+    cached_response,
+    request_host_part,
+)
 from apps.game.services.reference_cache import reference_version
 
 
@@ -90,7 +96,7 @@ class DungeonLocationLootView(APIView):
                 context={"request": request, "character_classes": classes_map},
             ).data
 
-        return Response(cached_response("dungeon_loot", build, parts=(pk, locale)))
+        return Response(cached_response("dungeon_loot", build, parts=(request_host_part(request), pk, locale)))
 
 
 class DungeonRunStartView(APIView):
@@ -194,7 +200,8 @@ class MiniGameCardFaceCatalogView(APIView):
         faces = cached_response("mini_game_faces", build)
         response = Response({"version": version, "faces": faces})
         response["ETag"] = etag
-        response["Cache-Control"] = "public, max-age=60"
+        # private: ответ за аутентификацией, не должен попадать в общие прокси-кеши.
+        response["Cache-Control"] = "private, max-age=60"
         return response
 
 

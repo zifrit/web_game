@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from apps.game.i18n import message, request_locale
 from apps.game.models import Character
 from apps.game.serializers import LeaderboardItemSerializer
-from apps.game.services import LEADERBOARD_TIMEOUT, cached_response
+from apps.game.services import LEADERBOARD_TIMEOUT, cached_response, request_host_part
 
 LEADERBOARD_TYPES = ("level", "power")
 
@@ -34,7 +34,12 @@ class LeaderboardView(APIView):
             return LeaderboardItemSerializer.render_items(items, locale=locale, request=request)
 
         # Общий топ кэшируется на минуту, персональная позиция считается на лету.
-        items = cached_response("leaderboard", build_items, parts=(locale, leaderboard_type), timeout=LEADERBOARD_TIMEOUT)
+        items = cached_response(
+            "leaderboard",
+            build_items,
+            parts=(request_host_part(request), locale, leaderboard_type),
+            timeout=LEADERBOARD_TIMEOUT,
+        )
         return Response(
             {
                 "type": leaderboard_type,

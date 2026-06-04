@@ -613,17 +613,41 @@ export function splitCopper(value: number | undefined) {
   };
 }
 
-export function formatCopper(value: number | undefined, locale: Locale) {
-  const parts = splitCopper(value);
-  const labels = locale === "ru"
+function copperLabels(locale: Locale) {
+  return locale === "ru"
     ? { gold: "з", silver: "с", copper: "м" }
     : { gold: "g", silver: "s", copper: "c" };
+}
+
+export function formatCopper(value: number | undefined, locale: Locale) {
+  const parts = splitCopper(value);
+  const labels = copperLabels(locale);
 
   return [
     `${formatNumber(parts.gold, locale)}${labels.gold}`,
     `${parts.silver}${labels.silver}`,
     `${parts.copper}${labels.copper}`,
   ].join(" ");
+}
+
+/** Компактная сумма: опускает нулевые разряды, "?" для пустого значения. */
+export function formatCopperCompact(value: number | undefined | null, locale: Locale): string {
+  if (value === undefined || value === null) return "?";
+  const { gold, silver, copper } = splitCopper(value);
+  const labels = copperLabels(locale);
+  const parts: string[] = [];
+  if (gold > 0) parts.push(`${gold}${labels.gold}`);
+  if (silver > 0) parts.push(`${silver}${labels.silver}`);
+  if (copper > 0 || parts.length === 0) parts.push(`${copper}${labels.copper}`);
+  return parts.join(" ");
+}
+
+export function formatTime(secs: number) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  if (h > 0) return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 export function formatDuration(seconds: number, locale: Locale) {

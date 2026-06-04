@@ -95,6 +95,27 @@ class MiniGameFlowTests(TestCase):
                     self.user, attempt.id, first_card_id=first_id, second_card_id=second_id
                 )
 
+    def test_payload_reports_active_attempt_in_progress(self):
+        run, attempt = self._start()
+        payload = DungeonMiniGameService.mini_game_payload(run)
+        self.assertEqual(payload["status"], DungeonMiniGameAttempt.IN_PROGRESS)
+        self.assertFalse(payload["available"])
+        self.assertTrue(payload["started"])
+
+    def test_payload_reports_expired_attempt_as_failed(self):
+        run, attempt = self._start()
+        # Таймер мини-игры истёк, но забег ещё идёт (ends_at в будущем).
+        attempt.expires_at = timezone.now() - timezone.timedelta(seconds=1)
+        attempt.save(update_fields=["expires_at", "updated_at"])
+
+        payload = DungeonMiniGameService.mini_game_payload(run)
+        self.assertEqual(payload["status"], DungeonMiniGameAttempt.FAILED)
+        self.assertFalse(payload["available"])
+        self.assertTrue(payload["started"])
+        # Вариант A: БД-запись остаётся IN_PROGRESS, её добьёт finalize_due_run.
+        attempt.refresh_from_db()
+        self.assertEqual(attempt.status, DungeonMiniGameAttempt.IN_PROGRESS)
+
     def test_finalize_due_run_fails_active_attempt(self):
         run, attempt = self._start()
         run.ends_at = timezone.now() - timezone.timedelta(seconds=1)
