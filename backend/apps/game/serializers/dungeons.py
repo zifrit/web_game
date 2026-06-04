@@ -131,6 +131,12 @@ class DungeonRunStartSerializer(serializers.Serializer):
     location_id = serializers.IntegerField(min_value=1)
 
 
+class DungeonMiniGameStartSerializer(serializers.Serializer):
+    """Сериализатор запуска мини-игры с выбранной сложностью."""
+
+    config_id = serializers.IntegerField(min_value=1)
+
+
 class DungeonMiniGameMoveSerializer(serializers.Serializer):
     """Сериализатор хода мини-игры."""
 
@@ -225,7 +231,7 @@ class DungeonMiniGameAttemptHistorySerializer(serializers.ModelSerializer):
     dungeon_run_id = serializers.IntegerField(source="dungeon_run.id")
     location_name = serializers.SerializerMethodField()
     difficulty = serializers.SerializerMethodField()
-    reward_duration_reduction_seconds = serializers.IntegerField(source="config.reward_duration_reduction_seconds")
+    reward_duration_reduction_percent = serializers.IntegerField(source="config.reward_duration_reduction_percent")
     pairs_count = serializers.IntegerField(source="config.pairs_count")
 
     class Meta:
@@ -237,13 +243,14 @@ class DungeonMiniGameAttemptHistorySerializer(serializers.ModelSerializer):
             "status",
             "difficulty",
             "pairs_count",
-            "reward_duration_reduction_seconds",
+            "reward_duration_reduction_percent",
             "started_at",
             "expires_at",
             "completed_at",
             "moves_count",
             "matched_pairs_count",
             "duration_reduction_seconds",
+            "system_error",
         ]
 
     def get_location_name(self, obj):

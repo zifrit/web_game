@@ -22,6 +22,8 @@ class GameConfig(AppConfig):
             models.DungeonLocation,
             models.DungeonLocationItemTemplate,
             models.ItemTemplate,
+            models.MiniGameCardFace,
+            models.DungeonMiniGameConfig,
         ):
             post_save.connect(services.bump_reference_cache, sender=model)
             post_delete.connect(services.bump_reference_cache, sender=model)
