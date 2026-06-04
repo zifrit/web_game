@@ -91,6 +91,18 @@ MESSAGES = {
         "en": "Mini-game timer expired.",
         "ru": "Таймер мини-игры истек.",
     },
+    "mini_game_busy": {
+        "en": "Previous mini-game move is still being processed.",
+        "ru": "Предыдущий ход мини-игры еще обрабатывается.",
+    },
+    "mini_game_config_required": {
+        "en": "Select a mini-game difficulty to start.",
+        "ru": "Выберите сложность мини-игры для запуска.",
+    },
+    "mini_game_config_invalid": {
+        "en": "Selected mini-game difficulty is not available.",
+        "ru": "Выбранная сложность мини-игры недоступна.",
+    },
     "item_fully_repaired": {
         "en": "Item is already fully repaired.",
         "ru": "Предмет уже полностью отремонтирован.",

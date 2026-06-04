@@ -144,6 +144,11 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 
+# Соль для детерминированной, но непредсказуемой раскладки карт мини-игры и
+# буфер TTL для Redis-стейта активной партии сверх таймера попытки.
+MINIGAME_BOARD_SALT = os.getenv("MINIGAME_BOARD_SALT", SECRET_KEY)
+MINIGAME_STATE_TTL_BUFFER_SECONDS = int(os.getenv("MINIGAME_STATE_TTL_BUFFER_SECONDS", "60"))
+
 # Кэш ответов и backend для DRF-троттлинга. По умолчанию берём тот же хост, что и
 # брокер Celery (REDIS_URL), но отдельную базу (db 1), чтобы не смешивать ключи.
 def _derive_cache_url(redis_url: str) -> str:

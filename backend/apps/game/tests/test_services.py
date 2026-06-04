@@ -7,7 +7,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.game.management.commands.seed_game import Command as SeedCommand
-from apps.game.models import CharacterClass, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonRun, ItemTemplate, RarityConfig, User, UserItem
+from apps.game.models import CharacterClass, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonMiniGameConfig, DungeonRun, ItemTemplate, RarityConfig, User, UserItem
 from apps.game.services import DungeonMiniGameService, DungeonRunService, GameBalanceService, GameFormulaService, InventoryService, LootGenerationService
 from apps.game.services.ranks import RANKS, rank_for_level
 
@@ -105,77 +105,86 @@ class DungeonLifecycleTests(TestCase):
         with self.assertRaises(Exception):
             DungeonRunService.start_run(self.user, self.location.id)
 
-    def test_mini_game_success_reduces_remaining_run_time(self):
+    def _config(self, difficulty="6"):
+        return DungeonMiniGameConfig.objects.get(difficulty=difficulty)
+
+    def _enable_mini_game(self, duration_seconds=120):
         self.location.has_mini_game = True
-        self.location.duration_seconds = 120
+        self.location.duration_seconds = duration_seconds
         self.location.save(update_fields=["has_mini_game", "duration_seconds", "updated_at"])
+
+    def _solve(self, attempt):
+        """Доводит партию до победы честными ходами через reveal/make_move."""
+
+        pairs = {}
+        for card in attempt.board:
+            pairs.setdefault(card["pair_key"], []).append(card["id"])
+        last = None
+        for first_id, second_id in pairs.values():
+            DungeonMiniGameService.reveal_card(self.user, attempt.id, card_id=first_id)
+            last = DungeonMiniGameService.make_move(
+                self.user, attempt.id, first_card_id=first_id, second_card_id=second_id
+            )
+        return last
+
+    def test_mini_game_success_reduces_remaining_run_time(self):
+        self._enable_mini_game(duration_seconds=120)
+        config = self._config("6")  # percent=10 -> round(120*0.1)=12s
         run = DungeonRunService.start_run(self.user, self.location.id)
         run.ends_at = timezone.now() + timezone.timedelta(seconds=100)
         run.save(update_fields=["ends_at", "updated_at"])
 
-        attempt = DungeonMiniGameService.start_attempt(self.user, run.id)
-        self.assertEqual(len(attempt.board), attempt.config.pairs_count * 2)
+        attempt = DungeonMiniGameService.start_attempt(self.user, run.id, config_id=config.id)
+        self.assertEqual(len(attempt.board), config.pairs_count * 2)
 
         before = run.ends_at
-        finished = DungeonMiniGameService.finish_attempt(
-            self.user,
-            attempt.id,
-            success=True,
-            moves_count=attempt.config.pairs_count,
-            matched_pairs_count=attempt.config.pairs_count,
-        )
+        result = self._solve(attempt)
+        attempt.refresh_from_db()
         run.refresh_from_db()
 
-        self.assertEqual(finished.status, DungeonMiniGameAttempt.SUCCESS)
-        self.assertEqual(finished.duration_reduction_seconds, attempt.config.reward_duration_reduction_seconds)
-        self.assertEqual(run.ends_at, before - timezone.timedelta(seconds=attempt.config.reward_duration_reduction_seconds))
+        self.assertTrue(result["finished"])
+        self.assertEqual(attempt.status, DungeonMiniGameAttempt.SUCCESS)
+        self.assertEqual(attempt.duration_reduction_seconds, 12)
+        self.assertEqual(run.ends_at, before - timezone.timedelta(seconds=12))
 
     def test_mini_game_success_does_not_reduce_before_run_start(self):
-        self.location.has_mini_game = True
-        self.location.duration_seconds = 120
-        self.location.save(update_fields=["has_mini_game", "duration_seconds", "updated_at"])
+        self._enable_mini_game(duration_seconds=120)
+        config = self._config("6")  # raw reduction 12s exceeds the 5s run window
         run = DungeonRunService.start_run(self.user, self.location.id)
-        run.started_at = timezone.now() - timezone.timedelta(seconds=10)
-        run.ends_at = run.started_at + timezone.timedelta(seconds=30)
+        run.started_at = timezone.now()
+        run.ends_at = run.started_at + timezone.timedelta(seconds=5)
         run.save(update_fields=["started_at", "ends_at", "updated_at"])
 
-        attempt = DungeonMiniGameService.start_attempt(self.user, run.id)
-        finished = DungeonMiniGameService.finish_attempt(
-            self.user,
-            attempt.id,
-            success=True,
-            moves_count=attempt.config.pairs_count,
-            matched_pairs_count=attempt.config.pairs_count,
-        )
+        attempt = DungeonMiniGameService.start_attempt(self.user, run.id, config_id=config.id)
+        self._solve(attempt)
+        attempt.refresh_from_db()
         run.refresh_from_db()
 
-        self.assertEqual(finished.status, DungeonMiniGameAttempt.SUCCESS)
-        self.assertEqual(finished.duration_reduction_seconds, 30)
+        self.assertEqual(attempt.status, DungeonMiniGameAttempt.SUCCESS)
+        self.assertEqual(attempt.duration_reduction_seconds, 5)
         self.assertEqual(run.ends_at, run.started_at)
 
     def test_mini_game_timer_failure_does_not_reduce_run_time(self):
-        self.location.has_mini_game = True
-        self.location.duration_seconds = 120
-        self.location.save(update_fields=["has_mini_game", "duration_seconds", "updated_at"])
+        self._enable_mini_game(duration_seconds=120)
+        config = self._config("6")
         run = DungeonRunService.start_run(self.user, self.location.id)
         run.ends_at = timezone.now() + timezone.timedelta(seconds=100)
         run.save(update_fields=["ends_at", "updated_at"])
-        attempt = DungeonMiniGameService.start_attempt(self.user, run.id)
+        attempt = DungeonMiniGameService.start_attempt(self.user, run.id, config_id=config.id)
         attempt.expires_at = timezone.now() - timezone.timedelta(seconds=1)
         attempt.save(update_fields=["expires_at", "updated_at"])
 
         before = run.ends_at
-        finished = DungeonMiniGameService.finish_attempt(
-            self.user,
-            attempt.id,
-            success=True,
-            moves_count=attempt.config.pairs_count,
-            matched_pairs_count=attempt.config.pairs_count,
+        first_id, second_id = attempt.board[0]["id"], attempt.board[1]["id"]
+        result = DungeonMiniGameService.make_move(
+            self.user, attempt.id, first_card_id=first_id, second_card_id=second_id
         )
+        attempt.refresh_from_db()
         run.refresh_from_db()
 
-        self.assertEqual(finished.status, DungeonMiniGameAttempt.FAILED)
-        self.assertEqual(finished.duration_reduction_seconds, 0)
+        self.assertTrue(result["finished"])
+        self.assertEqual(attempt.status, DungeonMiniGameAttempt.FAILED)
+        self.assertEqual(attempt.duration_reduction_seconds, 0)
         self.assertEqual(run.ends_at, before)
 
 
