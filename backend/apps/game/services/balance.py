@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from django.utils import timezone
-
 from apps.game.models import Character, CharacterClass
 
 from .config import rarity_config
@@ -27,9 +25,7 @@ class GameBalanceService:
             base_critical_chance=character_class.start_critical_chance,
             base_evasion=character_class.start_evasion,
         )
-        character.power_cached = GameFormulaService.character_stats(character)["power"]
-        character.power_updated_at = timezone.now()
-        character.save(update_fields=["power_cached", "power_updated_at", "updated_at"])
+        GameFormulaService.refresh_power_cache(character)
         return character
 
     @staticmethod

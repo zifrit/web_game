@@ -601,7 +601,7 @@ class MvpApiTests(APITestCase):
 
         bad_board = self.client.get("/api/leaderboard?type=gold", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(bad_board.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(bad_board.data["detail"], "В MVP доступен только рейтинг по уровню.")
+        self.assertEqual(bad_board.data["detail"], "Неизвестный тип рейтинга. Используйте «level» или «power».")
 
 
 class DungeonLootApiTests(APITestCase):

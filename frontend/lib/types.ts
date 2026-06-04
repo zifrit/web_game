@@ -372,8 +372,10 @@ export type DestroyResponse = {
   remaining_money_copper: number;
 };
 
+export type LeaderboardMetric = "level" | "power";
+
 export type Leaderboard = {
-  type: "level";
+  type: LeaderboardMetric;
   items: Array<{
     rank: number;
     character_id: number;
@@ -383,11 +385,13 @@ export type Leaderboard = {
       name: string;
     };
     level: number;
+    power: number;
     avatar?: MediaAssetUrls | null;
   }>;
   my_rank?: {
     rank: number;
     character_id: number;
-    level: number;
+    level?: number;
+    power?: number;
   } | null;
 };

@@ -889,27 +889,32 @@ button, input, select, textarea { font: inherit; }
   width: 100%;
   height: 100%;
 }
+.mini-game-difficulty-body {
+  padding: 18px 20px;
+}
 .mini-game-difficulty-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin: 8px 0 14px;
 }
 .mini-game-difficulty-card {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 14px 16px;
+  gap: 10px;
+  padding: 16px;
   border-radius: 12px;
   border: 1px solid var(--line-soft);
-  background: var(--bg-3);
+  background:
+    linear-gradient(155deg, rgba(96,165,250,0.06) 0%, rgba(15,23,42,0.22) 100%),
+    var(--bg-3);
   cursor: pointer;
   text-align: left;
-  transition: border-color 120ms ease, transform 120ms ease;
+  transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
 }
 .mini-game-difficulty-card:hover:not(:disabled) {
   border-color: var(--primary);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-blue);
 }
 .mini-game-difficulty-card:disabled {
   opacity: 0.6;
@@ -917,21 +922,53 @@ button, input, select, textarea { font: inherit; }
 }
 .mini-game-difficulty-name {
   font-family: var(--font-cinzel, 'Cinzel', serif);
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--bone);
+  font-variant-numeric: tabular-nums;
 }
 .mini-game-difficulty-meta {
   display: flex;
   justify-content: space-between;
   gap: 8px;
+  font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, monospace);
   font-size: 11px;
   color: var(--text-mute);
+  font-variant-numeric: tabular-nums;
 }
 .mini-game-difficulty-boost {
-  font-size: 13px;
-  font-weight: 600;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(59,130,246,0.3);
+  background: rgba(59,130,246,0.12);
   color: var(--primary-bright);
+  font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.mini-game-difficulty-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid rgba(59,130,246,0.18);
+  background: rgba(15,23,42,0.35);
+  color: var(--text-mute);
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+}
+.mini-game-difficulty-hint svg {
+  color: var(--primary-bright);
+  flex-shrink: 0;
 }
 @media (max-width: 520px) {
   .mini-game-difficulty-list { grid-template-columns: 1fr; }
@@ -1423,17 +1460,17 @@ button, input, select, textarea { font: inherit; }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 8px rgba(59,130,246,0.3); }
-  50%       { box-shadow: 0 0 20px rgba(59,130,246,0.6); }
+  0%, 100% { box-shadow: 0 0 8px rgba(var(--glow-rgb, 59,130,246), 0.3); }
+  50%       { box-shadow: 0 0 20px rgba(var(--glow-rgb, 59,130,246), 0.6); }
 }
 .animate-fade-in    { animation: fade-in 200ms ease both; }
 .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
 
 /* ── Active expedition strip ── */
 .active-strip {
-  background: linear-gradient(135deg, rgba(59,130,246,0.13) 0%, var(--bg-2) 60%);
-  box-shadow: var(--shadow-blue-strong), inset 1px 0 0 rgba(59,130,246,0.45);
-  border-left: 2px solid var(--primary) !important;
+  background: linear-gradient(135deg, rgba(var(--strip-rgb, 59,130,246), 0.13) 0%, var(--bg-2) 60%);
+  box-shadow: 0 0 24px rgba(var(--strip-rgb, 59,130,246), 0.28), inset 1px 0 0 rgba(var(--strip-rgb, 59,130,246), 0.45);
+  border-left: 2px solid var(--strip-accent, var(--primary)) !important;
 }
 
 /* ── Quick dungeons ── */

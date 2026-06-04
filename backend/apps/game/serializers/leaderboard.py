@@ -7,7 +7,7 @@ from .common import localized_name, media_payload
 
 
 class LeaderboardItemSerializer:
-    """Рендер таблицы лидеров по уровню героя."""
+    """Рендер таблицы лидеров по уровню или силе героя."""
 
     @staticmethod
     def render_items(items, locale=DEFAULT_LOCALE, request=None):
@@ -21,17 +21,22 @@ class LeaderboardItemSerializer:
                 "character_name": character.name,
                 "class": {"key": character.character_class_id, "name": localized_name(character.character_class, locale)},
                 "level": character.level,
+                "power": character.power_cached or 0,
                 "avatar": media_payload(character.avatar_media, context),
             }
             for index, character in enumerate(items)
         ]
 
     @staticmethod
-    def my_rank(my_character):
+    def my_rank(my_character, metric="level"):
         """Вычисляет персональную позицию героя — считается на каждый запрос."""
 
         if not my_character:
             return None
+        if metric == "power":
+            my_power = my_character.power_cached or 0
+            ahead = Character.objects.filter(power_cached__gt=my_power).count()
+            return {"rank": ahead + 1, "character_id": my_character.id, "power": my_power}
         ahead = Character.objects.filter(
             Q(level__gt=my_character.level)
             | Q(level=my_character.level, experience__gt=my_character.experience)

@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 from decimal import Decimal, ROUND_HALF_EVEN
 
+from django.utils import timezone
+
 from apps.game.models import Character, UserItem
 
 from .config import GameConfigService
@@ -74,6 +76,16 @@ class GameFormulaService:
 
         config = GameConfigService.get_config("power_formula_config")
         return round(sum(float(stats.get(key, 0)) * float(config.get(key, 0)) for key in STAT_KEYS), 2)
+
+    @classmethod
+    def refresh_power_cache(cls, character: Character) -> float:
+        """Пересчитывает силу героя и точечно сохраняет её кэш в БД."""
+
+        power = cls.character_stats(character)["power"]
+        character.power_cached = power
+        character.power_updated_at = timezone.now()
+        character.save(update_fields=["power_cached", "power_updated_at", "updated_at"])
+        return power
 
     @staticmethod
     def success_chance(character_power: float, required_power: float) -> float:

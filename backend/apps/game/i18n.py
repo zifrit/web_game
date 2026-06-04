@@ -131,9 +131,9 @@ MESSAGES = {
         "en": "Could not equip item in this slot.",
         "ru": "Не удалось экипировать предмет в этот слот.",
     },
-    "leaderboard_level_only": {
-        "en": "Only level leaderboard is available in MVP.",
-        "ru": "В MVP доступен только рейтинг по уровню.",
+    "leaderboard_type_invalid": {
+        "en": "Unknown leaderboard type. Use 'level' or 'power'.",
+        "ru": "Неизвестный тип рейтинга. Используйте «level» или «power».",
     },
 }
 
