@@ -27,11 +27,11 @@ class GameBalanceService:
             character_class=character_class,
             gender=gender,
             avatar_media=avatar_media,
-            base_health=character_class.start_health,
-            base_attack=character_class.start_attack,
-            base_defense=character_class.start_defense,
-            base_critical_chance=character_class.start_critical_chance,
-            base_evasion=character_class.start_evasion,
+            health=character_class.start_health,
+            attack=character_class.start_attack,
+            defense=character_class.start_defense,
+            critical_chance=character_class.start_critical_chance,
+            evasion=character_class.start_evasion,
         )
         GameFormulaService.refresh_power_cache(character)
         return character

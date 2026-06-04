@@ -45,18 +45,50 @@ class GameFormulaService:
         return stats
 
     @classmethod
+    def intrinsic_character_stats(cls, character: Character) -> dict[str, float]:
+        """Считает собственные характеристики героя от класса и уровня без экипировки."""
+
+        character_class = character.character_class
+        stats = {
+            "health": float(character_class.start_health),
+            "attack": float(character_class.start_attack),
+            "defense": float(character_class.start_defense),
+            "critical_chance": float(character_class.start_critical_chance),
+            "evasion": float(character_class.start_evasion),
+        }
+        for key, value in cls.level_growth_stats(character).items():
+            stats[key] += value
+        return stats
+
+    @classmethod
+    def apply_level_stats(cls, character: Character) -> dict[str, float]:
+        """Обновляет сохранённые характеристики героя по текущему уровню."""
+
+        stats = cls.intrinsic_character_stats(character)
+        character.health = int(round(stats["health"]))
+        character.attack = int(round(stats["attack"]))
+        character.defense = int(round(stats["defense"]))
+        character.critical_chance = stats["critical_chance"]
+        character.evasion = stats["evasion"]
+        return {
+            "health": float(character.health),
+            "attack": float(character.attack),
+            "defense": float(character.defense),
+            "critical_chance": character.critical_chance,
+            "evasion": character.evasion,
+        }
+
+    @classmethod
     def character_stats(cls, character: Character, include_equipment: bool = True) -> dict[str, float]:
         """Собирает итоговые характеристики героя с уровнем, экипировкой и капами."""
 
         stats = {
-            "health": float(character.base_health),
-            "attack": float(character.base_attack),
-            "defense": float(character.base_defense),
-            "critical_chance": float(character.base_critical_chance),
-            "evasion": float(character.base_evasion),
+            "health": float(character.health),
+            "attack": float(character.attack),
+            "defense": float(character.defense),
+            "critical_chance": float(character.critical_chance),
+            "evasion": float(character.evasion),
         }
-        for key, value in cls.level_growth_stats(character).items():
-            stats[key] += value
         if include_equipment:
             for item in character.equipped_items.all():
                 if item.is_broken:

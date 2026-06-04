@@ -161,9 +161,21 @@ class DungeonRunService:
         experience = run.experience_reward or 0
         character.experience += experience
         cls._apply_level_ups(character)
+        GameFormulaService.apply_level_stats(character)
         user.money_copper += run.money_reward_copper or 0
         user.save(update_fields=["money_copper", "updated_at"])
-        character.save(update_fields=["level", "experience", "updated_at"])
+        character.save(
+            update_fields=[
+                "level",
+                "experience",
+                "health",
+                "attack",
+                "defense",
+                "critical_chance",
+                "evasion",
+                "updated_at",
+            ]
+        )
 
         claim = DungeonRunClaim.objects.create(
             dungeon_run=run,

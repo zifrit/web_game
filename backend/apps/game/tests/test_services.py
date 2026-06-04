@@ -36,7 +36,7 @@ class GameFormulaTests(TestCase):
 
         stats = GameFormulaService.character_stats(self.character)
 
-        self.assertEqual(stats["attack"], self.character.base_attack)
+        self.assertEqual(stats["attack"], self.character.attack)
 
     def test_success_chance_is_capped(self):
         self.assertEqual(GameFormulaService.success_chance(10_000, 1), 100)
@@ -85,6 +85,38 @@ class DungeonLifecycleTests(TestCase):
 
         self.assertEqual(first.claim.id, second.claim.id)
         self.assertEqual(DungeonRun.objects.get(id=run.id).status, DungeonRun.CLAIMED)
+
+    def test_claim_level_up_updates_intrinsic_stats_and_power_cache(self):
+        run = DungeonRunService.start_run(self.user, self.location.id)
+        required = GameFormulaService.experience_required(self.character.level)
+        run.ends_at = timezone.now() - timezone.timedelta(seconds=1)
+        run.success_chance = 100
+        run.experience_reward = required
+        run.money_reward_copper = 0
+        run.status = DungeonRun.SUCCESS_WAITING_CLAIM
+        run.is_success = True
+        run.save(
+            update_fields=[
+                "ends_at",
+                "success_chance",
+                "experience_reward",
+                "money_reward_copper",
+                "status",
+                "is_success",
+                "updated_at",
+            ]
+        )
+        old_attack = self.character.attack
+        old_power = self.character.power_cached
+
+        result = DungeonRunService.claim_run(self.user, run.id)
+        self.character.refresh_from_db()
+
+        self.assertEqual(result.old_level, 1)
+        self.assertEqual(result.new_level, 2)
+        self.assertGreater(self.character.attack, old_attack)
+        self.assertGreater(self.character.power_cached, old_power)
+        self.assertEqual(self.character.power_cached, GameFormulaService.character_stats(self.character)["power"])
 
     def test_broken_equipped_item_blocks_start(self):
         template = ItemTemplate.objects.filter(slot="weapon", item_type="sword").first()

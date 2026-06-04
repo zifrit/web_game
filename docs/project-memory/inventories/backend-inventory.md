@@ -24,7 +24,8 @@ Updated from code inspection on 2026-05-31.
 - `users.py` - `UserManager`, custom `User`, `UserTwoFactor` for opt-in TOTP
   protection.
 - `characters.py` - `CharacterClass` with gendered class media,
-  `Character` with `gender` and hero avatar media.
+  `Character` with `gender`, hero avatar media, and level-scaled intrinsic
+  stats stored on the hero; equipment stats are still added dynamically.
 - `config.py` - `RarityConfig` with stat/economy multipliers,
   `EquipmentSlotConfig`, `GameConfig`.
 - `items.py` - `ItemTemplate` with `rarity_key`, `UserItem`,

@@ -46,6 +46,9 @@ start dungeon run требуют явных transactional boundaries там, г�
 
 - `rarity` now means F/E/D/C/B/A/S/EX rank. Hero and item level rank ranges are
   centralized in `apps.game.services.ranks`: 1-10 F through 71-80 EX.
+- `Character` stores intrinsic hero stats as `health`, `attack`, `defense`,
+  `critical_chance`, and `evasion`. These are class + level stats without
+  equipment; `GameFormulaService.character_stats` adds equipment dynamically.
 - Dungeon loot uses `DungeonLocation.item_drop_chance` as the first item roll,
   then weighted `DungeonLocationItemTemplate.chance` links to choose the
   concrete `ItemTemplate`; rarity comes from `ItemTemplate.rarity_key`.
