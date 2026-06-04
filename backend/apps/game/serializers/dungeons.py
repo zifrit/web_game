@@ -197,7 +197,19 @@ class ClaimResponseSerializer:
                     }
                     for item in result.items
                 ],
-                "durability_loss": result.run.durability_loss or 0,
+                "durability_loss": result.durability_total or 0,
+                "durability_changes": [
+                    {
+                        "name": localized_item_name(change["item"], locale, item_context),
+                        "slot": change["item"].slot,
+                        "durability": {
+                            "current": change["item"].durability_current,
+                            "max": change["item"].durability_max,
+                        },
+                        "removed": change["removed"],
+                    }
+                    for change in result.durability_changes
+                ],
             },
             "level_up": {"old_level": result.old_level, "new_level": result.new_level},
         }

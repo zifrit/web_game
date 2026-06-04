@@ -3,8 +3,6 @@ from __future__ import annotations
 import random
 
 from django.db import transaction
-from django.db.models import F, Value
-from django.db.models.functions import Greatest
 from django.utils import timezone
 from rest_framework import serializers
 from pydantic import BaseModel, ConfigDict
@@ -37,6 +35,8 @@ class ClaimResult(BaseModel):
     items: list[UserItem]
     old_level: int
     new_level: int
+    durability_total: int = 0
+    durability_changes: list = []
 
 
 class DungeonRunService:
@@ -191,11 +191,19 @@ class DungeonRunService:
             DungeonRunClaimItem.objects.create(claim=claim, user_item=item)
             created_items.append(item)
 
-        cls._apply_durability_loss(character, run.durability_loss or 0)
+        durability_total, durability_changes = cls._apply_durability_loss(character, run.durability_loss or 0)
         GameFormulaService.refresh_power_cache(character)
         run.status = DungeonRunStatus.CLAIMED
         run.save(update_fields=["status", "updated_at"])
-        return ClaimResult(run=run, claim=claim, items=created_items, old_level=old_level, new_level=character.level)
+        return ClaimResult(
+            run=run,
+            claim=claim,
+            items=created_items,
+            old_level=old_level,
+            new_level=character.level,
+            durability_total=durability_total,
+            durability_changes=durability_changes,
+        )
 
     @staticmethod
     def _apply_level_ups(character: Character) -> None:
@@ -211,15 +219,25 @@ class DungeonRunService:
             character.level += 1
 
     @staticmethod
-    def _apply_durability_loss(character: Character, loss: int) -> None:
-        """Списывает прочность со всей экипировки героя после завершения забега."""
+    def _apply_durability_loss(character: Character, loss: int) -> tuple[int, list[dict]]:
+        """Списывает прочность с экипировки и возвращает суммарную потерю и разбивку."""
 
         if loss <= 0:
-            return
-        character.equipped_items.filter(durability_current__gt=0).update(
-            durability_current=Greatest(F("durability_current") - loss, Value(0)),
-            updated_at=timezone.now(),
-        )
+            return 0, []
+        items = list(character.equipped_items.filter(durability_current__gt=0))
+        if not items:
+            return 0, []
+        now = timezone.now()
+        total_removed = 0
+        changes: list[dict] = []
+        for item in items:
+            removed = min(item.durability_current, loss)
+            item.durability_current -= removed
+            item.updated_at = now
+            total_removed += removed
+            changes.append({"item": item, "removed": removed})
+        UserItem.objects.bulk_update(items, ["durability_current", "updated_at"])
+        return total_removed, changes
 
     @classmethod
     def complete_due_runs(cls, limit: int = 100) -> int:

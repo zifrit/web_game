@@ -303,11 +303,57 @@ class MvpApiTests(APITestCase):
             self.assertIsInstance(item["stats"], dict)
             self.assertEqual(set(item["durability"].keys()), {"current", "max"})
             self.assertGreaterEqual(item["durability"]["max"], item["durability"]["current"])
+        # Без экипировки прочность не списывается — потеря должна быть 0, разбивка пустой.
+        self.assertEqual(claim.data["rewards"]["durability_loss"], 0)
+        self.assertEqual(claim.data["rewards"]["durability_changes"], [])
         self.assertEqual(DungeonRunClaim.objects.count(), 1)
 
         second_claim = self.client.post(f"/api/dungeon-runs/{start.data['id']}/claim", {}, format="json")
         self.assertEqual(second_claim.status_code, status.HTTP_200_OK, second_claim.data)
         self.assertEqual(DungeonRunClaim.objects.count(), 1)
+
+    def test_dungeon_run_claim_reports_equipment_durability_loss(self):
+        user = self.register_and_authenticate("durability@example.com")
+        self.create_character()
+        character = user.character
+        template = ItemTemplate.objects.filter(slot="weapon", item_type="sword", rarity_key="f").first()
+        item = UserItem.objects.create(
+            owner_user=user,
+            source_character=character,
+            template=template,
+            name=template.name,
+            slot=template.slot,
+            item_type=template.item_type,
+            rarity="f",
+            item_level=1,
+            stats={"attack": 5},
+            durability_current=10,
+            durability_max=10,
+        )
+        equip = self.client.post(f"/api/inventory/items/{item.id}/equip", {}, format="json")
+        self.assertEqual(equip.status_code, status.HTTP_200_OK, equip.data)
+
+        location = DungeonLocation.objects.get(name="Старый лес")
+        location.duration_seconds = 0
+        location.required_power = 1
+        location.item_drop_chance = 0
+        location.save()
+
+        start = self.client.post("/api/dungeon-runs", {"location_id": location.id}, format="json")
+        self.assertEqual(start.status_code, status.HTTP_201_CREATED, start.data)
+
+        claim = self.client.post(f"/api/dungeon-runs/{start.data['id']}/claim", {}, format="json")
+        self.assertEqual(claim.status_code, status.HTTP_200_OK, claim.data)
+        self.assertEqual(claim.data["is_success"], True)
+        # Успех списывает 1 прочность с каждого одетого предмета.
+        self.assertEqual(claim.data["rewards"]["durability_loss"], 1)
+        changes = claim.data["rewards"]["durability_changes"]
+        self.assertEqual(len(changes), 1)
+        self.assertEqual(changes[0]["slot"], "weapon")
+        self.assertEqual(changes[0]["removed"], 1)
+        self.assertEqual(changes[0]["durability"], {"current": 9, "max": 10})
+        item.refresh_from_db()
+        self.assertEqual(item.durability_current, 9)
 
     def test_dungeon_mini_game_accelerates_active_run_and_has_history(self):
         self.register_and_authenticate("mini-game@example.com")

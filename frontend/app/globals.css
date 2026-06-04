@@ -1112,6 +1112,13 @@ button, input, select, textarea { font: inherit; }
   color: var(--warning);
   font-weight: 700;
 }
+.reward-durability-breakdown {
+  margin-top: 14px;
+}
+.reward-durability-delta {
+  font-weight: 700;
+  margin-left: 6px;
+}
 .reward-item-panel {
   margin-top: 16px;
   padding: 14px;

@@ -268,6 +268,15 @@ export type ClaimResponse = {
       };
     }>;
     durability_loss: number;
+    durability_changes: Array<{
+      name: string;
+      slot: EquipmentSlot;
+      durability: {
+        current: number;
+        max: number;
+      };
+      removed: number;
+    }>;
   };
   level_up?: {
     old_level: number;

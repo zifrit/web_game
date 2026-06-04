@@ -67,6 +67,23 @@ export function DungeonRewardModal({
             </div>
           </div>
 
+          {result.rewards.durability_changes.length > 0 && (
+            <div className="reward-durability-breakdown">
+              <div className="card-sub" style={{ marginBottom: 8 }}>{t("reward.durabilityBreakdown")}</div>
+              <div className="stat-list" style={{ gridTemplateColumns: "1fr" }}>
+                {result.rewards.durability_changes.map((change) => (
+                  <div key={change.slot} className="sl-row">
+                    <span className="lbl">{change.name}</span>
+                    <span className="val">
+                      {change.durability.current} / {change.durability.max}
+                      <span className="reward-durability-delta" style={{ color: "var(--error)" }}> −{change.removed}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {result.level_up && result.level_up.new_level > result.level_up.old_level && (
             <div className="reward-levelup">
               {t("reward.levelUp", { old: result.level_up.old_level, next: result.level_up.new_level })}
