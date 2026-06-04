@@ -68,7 +68,6 @@ function Sidebar({
   characterLevel,
   characterRank,
   userAvatar,
-  characterAvatar,
   isLoadingCharacter,
   onLogout,
   t,
@@ -80,12 +79,11 @@ function Sidebar({
   characterLevel?: number;
   characterRank?: string;
   userAvatar?: MediaAssetUrls | null;
-  characterAvatar?: MediaAssetUrls | null;
   isLoadingCharacter?: boolean;
   onLogout: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
-  const footerAvatarUrl = bestMediaUrl(characterAvatar ?? userAvatar, ["small_url", "medium_url", "large_url"]);
+  const footerAvatarUrl = bestMediaUrl(userAvatar, ["small_url", "medium_url", "large_url"]);
 
   return (
     <aside style={{
@@ -414,7 +412,6 @@ export function RpgClient() {
           characterLevel={characterQuery.data?.level}
           characterRank={characterQuery.data?.rank}
           userAvatar={activeUser?.avatar}
-          characterAvatar={characterQuery.data?.avatar}
           isLoadingCharacter={characterQuery.isLoading}
           onLogout={handleLogout}
           t={t}

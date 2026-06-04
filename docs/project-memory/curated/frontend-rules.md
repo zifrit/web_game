@@ -33,8 +33,9 @@
 picker через `api.iconAssets()` / `api.updateAvatar()`.
 
 Create-character screen требует выбор пола (`male`/`female`) и переключает
-картинки классов между `male_media` и `female_media`; после создания shell
-должен предпочитать `Character.avatar` перед `User.avatar`.
+картинки классов между `male_media` и `female_media`. Портрет героя должен
+использовать `Character.avatar`, а нижний профильный аватар в sidebar -
+`User.avatar`, чтобы не подменять фото профиля картинкой героя.
 
 ## UI intent
 
@@ -45,9 +46,10 @@ Create-character screen требует выбор пола (`male`/`female`) и 
   (проценты из `GET /mini-game/configs`), выбор шлёт `config_id` в start;
   доступность, таймер, подсчёт и ускорение run — server-authoritative.
 - Доска приходит по `code`; SVG-лица резолвятся локально из каталога
-  `GET /mini-game/card-faces` (хук `useCardFaces`, кеш в localStorage по версии,
-  фоллбэк на статику `public/memory-faces/`). `reveal`/`move` возвращают флаг
-  `finished`; при `finished` показать result-модалку.
+  `GET /mini-game/card-faces` (хук `useCardFaces`; localStorage используется
+  только как мгновенный initialData, а backend остаётся источником истины после
+  изменений в админке). `reveal`/`move` возвращают флаг `finished`; при
+  `finished` показать result-модалку.
 - Result-модалка: зелёная при SUCCESS с фактическим `duration_reduction_seconds`,
   красная при таймауте только если игровая модалка ещё открыта. Доска должна
   оставаться локально стабильной: не заменять весь board после хода, обновлять

@@ -6,8 +6,9 @@ import { api } from "@/lib/api";
 import type { MiniGameCardFaceCatalog } from "@/lib/types";
 
 const STORAGE_KEY = "mini-game-card-faces";
-// Кешируем каталог «на время»; инвалидация — по полю version с бэка.
-const STALE_TIME_MS = 60 * 60 * 1000;
+// localStorage нужен только для мгновенного первого рендера; backend остаётся
+// источником истины, чтобы изменения из админки подтягивались сразу.
+const STALE_TIME_MS = 0;
 
 function readCache(): MiniGameCardFaceCatalog | undefined {
   if (typeof window === "undefined") return undefined;
@@ -29,7 +30,7 @@ function writeCache(catalog: MiniGameCardFaceCatalog) {
 }
 
 /**
- * Загружает каталог SVG-лиц один раз, кеширует в localStorage и резолвит code → svg.
+ * Загружает каталог SVG-лиц, обновляет localStorage и резолвит code → svg.
  * Возвращает карту кодов в разметку для локального рендера карточек.
  */
 export function useCardFaces() {
@@ -41,7 +42,9 @@ export function useCardFaces() {
       return catalog;
     },
     initialData: readCache,
+    initialDataUpdatedAt: 0,
     staleTime: STALE_TIME_MS,
+    refetchOnMount: "always",
   });
 
   const facesByCode = useMemo(() => {
