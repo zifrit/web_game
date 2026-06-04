@@ -964,6 +964,55 @@ button, input, select, textarea { font: inherit; }
   border-color: rgba(239,68,68,0.5);
   color: var(--error);
 }
+.mini-game-result-modal {
+  width: min(420px, 92vw);
+  overflow: hidden;
+  border-color: rgba(34,197,94,0.42);
+}
+.mini-game-result-modal.failed {
+  border-color: rgba(239,68,68,0.5);
+}
+.mini-game-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(34,197,94,0.22);
+  background: linear-gradient(135deg, rgba(34,197,94,0.16), rgba(15,23,42,0.18));
+}
+.mini-game-result-modal.failed .mini-game-result-head {
+  border-bottom-color: rgba(239,68,68,0.22);
+  background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(15,23,42,0.18));
+}
+.mini-game-result-body {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+.mini-game-result-value {
+  padding: 18px;
+  border: 1px solid rgba(34,197,94,0.42);
+  border-radius: 8px;
+  background: rgba(34,197,94,0.12);
+  color: var(--success);
+  font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: clamp(26px, 7vw, 40px);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+.mini-game-result-modal.failed .mini-game-result-value {
+  border-color: rgba(239,68,68,0.42);
+  background: rgba(239,68,68,0.12);
+  color: var(--error);
+  font-size: clamp(22px, 6vw, 32px);
+}
+.mini-game-result-copy {
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
 .reward-summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1421,10 +1470,8 @@ button, input, select, textarea { font: inherit; }
   position: relative; overflow: hidden;
 }
 .portrait img {
-  object-fit: contain;
-  object-position: center center;
-  transform: scale(1.2);
-  transform-origin: center center;
+  object-fit: cover;
+  object-position: center top;
 }
 .portrait .ph-label {
   position: absolute; bottom: 12px; left: 12px;

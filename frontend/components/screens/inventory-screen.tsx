@@ -316,7 +316,7 @@ function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChang
           </div>
           <div className="sl-row" style={{ padding: "8px 0" }}>
             <span className="lbl">{t("common.type")}</span>
-            <span className="val">{item.item_type}</span>
+            <span className="val">{t(`itemType.${item.item_type}` as Parameters<typeof t>[0])}</span>
           </div>
         </div>
 
@@ -433,6 +433,7 @@ function BulkActionModal({
   action,
   repairPreview,
   destroyPreview,
+  selectedCount,
   isLoading,
   isPending,
   error,
@@ -442,6 +443,7 @@ function BulkActionModal({
   action: "repair" | "destroy";
   repairPreview?: RepairPreview;
   destroyPreview?: DestroyPreview;
+  selectedCount?: number;
   isLoading: boolean;
   isPending: boolean;
   error?: string;
@@ -464,7 +466,10 @@ function BulkActionModal({
             <LoadingLine label={t("inventory.calculating")} />
           ) : isRepair && repairPreview ? (
             <div className="stat-list" style={{ gridTemplateColumns: "1fr", marginBottom: 16 }}>
-              <div className="sl-row"><span className="lbl">{t("inventory.selectedItems")}</span><span className="val">{repairPreview.items_count}</span></div>
+              <div className="sl-row"><span className="lbl">{t("inventory.selectedItems")}</span><span className="val">{selectedCount ?? repairPreview.items_count}</span></div>
+              {selectedCount !== undefined && selectedCount !== repairPreview.items_count && (
+                <div className="sl-row"><span className="lbl">{t("inventory.itemsToRepair")}</span><span className="val">{repairPreview.items_count}</span></div>
+              )}
               <div className="sl-row"><span className="lbl">{t("inventory.repairCost")}</span><span className="val">{repairPreview.repair_cost_copper}c</span></div>
             </div>
           ) : destroyPreview ? (
@@ -745,6 +750,7 @@ export function InventoryScreen() {
           action={bulkAction}
           repairPreview={repairPreviewQ.data}
           destroyPreview={destroyPreviewQ.data}
+          selectedCount={selectedBulkIds.length}
           isLoading={bulkAction === "repair" ? repairPreviewQ.isLoading : destroyPreviewQ.isLoading}
           isPending={bulkAction === "repair" ? repairBulkM.isPending : destroyBulkM.isPending}
           error={
