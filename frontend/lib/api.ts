@@ -170,6 +170,48 @@ export class ApiError extends Error {
   }
 }
 
+function fallbackErrorMessage(status: number, statusText: string): string {
+  if (status >= 500) return "Сервер недоступен. Попробуйте позже.";
+  if (status === 404) return "Ресурс не найден.";
+  if (status === 403) return "Доступ запрещён.";
+  if (status === 401) return "Сессия истекла. Войдите снова.";
+  return statusText || "Что-то пошло не так. Попробуйте ещё раз.";
+}
+
+// Превращает тело ответа DRF в человекочитаемое сообщение.
+// Никогда не возвращает сырой JSON.
+export function extractApiErrorMessage(body: unknown, status: number, statusText: string): string {
+  if (typeof body === "string" && body.trim()) return body;
+  if (!body || typeof body !== "object") return fallbackErrorMessage(status, statusText);
+
+  const record = body as Record<string, unknown>;
+
+  const pickString = (value: unknown): string | null => {
+    if (typeof value === "string" && value.trim()) return value;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const found = pickString(item);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  const detail = pickString(record.detail);
+  if (detail) return detail;
+
+  const nonField = pickString(record.non_field_errors);
+  if (nonField) return nonField;
+
+  // DRF field-errors: { field: ["msg", ...] }
+  for (const value of Object.values(record)) {
+    const message = pickString(value);
+    if (message) return message;
+  }
+
+  return fallbackErrorMessage(status, statusText);
+}
+
 export function readTokens(): Tokens | null {
   if (typeof window === "undefined") return null;
   const raw = window.localStorage.getItem("rpg_tokens");
@@ -232,12 +274,12 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}, retry
     }, false);
   }
   if (!response.ok) {
-    let message = response.statusText;
+    let message = fallbackErrorMessage(response.status, response.statusText);
     try {
       const body = await response.json();
-      message = body.detail ?? body.non_field_errors?.[0] ?? JSON.stringify(body);
+      message = extractApiErrorMessage(body, response.status, response.statusText);
     } catch {
-      // keep status text
+      // keep fallback message
     }
     throw new ApiError(response.status, message);
   }
