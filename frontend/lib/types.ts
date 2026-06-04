@@ -147,15 +147,26 @@ export type DungeonMiniGameConfig = {
   difficulty: string;
   pairs_count: number;
   time_limit_seconds: number;
-  reward_duration_reduction_seconds: number;
+  reward_duration_reduction_percent: number;
+  max_reduction_seconds: number;
 };
 
 export type DungeonMiniGameCard = {
   id: string;
   position: number;
-  state: "hidden" | "temporary_open" | "matched";
-  face?: string | null;
-  image_url?: string | null;
+  state: "hidden" | "open" | "temporary_open" | "matched";
+  code?: string | null;
+};
+
+export type MiniGameCardFace = {
+  code: string;
+  name: string;
+  svg: string;
+};
+
+export type MiniGameCardFaceCatalog = {
+  version: number;
+  faces: MiniGameCardFace[];
 };
 
 export type DungeonMiniGameAttemptStatus =
@@ -174,23 +185,50 @@ export type DungeonMiniGameAttempt = {
   moves_count: number;
   matched_pairs_count: number;
   duration_reduction_seconds: number;
+  system_error?: boolean;
 };
 
-export type DungeonMiniGameMoveResponse = {
-  matched: boolean;
+export type DungeonMiniGameMoveAttempt = {
+  id: number;
+  status: DungeonMiniGameAttemptStatus;
+  moves_count: number;
+  matched_pairs_count: number;
+};
+
+export type DungeonMiniGameReward = {
+  type: "dungeon_time_boost_seconds";
+  value: number;
+} | null;
+
+export type DungeonMiniGameFinishedResponse = {
+  finished: true;
+  matched: boolean | null;
   attempt: DungeonMiniGameAttempt;
   opened_cards: DungeonMiniGameCard[];
   reward_granted: boolean;
-  reward?: {
-    type: "dungeon_time_boost_seconds";
-    value: number;
-  } | null;
+  reward?: DungeonMiniGameReward;
 };
+
+export type DungeonMiniGameMoveResponse =
+  | {
+      finished: false;
+      matched: boolean;
+      attempt: DungeonMiniGameMoveAttempt;
+      opened_cards: DungeonMiniGameCard[];
+      reward_granted: false;
+      reward: null;
+    }
+  | DungeonMiniGameFinishedResponse;
+
+export type DungeonMiniGameRevealResponse =
+  | { finished: false; card: DungeonMiniGameCard }
+  | DungeonMiniGameFinishedResponse;
 
 export type DungeonMiniGameState = {
   available: boolean;
   started: boolean;
   status?: DungeonMiniGameAttemptStatus | null;
+  attempt_id?: number | null;
 };
 
 export type DungeonMiniGameHistoryItem = {
@@ -200,13 +238,14 @@ export type DungeonMiniGameHistoryItem = {
   status: DungeonMiniGameAttemptStatus;
   difficulty: string;
   pairs_count: number;
-  reward_duration_reduction_seconds: number;
+  reward_duration_reduction_percent: number;
   started_at: string;
   expires_at: string;
   completed_at?: string | null;
   moves_count: number;
   matched_pairs_count: number;
   duration_reduction_seconds: number;
+  system_error?: boolean;
 };
 
 export type ClaimResponse = {

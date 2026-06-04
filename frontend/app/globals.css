@@ -871,13 +871,70 @@ button, input, select, textarea { font: inherit; }
   border-color: rgba(34,197,94,0.7);
   background: linear-gradient(180deg, rgba(34,197,94,0.24), rgba(15,23,42,0.7));
 }
-.mini-card img {
+.mini-card img,
+.mini-card-face {
   width: min(76%, 128px);
   height: min(76%, 128px);
   object-fit: contain;
   pointer-events: none;
   user-select: none;
   image-rendering: auto;
+}
+.mini-card-face {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.mini-card-face svg {
+  width: 100%;
+  height: 100%;
+}
+.mini-game-difficulty-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 8px 0 14px;
+}
+.mini-game-difficulty-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--bg-3);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+.mini-game-difficulty-card:hover:not(:disabled) {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+.mini-game-difficulty-card:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.mini-game-difficulty-name {
+  font-family: var(--font-cinzel, 'Cinzel', serif);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--bone);
+}
+.mini-game-difficulty-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-mute);
+}
+.mini-game-difficulty-boost {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary-bright);
+}
+@media (max-width: 520px) {
+  .mini-game-difficulty-list { grid-template-columns: 1fr; }
 }
 .mini-card-loading {
   width: 18px;

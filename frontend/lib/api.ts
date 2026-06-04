@@ -307,11 +307,20 @@ export const api = {
   claimRun(runId: number) {
     return apiFetch<AppTypes.ClaimResponse>(`/dungeon-runs/${runId}/claim`, { method: "POST" });
   },
-  startMiniGame(runId: number) {
-    return apiFetch<AppTypes.DungeonMiniGameAttempt>(`/dungeon-runs/${runId}/mini-game/start`, { method: "POST" });
+  miniGameConfigs() {
+    return apiFetch<AppTypes.DungeonMiniGameConfig[]>("/mini-game/configs");
+  },
+  miniGameCardFaces() {
+    return apiFetch<AppTypes.MiniGameCardFaceCatalog>("/mini-game/card-faces");
+  },
+  startMiniGame(runId: number, configId: number) {
+    return apiFetch<AppTypes.DungeonMiniGameAttempt>(`/dungeon-runs/${runId}/mini-game/start`, {
+      method: "POST",
+      body: JSON.stringify({ config_id: configId }),
+    });
   },
   revealMiniGameCard(attemptId: number, cardId: string) {
-    return apiFetch<AppTypes.DungeonMiniGameCard>(`/dungeon-mini-games/${attemptId}/reveal`, {
+    return apiFetch<AppTypes.DungeonMiniGameRevealResponse>(`/dungeon-mini-games/${attemptId}/reveal`, {
       method: "POST",
       body: JSON.stringify({ card_id: cardId }),
     });

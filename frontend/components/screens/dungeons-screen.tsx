@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Info, LayoutGrid, List, MapPin, Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { canOpenMiniGame, DungeonMiniGameModal } from "@/components/dungeon-mini-game-modal";
+import { canOpenMiniGame, DungeonMiniGameDifficultyModal, DungeonMiniGameModal, DungeonMiniGameResultModal } from "@/components/dungeon-mini-game-modal";
 import { DungeonLootModal } from "@/components/dungeon-loot-modal";
 import { useI18n } from "@/components/providers";
 import { DungeonRewardModal } from "@/components/dungeon-reward-modal";
@@ -50,6 +50,8 @@ function ActiveRunBanner({
   const { t } = useI18n();
   const remaining   = useRemainingSeconds(run);
   const [miniGameAttempt, setMiniGameAttempt] = useState<DungeonMiniGameAttempt | null>(null);
+  const [miniGameResult, setMiniGameResult] = useState<DungeonMiniGameAttempt | null>(null);
+  const [choosingDifficulty, setChoosingDifficulty] = useState(false);
 
   const totalSecs = useMemo(() => {
     if (run.ends_at && run.started_at) {
@@ -76,8 +78,9 @@ function ActiveRunBanner({
   });
 
   const startMiniGame = useMutation({
-    mutationFn: () => api.startMiniGame(run.id),
+    mutationFn: (configId: number) => api.startMiniGame(run.id, configId),
     onSuccess: (attempt) => {
+      setChoosingDifficulty(false);
       setMiniGameAttempt(attempt);
     },
   });
@@ -157,7 +160,7 @@ function ActiveRunBanner({
             <button
               className="btn btn-secondary"
               disabled={startMiniGame.isPending}
-              onClick={() => startMiniGame.mutate()}
+              onClick={() => setChoosingDifficulty(true)}
             >
               <Zap size={16} />
               {startMiniGame.isPending ? t("miniGame.starting") : t("miniGame.speedUp")}
@@ -174,14 +177,28 @@ function ActiveRunBanner({
           )}
         </div>
       </div>
+      {choosingDifficulty && !miniGameAttempt && (
+        <DungeonMiniGameDifficultyModal
+          pending={startMiniGame.isPending}
+          onClose={() => setChoosingDifficulty(false)}
+          onSelect={(configId) => startMiniGame.mutate(configId)}
+        />
+      )}
       {miniGameAttempt && (
         <DungeonMiniGameModal
           attempt={miniGameAttempt}
           onClose={() => setMiniGameAttempt(null)}
           onFinished={(attempt) => {
-            setMiniGameAttempt(attempt);
+            setMiniGameAttempt(null);
+            setMiniGameResult(attempt);
             void queryClient.invalidateQueries({ queryKey: ["current-run"] });
           }}
+        />
+      )}
+      {miniGameResult && (
+        <DungeonMiniGameResultModal
+          attempt={miniGameResult}
+          onClose={() => setMiniGameResult(null)}
         />
       )}
       <ErrorNotice message={(claimMutation.error as Error | null)?.message ?? (startMiniGame.error as Error | null)?.message} />

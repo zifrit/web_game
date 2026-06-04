@@ -3,7 +3,7 @@
 import { useEffect, useState, type DragEvent } from "react";
 import { useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { CircleHelp, Zap } from "lucide-react";
-import { canOpenMiniGame, DungeonMiniGameModal } from "@/components/dungeon-mini-game-modal";
+import { canOpenMiniGame, DungeonMiniGameDifficultyModal, DungeonMiniGameModal, DungeonMiniGameResultModal } from "@/components/dungeon-mini-game-modal";
 import { useI18n } from "@/components/providers";
 import { DungeonRewardModal } from "@/components/dungeon-reward-modal";
 import { CharacterScreenSkeleton, ErrorNotice, LoadingLine } from "@/components/ui";
@@ -523,6 +523,8 @@ export function CharacterScreen({
   const [dropError, setDropError] = useState<string | null>(null);
   const [rewardResult, setRewardResult] = useState<ClaimResponse | null>(null);
   const [miniGameAttempt, setMiniGameAttempt] = useState<DungeonMiniGameAttempt | null>(null);
+  const [miniGameResult, setMiniGameResult] = useState<DungeonMiniGameAttempt | null>(null);
+  const [choosingDifficulty, setChoosingDifficulty] = useState(false);
   const characterQuery  = useQuery({ queryKey: ["character"],    queryFn: api.character });
   const dungeonsQuery   = useQuery({ queryKey: ["dungeons"],     queryFn: api.dungeons  });
   const currentRunQuery = useQuery({
@@ -540,8 +542,11 @@ export function CharacterScreen({
   });
 
   const startMiniGameMutation = useMutation({
-    mutationFn: (runId: number) => api.startMiniGame(runId),
-    onSuccess: (attempt) => setMiniGameAttempt(attempt),
+    mutationFn: ({ runId, configId }: { runId: number; configId: number }) => api.startMiniGame(runId, configId),
+    onSuccess: (attempt) => {
+      setChoosingDifficulty(false);
+      setMiniGameAttempt(attempt);
+    },
   });
 
   const patchInventoryCaches = (result: InventoryMutationResponse) => {
@@ -838,7 +843,7 @@ export function CharacterScreen({
             run={currentRunQuery.data}
             imageUrl={activeRunImage}
             onClaimed={setRewardResult}
-            onSpeedUp={() => startMiniGameMutation.mutate(currentRunQuery.data!.id)}
+            onSpeedUp={() => setChoosingDifficulty(true)}
             speedUpPending={startMiniGameMutation.isPending}
           />
         )}
@@ -1001,14 +1006,28 @@ export function CharacterScreen({
           onClose={() => setRewardResult(null)}
         />
       )}
+      {choosingDifficulty && !miniGameAttempt && currentRunQuery.data && (
+        <DungeonMiniGameDifficultyModal
+          pending={startMiniGameMutation.isPending}
+          onClose={() => setChoosingDifficulty(false)}
+          onSelect={(configId) => startMiniGameMutation.mutate({ runId: currentRunQuery.data!.id, configId })}
+        />
+      )}
       {miniGameAttempt && (
         <DungeonMiniGameModal
           attempt={miniGameAttempt}
           onClose={() => setMiniGameAttempt(null)}
           onFinished={(attempt) => {
-            setMiniGameAttempt(attempt);
+            setMiniGameAttempt(null);
+            setMiniGameResult(attempt);
             void queryClient.invalidateQueries({ queryKey: ["current-run"] });
           }}
+        />
+      )}
+      {miniGameResult && (
+        <DungeonMiniGameResultModal
+          attempt={miniGameResult}
+          onClose={() => setMiniGameResult(null)}
         />
       )}
       <ErrorNotice message={(startMiniGameMutation.error as Error | null)?.message} />
