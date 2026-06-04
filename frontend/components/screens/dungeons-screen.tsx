@@ -96,11 +96,17 @@ function ActiveRunBanner({
     }
   }, [inProgress, queryClient, remaining]);
 
+  const accent    = done ? "var(--warning)" : "var(--primary)";
+  const accentRgb = done ? "245,158,11" : "59,130,246";
+
   return (
     <div className="card active-strip animate-pulse-glow" style={{
-      borderColor: done ? "var(--warning)" : "var(--primary)",
+      borderColor: accent,
       marginBottom: 0,
-    }}>
+      "--strip-accent": accent,
+      "--strip-rgb": accentRgb,
+      "--glow-rgb": accentRgb,
+    } as React.CSSProperties}>
       <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "16px 20px", flexWrap: "wrap" }}>
         {/* Dungeon art */}
         <div style={{
@@ -243,6 +249,7 @@ export function DungeonsScreen() {
 
   const isRunning = currentRun.data?.status === "IN_PROGRESS";
   const hasRun    = Boolean(currentRun.data && currentRun.data.status !== "CLAIMED");
+  const awaitingClaim = currentRun.data?.status === "SUCCESS_WAITING_CLAIM" || currentRun.data?.status === "FAILED_WAITING_CLAIM";
   const activeRunImage = currentRun.data
     ? bestMediaUrl(
         dungeonsQuery.data?.find((dungeon) => dungeon.id === currentRun.data?.location.id)?.media,
@@ -307,7 +314,7 @@ export function DungeonsScreen() {
           {dungeonsQuery.data?.map((dungeon, idx) => {
             const tier       = getTier(dungeon.required_power);
             const isActive   = currentRun.data?.location?.id === dungeon.id && isRunning;
-            const disabled   = isRunning || startMutation.isPending;
+            const disabled   = hasRun || startMutation.isPending;
             const dungeonImage = bestMediaUrl(dungeon.media, ["large_url", "medium_url", "small_url"]);
 
             const durLabel = formatDuration(dungeon.duration_seconds, locale);
@@ -386,7 +393,7 @@ export function DungeonsScreen() {
                       className="btn btn-primary"
                       style={{ flex: 1, opacity: isActive ? 0.7 : undefined }}
                     >
-                      {startMutation.isPending ? t("dungeons.sending") : isActive ? t("dungeons.inProgressButton") : isRunning ? t("dungeons.heroBusy") : t("dungeons.sendHero")}
+                      {startMutation.isPending ? t("dungeons.sending") : isActive ? t("dungeons.inProgressButton") : awaitingClaim ? t("dungeons.claimFirst") : isRunning ? t("dungeons.heroBusy") : t("dungeons.sendHero")}
                     </button>
                     <button
                       onClick={() => setLootDungeon(dungeon)}
@@ -410,7 +417,7 @@ export function DungeonsScreen() {
           {dungeonsQuery.data?.map((dungeon) => {
             const tier         = getTier(dungeon.required_power);
             const isActive     = currentRun.data?.location?.id === dungeon.id && isRunning;
-            const disabled     = isRunning || startMutation.isPending;
+            const disabled     = hasRun || startMutation.isPending;
             const dungeonImage = bestMediaUrl(dungeon.media, ["small_url", "medium_url", "large_url"]);
             const durLabel     = formatDuration(dungeon.duration_seconds, locale);
 
@@ -499,7 +506,9 @@ export function DungeonsScreen() {
                     onClick={() => !disabled && startMutation.mutate(dungeon.id)}
                     className="btn btn-primary"
                     style={{
-                      width: "100%", height: 44, fontSize: 13,
+                      width: "100%", minHeight: 44, height: "auto", fontSize: 13,
+                      whiteSpace: "normal", lineHeight: 1.2, textAlign: "center",
+                      paddingTop: 8, paddingBottom: 8,
                       opacity: isActive ? 0.7 : undefined,
                     }}
                   >
@@ -507,9 +516,11 @@ export function DungeonsScreen() {
                       ? t("dungeons.sending")
                       : isActive
                         ? t("dungeons.inProgressButton")
-                        : isRunning
-                          ? t("dungeons.heroBusy")
-                          : t("dungeons.sendHero")}
+                        : awaitingClaim
+                          ? t("dungeons.claimFirst")
+                          : isRunning
+                            ? t("dungeons.heroBusy")
+                            : t("dungeons.sendHero")}
                   </button>
                   <button
                     onClick={() => setLootDungeon(dungeon)}

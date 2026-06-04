@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { X } from "lucide-react";
+import { Info, X, Zap } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/components/providers";
 import { api } from "@/lib/api";
@@ -74,27 +74,33 @@ export function DungeonMiniGameDifficultyModal({
           </button>
         </div>
 
-        <div className="mini-game-difficulty-list">
-          {(configsQuery.data ?? []).map((config) => (
-            <button
-              key={config.id}
-              type="button"
-              className="mini-game-difficulty-card"
-              disabled={pending}
-              onClick={() => onSelect(config.id)}
-            >
-              <div className="mini-game-difficulty-name">{config.difficulty}</div>
-              <div className="mini-game-difficulty-meta">
-                <span>{t("miniGame.cardCount", { count: config.pairs_count * 2 })}</span>
-                <span>{t("miniGame.timeLimit", { time: formatTime(config.time_limit_seconds) })}</span>
-              </div>
-              <div className="mini-game-difficulty-boost">
-                {t("miniGame.boost", { percent: config.reward_duration_reduction_percent })}
-              </div>
-            </button>
-          ))}
+        <div className="mini-game-difficulty-body">
+          <div className="mini-game-difficulty-list">
+            {(configsQuery.data ?? []).map((config) => (
+              <button
+                key={config.id}
+                type="button"
+                className="mini-game-difficulty-card"
+                disabled={pending}
+                onClick={() => onSelect(config.id)}
+              >
+                <div className="mini-game-difficulty-name">{config.difficulty}</div>
+                <div className="mini-game-difficulty-meta">
+                  <span>{t("miniGame.cardCount", { count: config.pairs_count * 2 })}</span>
+                  <span>{t("miniGame.timeLimit", { time: formatTime(config.time_limit_seconds) })}</span>
+                </div>
+                <span className="mini-game-difficulty-boost">
+                  <Zap size={12} />
+                  {t("miniGame.boost", { percent: config.reward_duration_reduction_percent })}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="mini-game-result-copy">{t("miniGame.chooseHint")}</div>
+        <div className="mini-game-difficulty-hint">
+          <Info size={14} />
+          <span>{t("miniGame.chooseHint")}</span>
+        </div>
       </div>
     </div>
   );

@@ -47,6 +47,10 @@ MESSAGES = {
         "en": "Character already has an active dungeon run.",
         "ru": "У героя уже есть активный поход.",
     },
+    "unclaimed_run_exists": {
+        "en": "Claim the reward for the finished dungeon run before starting a new one.",
+        "ru": "Сначала заберите награду за завершенный поход, затем запускайте новый.",
+    },
     "broken_items_block_run": {
         "en": "Broken equipped items block starting a new dungeon run.",
         "ru": "Сломанные надетые предметы блокируют запуск нового похода.",

@@ -370,8 +370,8 @@ export const api = {
   unequip(itemId: number) {
     return apiFetch<AppTypes.InventoryMutationResponse>(`/inventory/items/${itemId}/unequip`, { method: "POST" });
   },
-  leaderboard() {
-    return apiFetch<AppTypes.Leaderboard>("/leaderboard?type=level");
+  leaderboard(type: AppTypes.LeaderboardMetric = "level") {
+    return apiFetch<AppTypes.Leaderboard>(`/leaderboard?type=${type}`);
   },
   iconAssets() {
     return apiFetch<AppTypes.IconAsset[]>("/media/icons");

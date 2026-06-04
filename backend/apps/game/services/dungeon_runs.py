@@ -60,6 +60,14 @@ class DungeonRunService:
         character = Character.objects.select_for_update().select_related("character_class").prefetch_related("equipped_items").get(pk=character.pk)
         if DungeonRun.objects.filter(character=character, status=DungeonRunStatus.IN_PROGRESS).exists():
             raise serializers.ValidationError(message("active_run_exists", locale))
+        if DungeonRun.objects.filter(
+            character=character,
+            status__in=(
+                DungeonRunStatus.SUCCESS_WAITING_CLAIM,
+                DungeonRunStatus.FAILED_WAITING_CLAIM,
+            ),
+        ).exists():
+            raise serializers.ValidationError(message("unclaimed_run_exists", locale))
         if character.equipped_items.filter(durability_current=0).exists():
             raise serializers.ValidationError(message("broken_items_block_run", locale))
         try:
@@ -184,6 +192,7 @@ class DungeonRunService:
             created_items.append(item)
 
         cls._apply_durability_loss(character, run.durability_loss or 0)
+        GameFormulaService.refresh_power_cache(character)
         run.status = DungeonRunStatus.CLAIMED
         run.save(update_fields=["status", "updated_at"])
         return ClaimResult(run=run, claim=claim, items=created_items, old_level=old_level, new_level=character.level)
