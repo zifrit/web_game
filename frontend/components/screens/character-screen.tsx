@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type DragEvent } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { CircleHelp, Zap } from "lucide-react";
 import { canOpenMiniGame, DungeonMiniGameDifficultyModal, DungeonMiniGameModal, DungeonMiniGameResultModal } from "@/components/dungeon-mini-game-modal";
@@ -332,6 +333,18 @@ const POWER_WEIGHTS = {
 function PowerHelp({ stats, power }: { stats: Character["stats"]; power: number }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [placement, setPlacement] = useState<"top" | "right" | "bottom" | "left">("bottom");
+  const [popoverPosition, setPopoverPosition] = useState({
+    left: 0,
+    top: 0,
+    arrowLeft: 0,
+    arrowTop: 0,
+    ready: false,
+  });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLSpanElement>(null);
   const rows = [
     { key: "attack", label: t("common.attack"), value: stats?.attack ?? 0, weight: POWER_WEIGHTS.attack },
     { key: "defense", label: t("common.defense"), value: stats?.defense ?? 0, weight: POWER_WEIGHTS.defense },
@@ -340,29 +353,149 @@ function PowerHelp({ stats, power }: { stats: Character["stats"]; power: number 
     { key: "evasion", label: t("common.evasion"), value: stats?.evasion ?? 0, weight: POWER_WEIGHTS.evasion },
   ];
 
+  const updatePopoverPosition = useCallback(() => {
+    const button = buttonRef.current;
+    const popover = popoverRef.current;
+    if (!button || !popover) return;
+
+    const margin = 12;
+    const gap = 12;
+    const trigger = button.getBoundingClientRect();
+    const { width, height } = popover.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const space = {
+      top: trigger.top - margin,
+      right: viewportWidth - trigger.right - margin,
+      bottom: viewportHeight - trigger.bottom - margin,
+      left: trigger.left - margin,
+    };
+    const fits = {
+      bottom: space.bottom >= height + gap,
+      top: space.top >= height + gap,
+      right: space.right >= width + gap,
+      left: space.left >= width + gap,
+    };
+    const nextPlacement =
+      (fits.bottom && "bottom") ||
+      (fits.top && "top") ||
+      (fits.right && "right") ||
+      (fits.left && "left") ||
+      (Object.entries(space).sort((a, b) => b[1] - a[1])[0][0] as "top" | "right" | "bottom" | "left");
+
+    const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
+    const centeredLeft = trigger.left + trigger.width / 2 - width / 2;
+    const centeredTop = trigger.top + trigger.height / 2 - height / 2;
+    const maxLeft = Math.max(margin, viewportWidth - width - margin);
+    const maxTop = Math.max(margin, viewportHeight - height - margin);
+    const positionByPlacement = {
+      bottom: {
+        left: clamp(centeredLeft, margin, maxLeft),
+        top: clamp(trigger.bottom + gap, margin, maxTop),
+      },
+      top: {
+        left: clamp(centeredLeft, margin, maxLeft),
+        top: clamp(trigger.top - height - gap, margin, maxTop),
+      },
+      right: {
+        left: clamp(trigger.right + gap, margin, maxLeft),
+        top: clamp(centeredTop, margin, maxTop),
+      },
+      left: {
+        left: clamp(trigger.left - width - gap, margin, maxLeft),
+        top: clamp(centeredTop, margin, maxTop),
+      },
+    };
+    const nextPosition = positionByPlacement[nextPlacement];
+    const arrowInset = 14;
+    const triggerCenterX = trigger.left + trigger.width / 2;
+    const triggerCenterY = trigger.top + trigger.height / 2;
+    const arrowLeft = clamp(triggerCenterX - nextPosition.left, arrowInset, width - arrowInset);
+    const arrowTop = clamp(triggerCenterY - nextPosition.top, arrowInset, height - arrowInset);
+
+    setPlacement(nextPlacement);
+    setPopoverPosition({ ...nextPosition, arrowLeft, arrowTop, ready: true });
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePopoverPosition();
+  }, [open, updatePopoverPosition]);
+
+  useEffect(() => {
+    if (!open) return;
+    window.addEventListener("resize", updatePopoverPosition);
+    window.addEventListener("scroll", updatePopoverPosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePopoverPosition);
+      window.removeEventListener("scroll", updatePopoverPosition, true);
+    };
+  }, [open, updatePopoverPosition]);
+
+  const popover = mounted && open ? createPortal(
+    <span
+      ref={popoverRef}
+      className={`power-help-popover open${popoverPosition.ready ? " positioned" : ""}`}
+      data-placement={placement}
+      role="tooltip"
+      style={{
+        left: popoverPosition.left,
+        top: popoverPosition.top,
+        "--power-help-arrow-left": `${popoverPosition.arrowLeft}px`,
+        "--power-help-arrow-top": `${popoverPosition.arrowTop}px`,
+      } as CSSProperties}
+    >
+      <strong>{t("powerHelp.title")}</strong>
+      <span className="power-help-formula">{t("powerHelp.formula")}</span>
+      {rows.map((row) => (
+        <span key={row.key} className="power-help-row">
+          <span>{row.label}</span>
+          <span>{row.value} x {row.weight} = {(row.value * row.weight).toFixed(2)}</span>
+        </span>
+      ))}
+      <span className="power-help-total">{t("powerHelp.total", { value: power.toFixed(2) })}</span>
+    </span>,
+    document.body
+  ) : null;
+
   return (
-    <span className={`power-help${open ? " open" : ""}`}>
-      <button
-        type="button"
-        className="power-help-btn"
-        aria-label={t("powerHelp.title")}
-        aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
+    <>
+      <span
+        className={`power-help${open ? " open" : ""}`}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => {
+          if (!pinned) setOpen(false);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            setPinned(false);
+            setOpen(false);
+          }
+        }}
       >
-        <CircleHelp size={14} strokeWidth={2} />
-      </button>
-      <span className="power-help-popover" role="tooltip">
-        <strong>{t("powerHelp.title")}</strong>
-        <span className="power-help-formula">{t("powerHelp.formula")}</span>
-        {rows.map((row) => (
-          <span key={row.key} className="power-help-row">
-            <span>{row.label}</span>
-            <span>{row.value} x {row.weight} = {(row.value * row.weight).toFixed(2)}</span>
-          </span>
-        ))}
-        <span className="power-help-total">{t("powerHelp.total", { value: power.toFixed(2) })}</span>
+        <button
+          ref={buttonRef}
+          type="button"
+          className="power-help-btn"
+          aria-label={t("powerHelp.title")}
+          aria-expanded={open}
+          onClick={() => {
+            setPinned((current) => {
+              setOpen(!current);
+              return !current;
+            });
+          }}
+        >
+          <CircleHelp size={14} strokeWidth={2} />
+        </button>
       </span>
-    </span>
+      {popover}
+    </>
   );
 }
 

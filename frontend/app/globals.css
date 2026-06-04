@@ -1110,8 +1110,8 @@ button, input, select, textarea { font: inherit; }
   outline: none;
 }
 .power-help-popover {
-  position: absolute; right: 0; top: calc(100% + 12px); z-index: 40;
-  width: min(290px, 82vw); display: none; flex-direction: column; gap: 6px;
+  position: fixed; left: 0; top: 0; z-index: 120;
+  width: min(290px, calc(100vw - 24px)); display: none; flex-direction: column; gap: 6px;
   padding: 14px 14px 12px;
   border-radius: 2px;
   border: 1px solid var(--primary);
@@ -1121,14 +1121,34 @@ button, input, select, textarea { font: inherit; }
     0 0 28px rgba(59,130,246,0.18),
     inset 0 1px 0 rgba(255,255,255,0.04);
   color: var(--text); text-align: left; white-space: normal;
+  opacity: 0;
+  pointer-events: none;
 }
-/* Caret pointing up */
 .power-help-popover::before {
-  content: ""; position: absolute; top: -6px; right: 10px;
+  content: ""; position: absolute;
   width: 10px; height: 10px; transform: rotate(45deg);
   background: #0F1826;
-  border-left: 1px solid var(--primary);
-  border-top: 1px solid var(--primary);
+  border: 0 solid var(--primary);
+}
+.power-help-popover[data-placement="bottom"]::before {
+  top: -6px; left: var(--power-help-arrow-left, 50%); margin-left: -5px;
+  border-left-width: 1px;
+  border-top-width: 1px;
+}
+.power-help-popover[data-placement="top"]::before {
+  bottom: -6px; left: var(--power-help-arrow-left, 50%); margin-left: -5px;
+  border-right-width: 1px;
+  border-bottom-width: 1px;
+}
+.power-help-popover[data-placement="right"]::before {
+  left: -6px; top: var(--power-help-arrow-top, 50%); margin-top: -5px;
+  border-left-width: 1px;
+  border-bottom-width: 1px;
+}
+.power-help-popover[data-placement="left"]::before {
+  right: -6px; top: var(--power-help-arrow-top, 50%); margin-top: -5px;
+  border-right-width: 1px;
+  border-top-width: 1px;
 }
 /* Corner bracket decorations */
 .power-help-popover::after {
@@ -1140,9 +1160,11 @@ button, input, select, textarea { font: inherit; }
   border-radius: 1px 0 0 0;
   box-shadow: -1px -1px 5px rgba(59,130,246,0.3);
 }
-.power-help:hover .power-help-popover,
-.power-help:focus-within .power-help-popover,
-.power-help.open .power-help-popover { display: flex; }
+.power-help-popover.open { display: flex; }
+.power-help-popover.open.positioned {
+  opacity: 1;
+  pointer-events: auto;
+}
 .power-help-popover strong {
   font-family: var(--font-cinzel, 'Cinzel', 'Times New Roman', serif);
   font-size: 13px; color: var(--primary-bright); letter-spacing: 0.04em;
