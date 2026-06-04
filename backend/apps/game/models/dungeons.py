@@ -1,3 +1,5 @@
+import re
+
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -5,6 +7,35 @@ from django.db.models import Q
 from django.utils import timezone
 
 from .base import MediaAsset, TimestampedModel
+
+
+_SVG_SCRIPT_RE = re.compile(r"<script\b[^>]*>.*?</script\s*>", re.IGNORECASE | re.DOTALL)
+_SVG_ON_ATTR_RE = re.compile(r"\son[a-z]+\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)", re.IGNORECASE)
+_SVG_EXTERNAL_HREF_RE = re.compile(
+    r"\s(?:xlink:)?href\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)", re.IGNORECASE
+)
+
+
+def sanitize_svg_markup(markup: str) -> str:
+    """Убирает из SVG потенциально опасные части перед инлайном на фронте.
+
+    Контент admin-only, но раз он встраивается в DOM напрямую — вырезаем
+    `<script>`, обработчики событий `on*` и внешние ссылки `href`/`xlink:href`.
+    """
+
+    if not markup:
+        return ""
+    cleaned = _SVG_SCRIPT_RE.sub("", markup)
+    cleaned = _SVG_ON_ATTR_RE.sub("", cleaned)
+
+    def _strip_external(match: "re.Match[str]") -> str:
+        value = match.group(1).strip("\"'").strip()
+        if value.startswith("#"):
+            return match.group(0)
+        return ""
+
+    cleaned = _SVG_EXTERNAL_HREF_RE.sub(_strip_external, cleaned)
+    return cleaned.strip()
 from .characters import Character
 from .items import ItemTemplate, UserItem
 from .users import User
@@ -26,14 +57,6 @@ class DungeonLocation(TimestampedModel):
     money_max_copper = models.PositiveIntegerField("Максимум медных монет")
     item_drop_chance = models.FloatField("Шанс выпадения предмета")
     has_mini_game = models.BooleanField("Доступна мини-игра", default=False)
-    mini_game_config = models.ForeignKey(
-        "DungeonMiniGameConfig",
-        verbose_name="Настройка мини-игры",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="locations",
-    )
     is_active = models.BooleanField("Активна", default=True)
     sort_order = models.PositiveIntegerField("Порядок сортировки", default=0)
 
@@ -107,14 +130,52 @@ class DungeonMiniGameDifficulty(models.TextChoices):
     TWELVE = "12", "12/12"
 
 
+class MiniGameCardFace(TimestampedModel):
+    """SVG-лицо карточки memory-pairs, управляемое контентом из БД."""
+
+    code = models.SlugField("Кодовое обозначение", max_length=64, unique=True)
+    name = models.CharField("Название", max_length=120, blank=True, default="")
+    name_i18n = models.JSONField("Переводы названия", default=dict, blank=True)
+    svg_markup = models.TextField("SVG-разметка")
+    is_active = models.BooleanField("Активна", default=True)
+    sort_order = models.PositiveIntegerField("Порядок сортировки", default=0)
+
+    class Meta:
+        ordering = ["sort_order", "code"]
+        verbose_name = "Лицо карты мини-игры"
+        verbose_name_plural = "Лица карт мини-игр"
+
+    def clean(self) -> None:
+        """Прогоняет SVG через санитайзер перед сохранением."""
+
+        self.svg_markup = sanitize_svg_markup(self.svg_markup)
+
+    def save(self, *args, **kwargs):
+        """Гарантирует санитизацию даже при сохранении в обход формы."""
+
+        self.svg_markup = sanitize_svg_markup(self.svg_markup)
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        """Возвращает кодовое обозначение лица карты."""
+
+        return self.code
+
+
 class DungeonMiniGameConfig(TimestampedModel):
-    """Настройки мини-игры: сложность, таймер и ускорение прохождения."""
+    """Настройки мини-игры: сложность, таймер и процентное ускорение прохождения."""
 
     name = models.CharField("Название", max_length=120)
     difficulty = models.CharField("Сложность", max_length=8, choices=DungeonMiniGameDifficulty.choices, unique=True)
     pairs_count = models.PositiveSmallIntegerField("Количество пар")
     time_limit_seconds = models.PositiveIntegerField("Лимит времени в секундах")
-    reward_duration_reduction_seconds = models.PositiveIntegerField("Фиксированное сокращение времени в секундах", default=30)
+    reward_duration_reduction_percent = models.PositiveSmallIntegerField(
+        "Процент сокращения времени забега",
+        default=10,
+        validators=[MaxValueValidator(100)],
+    )
+    max_reduction_seconds = models.PositiveIntegerField("Абсолютный потолок сокращения в секундах", default=600)
+    card_face_codes = models.JSONField("Коды лиц карт", default=list, blank=True)
     is_active = models.BooleanField("Активна", default=True)
     sort_order = models.PositiveIntegerField("Порядок сортировки", default=0)
 
@@ -128,6 +189,23 @@ class DungeonMiniGameConfig(TimestampedModel):
         ]
         verbose_name = "Настройка мини-игры данжа"
         verbose_name_plural = "Настройки мини-игр данжей"
+
+    def clean(self) -> None:
+        """Проверяет, что набор лиц состоит из активных кодов и покрывает все пары."""
+
+        codes = self.card_face_codes or []
+        if not isinstance(codes, list) or any(not isinstance(code, str) for code in codes):
+            raise ValidationError("card_face_codes must be a list of string codes")
+        if len(set(codes)) != len(codes):
+            raise ValidationError("card_face_codes must not contain duplicates")
+        if len(codes) < self.pairs_count:
+            raise ValidationError("card_face_codes must contain at least pairs_count codes")
+        existing = set(
+            MiniGameCardFace.objects.filter(code__in=codes, is_active=True).values_list("code", flat=True)
+        )
+        missing = [code for code in codes if code not in existing]
+        if missing:
+            raise ValidationError(f"unknown or inactive card face codes: {', '.join(missing)}")
 
     def __str__(self) -> str:
         """Возвращает человекочитаемую сложность мини-игры."""
@@ -203,6 +281,7 @@ class DungeonMiniGameAttempt(TimestampedModel):
     moves_count = models.PositiveIntegerField("Количество ходов", default=0)
     matched_pairs_count = models.PositiveSmallIntegerField("Найдено пар", default=0)
     duration_reduction_seconds = models.PositiveIntegerField("Сокращение времени в секундах", default=0)
+    system_error = models.BooleanField("Завершено из-за системной ошибки", default=False)
 
     class Meta:
         ordering = ["-started_at"]

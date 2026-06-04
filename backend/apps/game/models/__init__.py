@@ -12,6 +12,7 @@ from .dungeons import (
     DungeonRunClaim,
     DungeonRunClaimItem,
     DungeonRunStatus,
+    MiniGameCardFace,
 )
 from .items import ItemTemplate, RepairTransaction, UserItem
 from .users import User, UserManager, UserTwoFactor
@@ -33,6 +34,7 @@ __all__ = [
     "GameConfig",
     "ItemTemplate",
     "MediaAsset",
+    "MiniGameCardFace",
     "RarityConfig",
     "RepairTransaction",
     "TimestampedModel",

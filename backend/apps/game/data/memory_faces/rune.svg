@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="rune">
+  <rect width="128" height="128" rx="18" fill="#101827"/>
+  <circle cx="64" cy="64" r="44" fill="#172554" stroke="#60a5fa" stroke-width="4"/>
+  <path d="M44 94 64 24l20 70M52 66h32M58 44l26 24" fill="none" stroke="#bfdbfe" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

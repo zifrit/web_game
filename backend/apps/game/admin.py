@@ -16,6 +16,7 @@ from .models import (
     GameConfig,
     ItemTemplate,
     MediaAsset,
+    MiniGameCardFace,
     RarityConfig,
     RepairTransaction,
     User,
@@ -162,10 +163,10 @@ class DungeonLocationItemTemplateInline(admin.TabularInline):
 
 @admin.register(DungeonLocation)
 class DungeonLocationAdmin(admin.ModelAdmin):
-    list_display = ("name", "duration_seconds", "required_power", "item_drop_chance", "has_mini_game", "mini_game_config", "is_active", "sort_order")
+    list_display = ("name", "duration_seconds", "required_power", "item_drop_chance", "has_mini_game", "is_active", "sort_order")
     list_filter = ("has_mini_game", "is_active")
     search_fields = ("name", "description")
-    autocomplete_fields = ("media", "mini_game_config")
+    autocomplete_fields = ("media",)
     inlines = [DungeonLocationItemTemplateInline]
 
 
@@ -176,12 +177,21 @@ class DungeonMiniGameConfigAdmin(admin.ModelAdmin):
         "difficulty",
         "pairs_count",
         "time_limit_seconds",
-        "reward_duration_reduction_seconds",
+        "reward_duration_reduction_percent",
+        "max_reduction_seconds",
         "is_active",
         "sort_order",
     )
     list_filter = ("difficulty", "is_active")
     search_fields = ("name",)
+
+
+@admin.register(MiniGameCardFace)
+class MiniGameCardFaceAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "is_active", "sort_order")
+    list_filter = ("is_active",)
+    search_fields = ("code", "name")
+    prepopulated_fields = {"code": ("name",)}
 
 
 @admin.register(DungeonMiniGameAttempt)
@@ -195,10 +205,11 @@ class DungeonMiniGameAttemptAdmin(admin.ModelAdmin):
         "moves_count",
         "matched_pairs_count",
         "duration_reduction_seconds",
+        "system_error",
         "started_at",
         "completed_at",
     )
-    list_filter = ("status", "config__difficulty")
+    list_filter = ("status", "system_error", "config__difficulty")
     search_fields = ("id", "user__email", "character__name", "dungeon_run__location__name")
     autocomplete_fields = ("dungeon_run", "config", "user", "character")
     list_select_related = ("dungeon_run", "dungeon_run__location", "config", "user", "character")

@@ -7,9 +7,11 @@ from apps.game.models import (
     DungeonMiniGameConfig,
     EquipmentSlotConfig,
     GameConfig,
+    MiniGameCardFace,
     RarityConfig,
 )
 from apps.game.services import DEFAULT_CONFIGS
+from apps.game.services.mini_game_faces import load_seed_card_faces
 from apps.game.services.ranks import MAX_RANK_LEVEL, RANKS
 from apps.game.services.seed_data import seed_ranked_item_templates
 
@@ -94,26 +96,40 @@ class Command(BaseCommand):
         for template in item_templates:
             templates_by_rank.setdefault(template.rarity_key, []).append(template)
 
+        card_face_codes = []
+        for face in load_seed_card_faces():
+            MiniGameCardFace.objects.update_or_create(
+                code=face["code"],
+                defaults={
+                    "name": face["name"],
+                    "svg_markup": face["svg_markup"],
+                    "is_active": True,
+                    "sort_order": face["sort_order"],
+                },
+            )
+            card_face_codes.append(face["code"])
+
+        # (difficulty, name, pairs, time_limit, reduction_percent, max_reduction_seconds)
         mini_games = [
-            ("6", "Memory 6/6", 6, 45, 60),
-            ("8", "Memory 8/8", 8, 60, 120),
-            ("10", "Memory 10/10", 10, 75, 180),
-            ("12", "Memory 12/12", 12, 90, 240),
+            ("6", "Memory 6/6", 6, 45, 10, 120),
+            ("8", "Memory 8/8", 8, 60, 20, 240),
+            ("10", "Memory 10/10", 10, 75, 30, 360),
+            ("12", "Memory 12/12", 12, 90, 40, 600),
         ]
-        mini_game_configs = {}
-        for index, (difficulty, name, pairs_count, time_limit_seconds, reduction_seconds) in enumerate(mini_games):
-            config, _ = DungeonMiniGameConfig.objects.update_or_create(
+        for index, (difficulty, name, pairs_count, time_limit_seconds, reduction_percent, max_reduction_seconds) in enumerate(mini_games):
+            DungeonMiniGameConfig.objects.update_or_create(
                 difficulty=difficulty,
                 defaults={
                     "name": name,
                     "pairs_count": pairs_count,
                     "time_limit_seconds": time_limit_seconds,
-                    "reward_duration_reduction_seconds": reduction_seconds,
+                    "reward_duration_reduction_percent": reduction_percent,
+                    "max_reduction_seconds": max_reduction_seconds,
+                    "card_face_codes": card_face_codes,
                     "is_active": True,
                     "sort_order": index,
                 },
             )
-            mini_game_configs[difficulty] = config
 
         dungeons = [
             ({"en": "Old Forest", "ru": "Старый лес"}, {"en": "A safe starting location.", "ru": "Безопасная стартовая локация."}, 15, 50, 5, 8, 30, 60, 10, True, "6", {"f": 90, "e": 10}),
@@ -121,7 +137,7 @@ class Command(BaseCommand):
             ({"en": "Damp Cave", "ru": "Сырая пещера"}, {"en": "A risky early dungeon.", "ru": "Рискованный early dungeon."}, 300, 100, 18, 35, 120, 220, 25, True, "12", {"f": 45, "e": 35, "d": 15, "c": 4, "b": 1}),
         ]
         for index, data in enumerate(dungeons):
-            names, descriptions, duration, power, exp_min, exp_max, money_min, money_max, drop, has_mini_game, mini_game_difficulty, template_chances = data
+            names, descriptions, duration, power, exp_min, exp_max, money_min, money_max, drop, has_mini_game, _mini_game_difficulty, template_chances = data
             dungeon, _ = DungeonLocation.objects.update_or_create(
                 name=names["ru"],
                 defaults={
@@ -136,7 +152,6 @@ class Command(BaseCommand):
                     "money_max_copper": money_max,
                     "item_drop_chance": drop,
                     "has_mini_game": has_mini_game,
-                    "mini_game_config": mini_game_configs.get(mini_game_difficulty),
                     "is_active": True,
                     "sort_order": index,
                 },
