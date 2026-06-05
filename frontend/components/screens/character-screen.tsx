@@ -652,7 +652,7 @@ export function CharacterScreen({
   });
 
   const startMiniGameMutation = useMutation({
-    mutationFn: ({ runId, configId }: { runId: number; configId: number }) => api.startMiniGame(runId, configId),
+    mutationFn: ({ runId, configId }: { runId: number; configId?: number }) => api.startMiniGame(runId, configId),
     onSuccess: (attempt) => {
       setChoosingDifficulty(false);
       setMiniGameAttempt(attempt);
@@ -953,7 +953,14 @@ export function CharacterScreen({
             run={currentRunQuery.data}
             imageUrl={activeRunImage}
             onClaimed={setRewardResult}
-            onSpeedUp={() => setChoosingDifficulty(true)}
+            onSpeedUp={() => {
+              const mg = currentRunQuery.data!.mini_game;
+              if (mg?.started && mg.status === "IN_PROGRESS") {
+                startMiniGameMutation.mutate({ runId: currentRunQuery.data!.id });
+              } else {
+                setChoosingDifficulty(true);
+              }
+            }}
             speedUpPending={startMiniGameMutation.isPending}
           />
         )}

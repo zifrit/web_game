@@ -70,7 +70,7 @@ function ActiveRunBanner({
   });
 
   const startMiniGame = useMutation({
-    mutationFn: (configId: number) => api.startMiniGame(run.id, configId),
+    mutationFn: (configId?: number) => api.startMiniGame(run.id, configId),
     onSuccess: (attempt) => {
       setChoosingDifficulty(false);
       setMiniGameAttempt(attempt);
@@ -81,6 +81,15 @@ function ActiveRunBanner({
   const inProgress   = run.status === "IN_PROGRESS";
   const done         = waitingClaim;
   const canStartMiniGame = canOpenMiniGame(run);
+  const hasActiveAttempt = Boolean(run.mini_game?.started && run.mini_game.status === "IN_PROGRESS");
+
+  const handleSpeedUp = () => {
+    if (hasActiveAttempt) {
+      startMiniGame.mutate(undefined);
+    } else {
+      setChoosingDifficulty(true);
+    }
+  };
 
   useEffect(() => {
     if (inProgress && remaining === 0) {
@@ -158,7 +167,7 @@ function ActiveRunBanner({
             <button
               className="btn btn-secondary"
               disabled={startMiniGame.isPending}
-              onClick={() => setChoosingDifficulty(true)}
+              onClick={handleSpeedUp}
             >
               <Zap size={16} />
               {startMiniGame.isPending ? t("miniGame.starting") : t("miniGame.speedUp")}

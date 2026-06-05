@@ -360,10 +360,10 @@ export const api = {
   miniGameCardFaces() {
     return apiFetch<AppTypes.MiniGameCardFaceCatalog>("/mini-game/card-faces");
   },
-  startMiniGame(runId: number, configId: number) {
+  startMiniGame(runId: number, configId?: number) {
     return apiFetch<AppTypes.DungeonMiniGameAttempt>(`/dungeon-runs/${runId}/mini-game/start`, {
       method: "POST",
-      body: JSON.stringify({ config_id: configId }),
+      body: JSON.stringify(configId != null ? { config_id: configId } : {}),
     });
   },
   revealMiniGameCard(attemptId: number, cardId: string) {

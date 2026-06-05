@@ -134,7 +134,7 @@ class DungeonRunStartSerializer(serializers.Serializer):
 class DungeonMiniGameStartSerializer(serializers.Serializer):
     """Сериализатор запуска мини-игры с выбранной сложностью."""
 
-    config_id = serializers.IntegerField(min_value=1)
+    config_id = serializers.IntegerField(min_value=1, required=False, allow_null=True)
 
 
 class DungeonMiniGameMoveSerializer(serializers.Serializer):

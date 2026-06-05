@@ -165,7 +165,7 @@ class DungeonMiniGameStartView(APIView):
         serializer.is_valid(raise_exception=True)
         locale = request_locale(request)
         attempt = DungeonMiniGameService.start_attempt(
-            request.user, pk, config_id=serializer.validated_data["config_id"], locale=locale
+            request.user, pk, config_id=serializer.validated_data.get("config_id"), locale=locale
         )
         return Response(DungeonMiniGameAttemptResponseSerializer.render(attempt), status=status.HTTP_201_CREATED)
 
