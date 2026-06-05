@@ -4,6 +4,7 @@ import os
 import sys
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -14,7 +15,17 @@ TESTING = "pytest" in sys.modules or "test" in sys.argv
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-secret-key")
 TOTP_ENCRYPTION_KEY = os.getenv("TOTP_ENCRYPTION_KEY", "")
 DEBUG = os.getenv("DJANGO_DEBUG", "1") == "1"
-SQL_DEBUG = True
+# Логирование каждого SQL-запроса. По умолчанию включено только в DEBUG,
+# в проде шумит и тормозит — управляется переменной SQL_DEBUG.
+SQL_DEBUG = os.getenv("SQL_DEBUG", "1" if DEBUG else "0") == "1"
+
+# В продакшене (DEBUG=0) обязательны реальные секреты. Падаем на старте,
+# если они не заданы, чтобы не уехать в онлайн с dev-ключами.
+if not DEBUG and not TESTING:
+    if SECRET_KEY == "dev-secret-key":
+        raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set in production (DEBUG=0).")
+    if not TOTP_ENCRYPTION_KEY:
+        raise ImproperlyConfigured("TOTP_ENCRYPTION_KEY must be set in production (DEBUG=0).")
 POLZA_AI_API_KEY = os.getenv("POLZA_AI_API_KEY")
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0,backend").split(",") if host.strip()]
 if DEBUG and "testserver" not in ALLOWED_HOSTS:
@@ -38,6 +49,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -106,6 +118,26 @@ CORS_ALLOWED_ORIGINS = [
     ).split(",")
     if origin.strip()
 ]
+
+# Доверенные источники для CSRF (нужно для admin/сессий за HTTPS-доменом).
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+
+# Безопасность транспорта. Активна только в продакшене (DEBUG=0). Приложение
+# работает за обратным прокси (Caddy), который терминирует TLS и проставляет
+# X-Forwarded-Proto, поэтому Django доверяет этому заголовку.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
@@ -199,23 +231,32 @@ STORAGES = {
         else "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
 
-if SQL_DEBUG:
-    LOGGING = {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "handlers": {
-            "console": {
-                "class": "logging.StreamHandler",
-            },
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {"format": "{asctime} {levelname} {name} {message}", "style": "{"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
         },
-        "loggers": {
-            "django.db.backends": {
-                "handlers": ["console"],
-                "level": "DEBUG",
-            },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
+    },
+    "loggers": {
+        # Логи SQL включаются только при SQL_DEBUG=1 (по умолчанию в DEBUG).
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "DEBUG" if SQL_DEBUG else "WARNING",
+            "propagate": False,
         },
-    }
+    },
+}

@@ -5,3 +5,9 @@ db.sqlite3
 .pytest_cache
 media
 staticfiles
+generated_assets
+assets
+celerybeat-schedule
+.ruff_cache
+.env
+.env.*

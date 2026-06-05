@@ -22,6 +22,8 @@ dependencies = [
     "django-extensions>=4.1",
     "pydantic>=2.13.4",
     "black>=26.5.1",
+    "gunicorn==23.0.0",
+    "whitenoise==6.8.2",
 ]
 
 [dependency-groups]
