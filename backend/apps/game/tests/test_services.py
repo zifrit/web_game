@@ -504,7 +504,7 @@ class ApiSmokeTests(TestCase):
 
         response = self.client.get("/api/dungeons")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 3)
+        self.assertEqual(len(response.data), 4)
 
         response = self.client.post("/api/dungeon-runs", {"location_id": response.data[0]["id"]}, format="json")
         self.assertEqual(response.status_code, 201)
@@ -939,3 +939,136 @@ class IngredientTests(TestCase):
             run.ingredients_reward,
             [{"ingredient_id": self.herb.id, "quantity": 2}],
         )
+
+
+class ResourceLocationTests(TestCase):
+    """Проверки Этапа 5: ресурсная локация «Лес трав»."""
+
+    def setUp(self):
+        SeedCommand().handle()
+        self.user = User.objects.create_user("resource@example.com", "strongpass123")
+        self.character = GameBalanceService.create_character(
+            self.user, "Forager", CharacterClass.objects.get(key="warrior")
+        )
+        self.resource = DungeonLocation.objects.get(name="Лес трав")
+        self.dungeon = DungeonLocation.objects.get(name="Старый лес")
+        self.herb = IngredientTemplate.objects.get(code="forest_herb")
+
+    def _run_and_claim_resource(self):
+        """Стартует ресурсный забег, истекает таймер, завершает и клеймит."""
+
+        run = DungeonRunService.start_run(self.user, self.resource.id)
+        run.ends_at = timezone.now() - timezone.timedelta(seconds=1)
+        run.save(update_fields=["ends_at", "updated_at"])
+        return DungeonRunService.claim_run(self.user, run.id)
+
+    def test_start_allowed_at_low_hp(self):
+        self.character.current_hp = 1
+        self.character.save(update_fields=["current_hp", "updated_at"])
+
+        # Обычный данж заблокирован низким HP.
+        with self.assertRaises(Exception):
+            DungeonRunService.start_run(self.user, self.dungeon.id)
+
+        # Ресурсная локация стартует при любом HP.
+        run = DungeonRunService.start_run(self.user, self.resource.id)
+        self.assertEqual(run.status, DungeonRun.IN_PROGRESS)
+        self.assertEqual(run.success_chance, 100)
+
+    def test_guaranteed_success(self):
+        run = DungeonRunService.start_run(self.user, self.resource.id)
+        self.assertEqual(run.success_chance, 100)
+        run.ends_at = timezone.now() - timezone.timedelta(seconds=1)
+        run.save(update_fields=["ends_at", "updated_at"])
+        DungeonRunService.finalize_due_run(run)
+        run.refresh_from_db()
+        self.assertIs(run.is_success, True)
+        self.assertEqual(run.status, DungeonRun.SUCCESS_WAITING_CLAIM)
+
+    def test_claim_grants_only_ingredients(self):
+        before_hp = self.character.current_hp
+        before_exp = self.character.experience
+        before_level = self.character.level
+        before_money = self.user.money_copper
+
+        result = self._run_and_claim_resource()
+
+        self.character.refresh_from_db()
+        self.user.refresh_from_db()
+        self.assertEqual(result.run.experience_reward, 0)
+        self.assertEqual(result.run.money_reward_copper, 0)
+        self.assertEqual(result.run.items_reward, [])
+        self.assertEqual(result.run.hp_loss, 0)
+        self.assertEqual(result.run.durability_loss, 0)
+        self.assertEqual(self.character.current_hp, before_hp)
+        self.assertEqual(self.character.experience, before_exp)
+        self.assertEqual(self.character.level, before_level)
+        self.assertEqual(self.user.money_copper, before_money)
+        # forest_herb выпадает со 100% шансом.
+        storage = HeroIngredientStorage.objects.get(character=self.character, ingredient=self.herb)
+        self.assertGreater(storage.count, 0)
+
+    def test_daily_limit_blocks_after_limit(self):
+        self.assertEqual(self.resource.daily_limit, 3)
+        for _ in range(3):
+            self._run_and_claim_resource()
+        with self.assertRaises(Exception):
+            DungeonRunService.start_run(self.user, self.resource.id)
+
+    def test_daily_limit_counts_non_claimed_runs(self):
+        # Лимит расходуется заходами любого статуса (не только CLAIMED).
+        for status_value in (
+            DungeonRun.SUCCESS_WAITING_CLAIM,
+            DungeonRun.FAILED_WAITING_CLAIM,
+            DungeonRun.CLAIMED,
+        ):
+            DungeonRun.objects.create(
+                character=self.character,
+                location=self.resource,
+                status=status_value,
+                started_at=timezone.now(),
+                ends_at=timezone.now(),
+                success_chance=100,
+            )
+        # Счётчик дневного лимита не фильтрует по статусу — учитывает все заходы.
+        used = DungeonRun.objects.filter(
+            character=self.character,
+            location=self.resource,
+            started_at__date=timezone.localdate(),
+        ).count()
+        self.assertEqual(used, 3)
+
+    def test_daily_limit_blocks_with_claimed_runs(self):
+        # Три CLAIMED-захода за сегодня исчерпывают лимит → старт блокируется
+        # именно дневным лимитом (нет активного/незаклеймленного забега).
+        for _ in range(3):
+            DungeonRun.objects.create(
+                character=self.character,
+                location=self.resource,
+                status=DungeonRun.CLAIMED,
+                started_at=timezone.now(),
+                ends_at=timezone.now(),
+                success_chance=100,
+            )
+        with self.assertRaisesMessage(Exception, "Daily limit"):
+            DungeonRunService.start_run(self.user, self.resource.id)
+
+    def test_cannot_start_resource_with_active_dungeon_run(self):
+        DungeonRunService.start_run(self.user, self.dungeon.id)
+        with self.assertRaises(Exception):
+            DungeonRunService.start_run(self.user, self.resource.id)
+
+    def test_api_lists_resource_location(self):
+        client = APIClient()
+        login = client.post(
+            "/api/auth/login",
+            {"email": "resource@example.com", "password": "strongpass123"},
+            format="json",
+        )
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access_token']}")
+        response = client.get("/api/dungeons")
+        self.assertEqual(response.status_code, 200)
+        resource = next(loc for loc in response.data if loc["location_type"] == "resource")
+        self.assertEqual(resource["success_chance"], 100)
+        self.assertEqual(resource["daily_limit"], 3)
+        self.assertEqual(resource["daily_remaining"], 3)

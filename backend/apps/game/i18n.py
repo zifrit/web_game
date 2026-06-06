@@ -155,6 +155,10 @@ MESSAGES = {
         "en": "Not enough potions.",
         "ru": "Недостаточно зелий.",
     },
+    "daily_limit_reached": {
+        "en": "Daily limit for this location has been reached.",
+        "ru": "Дневной лимит этой локации исчерпан.",
+    },
 }
 
 

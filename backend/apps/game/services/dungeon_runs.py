@@ -16,6 +16,7 @@ from apps.game.models import (
     DungeonRunClaim,
     DungeonRunClaimItem,
     DungeonRunStatus,
+    LocationType,
     UserItem,
 )
 
@@ -73,19 +74,33 @@ class DungeonRunService:
             ),
         ).exists():
             raise serializers.ValidationError(message("unclaimed_run_exists", locale))
-        if character.equipped_items.filter(durability_current=0).exists():
-            raise serializers.ValidationError(message("broken_items_block_run", locale))
         try:
             location = DungeonLocation.objects.get(pk=location_id, is_active=True)
         except DungeonLocation.DoesNotExist as exc:
             raise serializers.ValidationError(message("dungeon_not_found", locale)) from exc
 
-        stats = GameFormulaService.character_stats(character)
-        total_max_hp = int(stats["max_hp"])
-        if GameFormulaService.is_hp_too_low_to_start(character.current_hp, total_max_hp):
-            raise serializers.ValidationError(message("hp_too_low", locale))
-        hp_penalty = GameFormulaService.hp_success_penalty(character.current_hp, total_max_hp)
-        success_chance = GameFormulaService.success_chance(stats["power"], location.required_power, hp_penalty=hp_penalty)
+        if location.location_type == LocationType.RESOURCE:
+            # Ресурсная локация: гарантированный успех, доступна при любом HP,
+            # не требует силы и не проверяет сломанную экипировку. Действует только
+            # общий гвард «одна активность за раз» (выше) и дневной лимит.
+            if location.daily_limit > 0:
+                used_today = DungeonRun.objects.filter(
+                    character=character,
+                    location=location,
+                    started_at__date=timezone.localdate(),
+                ).count()
+                if used_today >= location.daily_limit:
+                    raise serializers.ValidationError(message("daily_limit_reached", locale))
+            success_chance = 100
+        else:
+            if character.equipped_items.filter(durability_current=0).exists():
+                raise serializers.ValidationError(message("broken_items_block_run", locale))
+            stats = GameFormulaService.character_stats(character)
+            total_max_hp = int(stats["max_hp"])
+            if GameFormulaService.is_hp_too_low_to_start(character.current_hp, total_max_hp):
+                raise serializers.ValidationError(message("hp_too_low", locale))
+            hp_penalty = GameFormulaService.hp_success_penalty(character.current_hp, total_max_hp)
+            success_chance = GameFormulaService.success_chance(stats["power"], location.required_power, hp_penalty=hp_penalty)
         now = timezone.now()
         return DungeonRun.objects.create(
             character=character,
@@ -104,20 +119,32 @@ class DungeonRunService:
         if run.status != DungeonRunStatus.IN_PROGRESS or run.ends_at > now:
             return run
 
-        is_success = random.uniform(0, 100) <= run.success_chance
         location = run.location
-        run.is_success = is_success
-        run.completed_at = now
-        run.status = DungeonRunStatus.SUCCESS_WAITING_CLAIM if is_success else DungeonRunStatus.FAILED_WAITING_CLAIM
-        run.experience_reward = random.randint(location.experience_min, location.experience_max) if is_success else 0
-        run.money_reward_copper = random.randint(location.money_min_copper, location.money_max_copper) if is_success else 0
-        item_reward = LootGenerationService.generate_item_reward(run.character, location) if is_success else None
-        run.items_reward = [item_reward] if item_reward else []
-        run.ingredients_reward = IngredientDropService.roll_drops(location) if is_success else []
-        run.durability_loss = GameFormulaService.durability_loss(is_success)
-        total_max_hp = int(GameFormulaService.character_stats(run.character)["max_hp"])
-        hp_loss_percent = location.hp_loss_success_percent if is_success else location.hp_loss_fail_percent
-        run.hp_loss = GameFormulaService.hp_loss(total_max_hp, hp_loss_percent)
+        if location.location_type == LocationType.RESOURCE:
+            # Ресурсная локация: гарантированный успех, только ингредиенты.
+            run.is_success = True
+            run.completed_at = now
+            run.status = DungeonRunStatus.SUCCESS_WAITING_CLAIM
+            run.experience_reward = 0
+            run.money_reward_copper = 0
+            run.items_reward = []
+            run.ingredients_reward = IngredientDropService.roll_drops(location)
+            run.durability_loss = 0
+            run.hp_loss = 0
+        else:
+            is_success = random.uniform(0, 100) <= run.success_chance
+            run.is_success = is_success
+            run.completed_at = now
+            run.status = DungeonRunStatus.SUCCESS_WAITING_CLAIM if is_success else DungeonRunStatus.FAILED_WAITING_CLAIM
+            run.experience_reward = random.randint(location.experience_min, location.experience_max) if is_success else 0
+            run.money_reward_copper = random.randint(location.money_min_copper, location.money_max_copper) if is_success else 0
+            item_reward = LootGenerationService.generate_item_reward(run.character, location) if is_success else None
+            run.items_reward = [item_reward] if item_reward else []
+            run.ingredients_reward = IngredientDropService.roll_drops(location) if is_success else []
+            run.durability_loss = GameFormulaService.durability_loss(is_success)
+            total_max_hp = int(GameFormulaService.character_stats(run.character)["max_hp"])
+            hp_loss_percent = location.hp_loss_success_percent if is_success else location.hp_loss_fail_percent
+            run.hp_loss = GameFormulaService.hp_loss(total_max_hp, hp_loss_percent)
         had_active_mini_game = run.mini_game_attempts.filter(
             status=DungeonMiniGameAttemptStatus.IN_PROGRESS
         ).update(

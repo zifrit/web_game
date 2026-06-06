@@ -9,6 +9,7 @@ from apps.game.models import (
     EquipmentSlotConfig,
     GameConfig,
     IngredientTemplate,
+    LocationType,
     MiniGameCardFace,
     PotionTemplate,
     RarityConfig,
@@ -161,6 +162,8 @@ class Command(BaseCommand):
                     "hp_loss_fail_percent": hp_loss_fail,
                     "item_drop_chance": drop,
                     "has_mini_game": has_mini_game,
+                    "location_type": LocationType.DUNGEON,
+                    "daily_limit": 0,
                     "is_active": True,
                     "sort_order": index,
                 },
@@ -175,6 +178,33 @@ class Command(BaseCommand):
                     )
                     active_template_ids.append(template.id)
             DungeonLocationItemTemplate.objects.filter(location=dungeon).exclude(item_template_id__in=active_template_ids).delete()
+
+        # Ресурсная локация: гарантированный успех, только базовые ингредиенты, дневной лимит.
+        DungeonLocation.objects.update_or_create(
+            name="Лес трав",
+            defaults={
+                "description": "Спокойный сбор базовых ингредиентов.",
+                "name_i18n": {"en": "Herb Forest", "ru": "Лес трав"},
+                "description_i18n": {
+                    "en": "A calm spot to gather basic ingredients.",
+                    "ru": "Спокойный сбор базовых ингредиентов.",
+                },
+                "duration_seconds": 30,
+                "required_power": 0,
+                "experience_min": 0,
+                "experience_max": 0,
+                "money_min_copper": 0,
+                "money_max_copper": 0,
+                "hp_loss_success_percent": 0,
+                "hp_loss_fail_percent": 0,
+                "item_drop_chance": 0,
+                "has_mini_game": False,
+                "location_type": LocationType.RESOURCE,
+                "daily_limit": 3,
+                "is_active": True,
+                "sort_order": 100,
+            },
+        )
 
         # (code, names, descriptions, heal_percent)
         potions = [
@@ -269,6 +299,10 @@ class Command(BaseCommand):
                 "cave_moss": (50, 1, 2),
                 "bitter_root": (30, 1, 1),
                 "crystal_dust": (8, 1, 1),
+            },
+            "Лес трав": {
+                "forest_herb": (100, 1, 5),
+                "clean_water": (50, 1, 2),
             },
         }
         for location_name, drops in ingredient_drops.items():

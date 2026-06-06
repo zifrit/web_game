@@ -13,6 +13,7 @@ from .dungeons import (
     DungeonRunClaim,
     DungeonRunClaimItem,
     DungeonRunStatus,
+    LocationType,
     MiniGameCardFace,
 )
 from .ingredients import DungeonIngredientDrop, HeroIngredientStorage, IngredientTemplate
@@ -32,6 +33,7 @@ __all__ = [
     "DungeonRunClaim",
     "DungeonRunClaimItem",
     "DungeonRunStatus",
+    "LocationType",
     "DungeonIngredientDrop",
     "EquipmentSlotConfig",
     "GameConfig",

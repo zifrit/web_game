@@ -41,6 +41,13 @@ from .items import ItemTemplate, UserItem
 from .users import User
 
 
+class LocationType(models.TextChoices):
+    """Тип локации: боевой данж или мирная ресурсная локация."""
+
+    DUNGEON = "dungeon", "Данж"
+    RESOURCE = "resource", "Ресурсная локация"
+
+
 class DungeonLocation(TimestampedModel):
     """Локация подземелья с длительностью, требованиями и наградами."""
 
@@ -59,6 +66,14 @@ class DungeonLocation(TimestampedModel):
     hp_loss_fail_percent = models.FloatField("Потеря HP при провале, %", default=0)
     item_drop_chance = models.FloatField("Шанс выпадения предмета")
     has_mini_game = models.BooleanField("Доступна мини-игра", default=False)
+    location_type = models.CharField(
+        "Тип локации",
+        max_length=16,
+        choices=LocationType.choices,
+        default=LocationType.DUNGEON,
+        db_index=True,
+    )
+    daily_limit = models.PositiveIntegerField("Дневной лимит заходов (0 = без лимита)", default=0)
     is_active = models.BooleanField("Активна", default=True)
     sort_order = models.PositiveIntegerField("Порядок сортировки", default=0)
 
@@ -80,6 +95,19 @@ class DungeonLocation(TimestampedModel):
             raise ValidationError("hp_loss_success_percent must be between 0 and 100")
         if not 0 <= self.hp_loss_fail_percent <= 100:
             raise ValidationError("hp_loss_fail_percent must be between 0 and 100")
+        if self.location_type == LocationType.RESOURCE:
+            if self.required_power:
+                raise ValidationError("resource location must have required_power = 0")
+            if self.experience_min or self.experience_max:
+                raise ValidationError("resource location must have zero experience")
+            if self.money_min_copper or self.money_max_copper:
+                raise ValidationError("resource location must have zero money reward")
+            if self.item_drop_chance:
+                raise ValidationError("resource location must have item_drop_chance = 0")
+            if self.hp_loss_success_percent or self.hp_loss_fail_percent:
+                raise ValidationError("resource location must have zero hp loss")
+            if self.daily_limit <= 0:
+                raise ValidationError("resource location must have daily_limit > 0")
         if (
             self.pk
             and self.is_active

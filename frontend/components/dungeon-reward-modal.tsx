@@ -25,6 +25,16 @@ export function DungeonRewardModal({
   const rarity = item?.rarity.toLowerCase() ?? "f";
   const stats = item ? Object.entries(item.stats ?? {}).filter(([, value]) => typeof value === "number" && value !== 0) : [];
 
+  // Ресурсный забег: только ингредиенты, всё остальное обнулено — показываем компактно.
+  const resourceLike =
+    result.is_success &&
+    result.rewards.ingredients.length > 0 &&
+    result.rewards.experience === 0 &&
+    result.rewards.money_copper === 0 &&
+    result.rewards.items.length === 0 &&
+    result.rewards.durability_loss === 0 &&
+    result.rewards.hp_loss === 0;
+
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="dungeon-reward-title">
       <div className="modal reward-modal">
@@ -38,6 +48,7 @@ export function DungeonRewardModal({
         </div>
 
         <div className="card-body">
+          {!resourceLike && (
           <div className="reward-summary-grid">
             <div className="reward-metric reward-metric-xp">
               <span>{t("reward.experience")}</span>
@@ -63,6 +74,7 @@ export function DungeonRewardModal({
               </strong>
             </div>
           </div>
+          )}
 
           {result.rewards.durability_changes.length > 0 && (
             <div className="reward-durability-breakdown">
@@ -101,6 +113,7 @@ export function DungeonRewardModal({
             </div>
           )}
 
+          {!resourceLike && (
           <div className="reward-item-panel">
             <div className="card-sub" style={{ marginBottom: 10 }}>
               {item ? t("reward.itemFound") : t("reward.noItem")}
@@ -137,6 +150,7 @@ export function DungeonRewardModal({
               <div className="reward-empty">{t("reward.noItemBody")}</div>
             )}
           </div>
+          )}
 
           <ErrorNotice message={error} />
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>

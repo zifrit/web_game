@@ -1,4 +1,6 @@
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -40,6 +42,24 @@ from apps.game.services import (
 from apps.game.services.reference_cache import reference_version
 
 
+def _resource_daily_used_map(character, location_id=None):
+    """Возвращает {location_id: число сегодняшних заходов} по ресурсным локациям героя."""
+
+    if character is None:
+        return {}
+    rows = (
+        DungeonRun.objects.filter(
+            character=character,
+            location__location_type="resource",
+            started_at__date=timezone.localdate(),
+        )
+    )
+    if location_id is not None:
+        rows = rows.filter(location_id=location_id)
+    rows = rows.values("location_id").annotate(n=Count("id"))
+    return {row["location_id"]: row["n"] for row in rows}
+
+
 class DungeonLocationListView(APIView):
     """API-ручка списка доступных подземелий."""
 
@@ -56,8 +76,9 @@ class DungeonLocationListView(APIView):
             hp_penalty = GameFormulaService.hp_success_penalty(character.current_hp, int(stats["max_hp"]))
         except Character.DoesNotExist:
             pass
+        daily_used_map = _resource_daily_used_map(character)
         locations = DungeonLocation.objects.filter(is_active=True).select_related("media")
-        return Response(DungeonLocationSerializer(locations, many=True, context={"request": request, "character": character, "character_power": character_power, "hp_penalty": hp_penalty}).data)
+        return Response(DungeonLocationSerializer(locations, many=True, context={"request": request, "character": character, "character_power": character_power, "hp_penalty": hp_penalty, "daily_used_map": daily_used_map}).data)
 
 
 class DungeonLocationDetailView(APIView):
@@ -77,7 +98,8 @@ class DungeonLocationDetailView(APIView):
         except Character.DoesNotExist:
             pass
         location = get_object_or_404(DungeonLocation.objects.select_related("media"), pk=pk, is_active=True)
-        return Response(DungeonLocationSerializer(location, context={"request": request, "character": character, "character_power": character_power, "hp_penalty": hp_penalty}).data)
+        daily_used_map = _resource_daily_used_map(character, location_id=location.id)
+        return Response(DungeonLocationSerializer(location, context={"request": request, "character": character, "character_power": character_power, "hp_penalty": hp_penalty, "daily_used_map": daily_used_map}).data)
 
 
 class DungeonLocationLootView(APIView):

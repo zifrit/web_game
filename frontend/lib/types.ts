@@ -121,6 +121,9 @@ export type Dungeon = {
   success_chance: number;
   item_drop_chance: number;
   has_mini_game: boolean;
+  location_type: "dungeon" | "resource";
+  daily_limit: number;
+  daily_remaining: number | null;
   media?: MediaAssetUrls | null;
   rewards_preview?: {
     experience?: RangeValue;

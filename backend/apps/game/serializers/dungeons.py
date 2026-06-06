@@ -2,7 +2,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.game.i18n import DEFAULT_LOCALE, translate
-from apps.game.models import DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonRun, DungeonRunStatus, IngredientTemplate
+from apps.game.models import DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonRun, DungeonRunStatus, IngredientTemplate, LocationType
 from apps.game.services import DungeonMiniGameService, GameFormulaService
 
 from .common import localized_item_name, localized_name, media_payload, serializer_locale
@@ -16,6 +16,7 @@ class DungeonLocationSerializer(serializers.ModelSerializer):
     success_chance = serializers.SerializerMethodField()
     media = serializers.SerializerMethodField()
     rewards_preview = serializers.SerializerMethodField()
+    daily_remaining = serializers.SerializerMethodField()
 
     class Meta:
         model = DungeonLocation
@@ -28,13 +29,26 @@ class DungeonLocationSerializer(serializers.ModelSerializer):
             "success_chance",
             "item_drop_chance",
             "has_mini_game",
+            "location_type",
+            "daily_limit",
+            "daily_remaining",
             "media",
             "rewards_preview",
         ]
 
+    def get_daily_remaining(self, obj):
+        """Для ресурсной локации возвращает остаток заходов на сегодня."""
+
+        if obj.location_type != LocationType.RESOURCE or obj.daily_limit == 0:
+            return None
+        used = self.context.get("daily_used_map", {}).get(obj.id, 0)
+        return max(0, obj.daily_limit - used)
+
     def get_success_chance(self, obj):
         """Считает шанс успеха текущего героя в этой локации."""
 
+        if obj.location_type == LocationType.RESOURCE:
+            return 100
         character_power = self.context.get("character_power")
         hp_penalty = self.context.get("hp_penalty", 0.0)
         if character_power is None:
