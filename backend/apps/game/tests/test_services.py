@@ -7,8 +7,8 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.game.management.commands.seed_game import Command as SeedCommand
-from apps.game.models import CharacterClass, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonMiniGameConfig, DungeonRun, HeroPotionStorage, ItemTemplate, PotionTemplate, RarityConfig, User, UserItem
-from apps.game.services import DungeonMiniGameService, DungeonRunService, GameBalanceService, GameFormulaService, InventoryService, LootGenerationService, PotionService
+from apps.game.models import CharacterClass, DungeonIngredientDrop, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonMiniGameConfig, DungeonRun, HeroIngredientStorage, HeroPotionStorage, IngredientTemplate, ItemTemplate, PotionTemplate, RarityConfig, User, UserItem
+from apps.game.services import DungeonMiniGameService, DungeonRunService, GameBalanceService, GameFormulaService, IngredientDropService, IngredientService, InventoryService, LootGenerationService, PotionService
 from apps.game.services.ranks import RANKS, rank_for_level
 
 
@@ -806,3 +806,136 @@ class PotionTests(TestCase):
         self.assertEqual(used.status_code, 200, used.data)
         self.assertGreater(used.data["current_hp"], 1)
         self.assertEqual(used.data["remaining"], 2)
+
+
+class IngredientTests(TestCase):
+    """Проверки Этапа 4: дроп ингредиентов, склад героя и ответ claim."""
+
+    def setUp(self):
+        SeedCommand().handle()
+        self.user = User.objects.create_user("ingredient@example.com", "strongpass123")
+        self.character = GameBalanceService.create_character(
+            self.user, "Gatherer", CharacterClass.objects.get(key="warrior")
+        )
+        self.location = DungeonLocation.objects.get(name="Старый лес")
+        self.herb = IngredientTemplate.objects.get(code="forest_herb")
+
+    def _set_single_drop(self, chance_percent=100, min_quantity=2, max_quantity=2, ingredient=None):
+        """Оставляет у локации единственную детерминированную запись дропа."""
+
+        ingredient = ingredient or self.herb
+        self.location.ingredient_drops.all().delete()
+        return DungeonIngredientDrop.objects.create(
+            location=self.location,
+            ingredient=ingredient,
+            chance_percent=chance_percent,
+            min_quantity=min_quantity,
+            max_quantity=max_quantity,
+        )
+
+    def _force_successful_run(self):
+        """Создаёт готовый к claim успешный забег с истёкшим таймером."""
+
+        run = DungeonRunService.start_run(self.user, self.location.id)
+        run.ends_at = timezone.now() - timezone.timedelta(seconds=1)
+        run.success_chance = 100
+        run.save(update_fields=["ends_at", "success_chance", "updated_at"])
+        return run
+
+    def test_roll_drops_always_drops_at_full_chance(self):
+        self._set_single_drop(chance_percent=100, min_quantity=2, max_quantity=2)
+        drops = IngredientDropService.roll_drops(self.location)
+        self.assertEqual(drops, [{"ingredient_id": self.herb.id, "quantity": 2}])
+
+    def test_roll_drops_quantity_within_range(self):
+        self._set_single_drop(chance_percent=100, min_quantity=1, max_quantity=3)
+        for _ in range(20):
+            drops = IngredientDropService.roll_drops(self.location)
+            self.assertEqual(len(drops), 1)
+            self.assertTrue(1 <= drops[0]["quantity"] <= 3)
+
+    def test_successful_claim_adds_ingredients_once(self):
+        self._set_single_drop(chance_percent=100, min_quantity=2, max_quantity=2)
+        run = self._force_successful_run()
+
+        DungeonRunService.claim_run(self.user, run.id)
+        storage = HeroIngredientStorage.objects.get(character=self.character, ingredient=self.herb)
+        self.assertEqual(storage.count, 2)
+
+        # Повторный claim не должен начислять ингредиенты ещё раз.
+        DungeonRunService.claim_run(self.user, run.id)
+        storage.refresh_from_db()
+        self.assertEqual(storage.count, 2)
+
+    def test_two_successful_runs_stack_into_single_row(self):
+        self._set_single_drop(chance_percent=100, min_quantity=2, max_quantity=2)
+        first = self._force_successful_run()
+        DungeonRunService.claim_run(self.user, first.id)
+        second = self._force_successful_run()
+        DungeonRunService.claim_run(self.user, second.id)
+
+        rows = HeroIngredientStorage.objects.filter(character=self.character, ingredient=self.herb)
+        self.assertEqual(rows.count(), 1)
+        self.assertEqual(rows.first().count, 4)
+
+    def test_failed_run_grants_no_ingredients(self):
+        self._set_single_drop(chance_percent=100, min_quantity=2, max_quantity=2)
+        run = DungeonRunService.start_run(self.user, self.location.id)
+        run.ends_at = timezone.now() - timezone.timedelta(seconds=1)
+        run.success_chance = 0
+        run.save(update_fields=["ends_at", "success_chance", "updated_at"])
+
+        with patch("apps.game.services.dungeon_runs.random.uniform", return_value=50.0):
+            DungeonRunService.claim_run(self.user, run.id)
+
+        run.refresh_from_db()
+        self.assertEqual(run.ingredients_reward, [])
+        self.assertFalse(HeroIngredientStorage.objects.filter(character=self.character, count__gt=0).exists())
+
+    def test_list_ingredients_hides_zero_count_rows(self):
+        HeroIngredientStorage.objects.create(character=self.character, ingredient=self.herb, count=0)
+        visible = IngredientService.list_ingredients(self.user)
+        self.assertEqual(list(visible), [])
+
+    def test_api_ingredients_listing(self):
+        HeroIngredientStorage.objects.create(character=self.character, ingredient=self.herb, count=5)
+        client = APIClient()
+        login = client.post(
+            "/api/auth/login",
+            {"email": "ingredient@example.com", "password": "strongpass123"},
+            format="json",
+        )
+        self.assertEqual(login.status_code, 200, login.data)
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access_token']}")
+
+        listing = client.get("/api/ingredients")
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(len(listing.data), 1)
+        row = listing.data[0]
+        self.assertEqual(row["id"], self.herb.id)
+        self.assertEqual(row["code"], "forest_herb")
+        self.assertEqual(row["count"], 5)
+        self.assertIn("category", row)
+
+    def test_claim_response_includes_ingredients(self):
+        self._set_single_drop(chance_percent=100, min_quantity=2, max_quantity=2)
+        run = self._force_successful_run()
+        client = APIClient()
+        login = client.post(
+            "/api/auth/login",
+            {"email": "ingredient@example.com", "password": "strongpass123"},
+            format="json",
+        )
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access_token']}")
+
+        response = client.post(f"/api/dungeon-runs/{run.id}/claim")
+        self.assertEqual(response.status_code, 200, response.data)
+        ingredients = response.data["rewards"]["ingredients"]
+        run.refresh_from_db()
+        self.assertEqual(len(ingredients), len(run.ingredients_reward))
+        self.assertEqual(ingredients[0]["id"], self.herb.id)
+        self.assertEqual(ingredients[0]["quantity"], 2)
+        self.assertEqual(
+            run.ingredients_reward,
+            [{"ingredient_id": self.herb.id, "quantity": 2}],
+        )

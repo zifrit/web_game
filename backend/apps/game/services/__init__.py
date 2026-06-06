@@ -10,6 +10,7 @@ from .config import (
 )
 from .dungeon_runs import ClaimResult, DungeonRunService
 from .formulas import GameFormulaService
+from .ingredients import IngredientDropService, IngredientService
 from .inventory import InventoryService
 from .loot import LootGenerationService, item_allowed_for_character
 from .mini_games import DungeonMiniGameService
@@ -30,6 +31,8 @@ __all__ = [
     "GameBalanceService",
     "GameConfigService",
     "GameFormulaService",
+    "IngredientDropService",
+    "IngredientService",
     "InventoryService",
     "LEADERBOARD_TIMEOUT",
     "LootGenerationService",

@@ -64,6 +64,15 @@ export type Potion = {
   media?: MediaAssetUrls | null;
 };
 
+export type Ingredient = {
+  id: number;
+  code: string;
+  name: string;
+  category: string;
+  count: number;
+  media?: MediaAssetUrls | null;
+};
+
 export type UsePotionResponse = {
   potion_id: number;
   used: number;
@@ -159,6 +168,7 @@ export type DungeonRun = {
     experience: number;
     money_copper: number;
     items_count: number;
+    ingredients_count: number;
     durability_loss: number;
     hp_loss: number;
   };
@@ -303,6 +313,13 @@ export type ClaimResponse = {
       removed: number;
     }>;
     hp_loss: number;
+    ingredients: Array<{
+      id: number;
+      code: string;
+      name: string;
+      quantity: number;
+      media?: MediaAssetUrls | null;
+    }>;
   };
   hp?: {
     current: number;

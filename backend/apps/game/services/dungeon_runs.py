@@ -21,6 +21,7 @@ from apps.game.models import (
 
 from .config import GameConfigService
 from .formulas import GameFormulaService
+from .ingredients import IngredientDropService, IngredientService
 from .loot import LootGenerationService
 from .mini_game_store import MiniGameStore
 
@@ -40,6 +41,7 @@ class ClaimResult(BaseModel):
     hp_loss: int = 0
     current_hp: int = 0
     max_hp: int = 0
+    ingredients: list = []
 
 
 class DungeonRunService:
@@ -111,6 +113,7 @@ class DungeonRunService:
         run.money_reward_copper = random.randint(location.money_min_copper, location.money_max_copper) if is_success else 0
         item_reward = LootGenerationService.generate_item_reward(run.character, location) if is_success else None
         run.items_reward = [item_reward] if item_reward else []
+        run.ingredients_reward = IngredientDropService.roll_drops(location) if is_success else []
         run.durability_loss = GameFormulaService.durability_loss(is_success)
         total_max_hp = int(GameFormulaService.character_stats(run.character)["max_hp"])
         hp_loss_percent = location.hp_loss_success_percent if is_success else location.hp_loss_fail_percent
@@ -132,6 +135,7 @@ class DungeonRunService:
                 "experience_reward",
                 "money_reward_copper",
                 "items_reward",
+                "ingredients_reward",
                 "durability_loss",
                 "hp_loss",
                 "updated_at",
@@ -164,6 +168,7 @@ class DungeonRunService:
                 hp_loss=0,
                 current_hp=run.character.current_hp,
                 max_hp=int(GameFormulaService.character_stats(run.character)["max_hp"]),
+                ingredients=run.ingredients_reward or [],
             )
 
         if run.status not in (DungeonRunStatus.SUCCESS_WAITING_CLAIM, DungeonRunStatus.FAILED_WAITING_CLAIM):
@@ -221,6 +226,9 @@ class DungeonRunService:
             DungeonRunClaimItem.objects.create(claim=claim, user_item=item)
             created_items.append(item)
 
+        for drop in run.ingredients_reward or []:
+            IngredientService.add_to_storage(character, drop["ingredient_id"], drop["quantity"])
+
         durability_total, durability_changes = cls._apply_durability_loss(character, run.durability_loss or 0)
         GameFormulaService.refresh_power_cache(character)
         total_max_hp = int(GameFormulaService.character_stats(character)["max_hp"])
@@ -237,6 +245,7 @@ class DungeonRunService:
             hp_loss=hp_loss,
             current_hp=character.current_hp,
             max_hp=total_max_hp,
+            ingredients=run.ingredients_reward or [],
         )
 
     @staticmethod

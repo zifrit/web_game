@@ -2,7 +2,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.game.i18n import DEFAULT_LOCALE, translate
-from apps.game.models import DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonRun, DungeonRunStatus
+from apps.game.models import DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonRun, DungeonRunStatus, IngredientTemplate
 from apps.game.services import DungeonMiniGameService, GameFormulaService
 
 from .common import localized_item_name, localized_name, media_payload, serializer_locale
@@ -119,6 +119,7 @@ class DungeonRunSerializer(serializers.ModelSerializer):
             "experience": obj.experience_reward or 0,
             "money_copper": obj.money_reward_copper or 0,
             "items_count": len(obj.items_reward or []),
+            "ingredients_count": len(obj.ingredients_reward or []),
             "durability_loss": obj.durability_loss or 0,
             "hp_loss": obj.hp_loss or 0,
         }
@@ -182,6 +183,24 @@ class ClaimResponseSerializer:
         """Преобразует результат claim в публичный API-ответ."""
 
         item_context: dict = {}
+        ingredient_drops = result.run.ingredients_reward or []
+        ingredient_templates = IngredientTemplate.objects.select_related("media").in_bulk(
+            {drop["ingredient_id"] for drop in ingredient_drops}
+        )
+        ingredients_payload = []
+        for drop in ingredient_drops:
+            template = ingredient_templates.get(drop["ingredient_id"])
+            if template is None:
+                continue
+            ingredients_payload.append(
+                {
+                    "id": template.id,
+                    "code": template.code,
+                    "name": localized_name(template, locale),
+                    "quantity": drop["quantity"],
+                    "media": media_payload(template.media),
+                }
+            )
         return {
             "id": result.run.id,
             "status": result.run.status,
@@ -215,6 +234,7 @@ class ClaimResponseSerializer:
                     for change in result.durability_changes
                 ],
                 "hp_loss": result.hp_loss or 0,
+                "ingredients": ingredients_payload,
             },
             "hp": {"current": result.current_hp, "max": result.max_hp},
             "level_up": {"old_level": result.old_level, "new_level": result.new_level},

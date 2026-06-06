@@ -421,6 +421,9 @@ export const api = {
   potions() {
     return apiFetch<AppTypes.Potion[]>("/potions");
   },
+  ingredients() {
+    return apiFetch<AppTypes.Ingredient[]>("/ingredients");
+  },
   usePotion(body: { potion_id: number; quantity: number }) {
     return apiFetch<AppTypes.UsePotionResponse>("/potions/use", {
       method: "POST",

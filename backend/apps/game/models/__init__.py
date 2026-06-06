@@ -15,6 +15,7 @@ from .dungeons import (
     DungeonRunStatus,
     MiniGameCardFace,
 )
+from .ingredients import DungeonIngredientDrop, HeroIngredientStorage, IngredientTemplate
 from .items import ItemTemplate, RepairTransaction, UserItem
 from .users import User, UserManager, UserTwoFactor
 
@@ -31,9 +32,12 @@ __all__ = [
     "DungeonRunClaim",
     "DungeonRunClaimItem",
     "DungeonRunStatus",
+    "DungeonIngredientDrop",
     "EquipmentSlotConfig",
     "GameConfig",
+    "HeroIngredientStorage",
     "HeroPotionStorage",
+    "IngredientTemplate",
     "ItemTemplate",
     "MediaAsset",
     "MiniGameCardFace",

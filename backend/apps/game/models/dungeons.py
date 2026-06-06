@@ -246,6 +246,7 @@ class DungeonRun(TimestampedModel):
     experience_reward = models.PositiveIntegerField("Награда опытом", null=True, blank=True)
     money_reward_copper = models.PositiveIntegerField("Награда в медных монетах", null=True, blank=True)
     items_reward = models.JSONField("Награда предметами", null=True, blank=True)
+    ingredients_reward = models.JSONField("Награда ингредиентами", null=True, blank=True)
     durability_loss = models.PositiveIntegerField("Потеря прочности", null=True, blank=True)
     hp_loss = models.PositiveIntegerField("Потеря HP", null=True, blank=True)
 

@@ -81,6 +81,20 @@ export function DungeonRewardModal({
             </div>
           )}
 
+          {result.rewards.ingredients.length > 0 && (
+            <div className="reward-durability-breakdown">
+              <div className="card-sub" style={{ marginBottom: 8 }}>{t("reward.ingredients")}</div>
+              <div className="stat-list" style={{ gridTemplateColumns: "1fr" }}>
+                {result.rewards.ingredients.map((ingredient) => (
+                  <div key={ingredient.id} className="sl-row">
+                    <span className="lbl">{ingredient.name}</span>
+                    <span className="val">×{formatNumber(ingredient.quantity, locale)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {result.level_up && result.level_up.new_level > result.level_up.old_level && (
             <div className="reward-levelup">
               {t("reward.levelUp", { old: result.level_up.old_level, next: result.level_up.new_level })}

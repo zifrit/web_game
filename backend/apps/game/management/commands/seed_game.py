@@ -2,11 +2,13 @@ from django.core.management.base import BaseCommand
 
 from apps.game.models import (
     CharacterClass,
+    DungeonIngredientDrop,
     DungeonLocation,
     DungeonLocationItemTemplate,
     DungeonMiniGameConfig,
     EquipmentSlotConfig,
     GameConfig,
+    IngredientTemplate,
     MiniGameCardFace,
     PotionTemplate,
     RarityConfig,
@@ -202,5 +204,84 @@ class Command(BaseCommand):
                     "sort_order": index,
                 },
             )
+
+        # (code, names, descriptions, category)
+        ingredients = [
+            (
+                "forest_herb",
+                {"en": "Forest herb", "ru": "Лесная трава"},
+                {"en": "A common herb gathered in forests.", "ru": "Обычная трава, собираемая в лесах."},
+                IngredientTemplate.Category.BASIC,
+            ),
+            (
+                "clean_water",
+                {"en": "Clean water", "ru": "Чистая вода"},
+                {"en": "Fresh water for simple recipes.", "ru": "Свежая вода для простых рецептов."},
+                IngredientTemplate.Category.BASIC,
+            ),
+            (
+                "bitter_root",
+                {"en": "Bitter root", "ru": "Горький корень"},
+                {"en": "A bitter root with alchemical uses.", "ru": "Горький корень для алхимии."},
+                IngredientTemplate.Category.BASIC,
+            ),
+            (
+                "cave_moss",
+                {"en": "Cave moss", "ru": "Пещерный мох"},
+                {"en": "Moss that grows in damp caves.", "ru": "Мох, растущий в сырых пещерах."},
+                IngredientTemplate.Category.REGIONAL,
+            ),
+            (
+                "crystal_dust",
+                {"en": "Crystal dust", "ru": "Кристальная пыль"},
+                {"en": "Rare shimmering crystal dust.", "ru": "Редкая мерцающая кристальная пыль."},
+                IngredientTemplate.Category.RARE,
+            ),
+        ]
+        ingredient_by_code = {}
+        for index, (code, names, descriptions, category) in enumerate(ingredients):
+            ingredient, _ = IngredientTemplate.objects.update_or_create(
+                code=code,
+                defaults={
+                    "name": names["ru"],
+                    "name_i18n": names,
+                    "description": descriptions["ru"],
+                    "description_i18n": descriptions,
+                    "category": category,
+                    "is_active": True,
+                    "sort_order": index,
+                },
+            )
+            ingredient_by_code[code] = ingredient
+
+        # location name -> {ingredient code: (chance_percent, min_quantity, max_quantity)}
+        ingredient_drops = {
+            "Старый лес": {
+                "forest_herb": (75, 1, 3),
+                "clean_water": (45, 1, 1),
+            },
+            "Заброшенная тропа": {
+                "forest_herb": (60, 1, 2),
+                "bitter_root": (35, 1, 1),
+                "cave_moss": (15, 1, 1),
+            },
+            "Сырая пещера": {
+                "cave_moss": (50, 1, 2),
+                "bitter_root": (30, 1, 1),
+                "crystal_dust": (8, 1, 1),
+            },
+        }
+        for location_name, drops in ingredient_drops.items():
+            location = DungeonLocation.objects.get(name=location_name)
+            for code, (chance_percent, min_quantity, max_quantity) in drops.items():
+                DungeonIngredientDrop.objects.update_or_create(
+                    location=location,
+                    ingredient=ingredient_by_code[code],
+                    defaults={
+                        "chance_percent": chance_percent,
+                        "min_quantity": min_quantity,
+                        "max_quantity": max_quantity,
+                    },
+                )
 
         self.stdout.write(self.style.SUCCESS("Seeded MVP game data."))

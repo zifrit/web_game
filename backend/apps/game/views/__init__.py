@@ -29,6 +29,7 @@ from .dungeons import (
     DungeonRunHistoryView,
     DungeonRunStartView,
 )
+from .ingredients import IngredientListView
 from .inventory import (
     InventoryItemDetailView,
     InventoryItemEquipView,
@@ -61,6 +62,7 @@ __all__ = [
     "DungeonRunHistoryView",
     "DungeonRunStartView",
     "IconAssetsView",
+    "IngredientListView",
     "ThrottledTokenRefreshView",
     "InventoryItemDetailView",
     "InventoryItemEquipView",

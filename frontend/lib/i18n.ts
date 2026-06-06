@@ -174,6 +174,7 @@ const dictionaries = {
     "reward.itemFound": "Item found",
     "reward.noItem": "No item dropped",
     "reward.noItemBody": "The expedition returned without equipment loot.",
+    "reward.ingredients": "Ingredients gathered",
     "reward.okay": "Okay",
     "inventory.inPack": "{count} in pack",
     "inventory.dragItem": "drag item",
@@ -300,6 +301,8 @@ const dictionaries = {
     "potions.use": "Use",
     "potions.empty": "No potions available.",
     "potions.hpFull": "HP is already full.",
+    "ingredients.title": "Ingredients",
+    "ingredients.empty": "No ingredients gathered yet.",
   },
   ru: {
     "nav.adventure": "Приключения",
@@ -468,6 +471,7 @@ const dictionaries = {
     "reward.itemFound": "Найден предмет",
     "reward.noItem": "Предмет не выпал",
     "reward.noItemBody": "Поход вернулся без предметной добычи.",
+    "reward.ingredients": "Собранные ингредиенты",
     "reward.okay": "Окей",
     "inventory.inPack": "{count} в сумке",
     "inventory.dragItem": "перетащите предмет",
@@ -594,6 +598,8 @@ const dictionaries = {
     "potions.use": "Использовать",
     "potions.empty": "Нет доступных зелий.",
     "potions.hpFull": "HP уже полное.",
+    "ingredients.title": "Ингредиенты",
+    "ingredients.empty": "Ингредиенты ещё не собраны.",
   },
 } satisfies Record<Locale, Record<string, string>>;
 

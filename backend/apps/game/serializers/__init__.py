@@ -16,6 +16,7 @@ from .dungeons import (
     DungeonRunSerializer,
     DungeonRunStartSerializer,
 )
+from .ingredients import HeroIngredientSerializer
 from .inventory import InventorySerializer, UserItemDetailSerializer, UserItemSummarySerializer
 from .leaderboard import LeaderboardItemSerializer
 
@@ -36,6 +37,7 @@ __all__ = [
     "DungeonRunHistorySerializer",
     "DungeonRunSerializer",
     "DungeonRunStartSerializer",
+    "HeroIngredientSerializer",
     "HeroPotionSerializer",
     "InventorySerializer",
     "LeaderboardItemSerializer",

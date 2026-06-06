@@ -5,6 +5,7 @@ from django.contrib.admin.widgets import AutocompleteSelect
 from .models import (
     Character,
     CharacterClass,
+    DungeonIngredientDrop,
     DungeonLocation,
     DungeonLocationItemTemplate,
     DungeonMiniGameAttempt,
@@ -14,7 +15,9 @@ from .models import (
     DungeonRunClaimItem,
     EquipmentSlotConfig,
     GameConfig,
+    HeroIngredientStorage,
     HeroPotionStorage,
+    IngredientTemplate,
     ItemTemplate,
     MediaAsset,
     MiniGameCardFace,
@@ -163,13 +166,23 @@ class DungeonLocationItemTemplateInline(admin.TabularInline):
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
+class DungeonIngredientDropInline(admin.TabularInline):
+    model = DungeonIngredientDrop
+    extra = 1
+    fields = ("ingredient", "chance_percent", "min_quantity", "max_quantity")
+    autocomplete_fields = ("ingredient",)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("location", "ingredient")
+
+
 @admin.register(DungeonLocation)
 class DungeonLocationAdmin(admin.ModelAdmin):
     list_display = ("name", "duration_seconds", "required_power", "hp_loss_success_percent", "hp_loss_fail_percent", "item_drop_chance", "has_mini_game", "is_active", "sort_order")
     list_filter = ("has_mini_game", "is_active")
     search_fields = ("name", "description")
     autocomplete_fields = ("media",)
-    inlines = [DungeonLocationItemTemplateInline]
+    inlines = [DungeonLocationItemTemplateInline, DungeonIngredientDropInline]
 
 
 @admin.register(DungeonMiniGameConfig)
@@ -328,6 +341,22 @@ class HeroPotionStorageAdmin(admin.ModelAdmin):
     search_fields = ("character__name", "potion__code", "potion__name")
     autocomplete_fields = ("character", "potion")
     list_select_related = ("character", "potion")
+
+
+@admin.register(IngredientTemplate)
+class IngredientTemplateAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "category", "is_active", "sort_order")
+    list_filter = ("category", "is_active")
+    search_fields = ("code", "name")
+    autocomplete_fields = ("media",)
+
+
+@admin.register(HeroIngredientStorage)
+class HeroIngredientStorageAdmin(admin.ModelAdmin):
+    list_display = ("character", "ingredient", "count")
+    search_fields = ("character__name", "ingredient__code", "ingredient__name")
+    autocomplete_fields = ("character", "ingredient")
+    list_select_related = ("character", "ingredient")
 
 
 @admin.register(RepairTransaction)
