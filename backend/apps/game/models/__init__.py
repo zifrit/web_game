@@ -1,6 +1,7 @@
 from .base import MediaAsset, TimestampedModel
 from .characters import Character, CharacterClass
 from .config import EquipmentSlotConfig, GameConfig, RarityConfig
+from .consumables import HeroPotionStorage, PotionTemplate
 from .dungeons import (
     DungeonLocation,
     DungeonLocationItemTemplate,
@@ -32,9 +33,11 @@ __all__ = [
     "DungeonRunStatus",
     "EquipmentSlotConfig",
     "GameConfig",
+    "HeroPotionStorage",
     "ItemTemplate",
     "MediaAsset",
     "MiniGameCardFace",
+    "PotionTemplate",
     "RarityConfig",
     "RepairTransaction",
     "TimestampedModel",

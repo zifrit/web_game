@@ -12,7 +12,7 @@ import { api } from "@/lib/api";
 import { formatDuration, type Locale, type TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
 import { rarityColor as rc, rarityGlow as rg } from "@/lib/rarity";
-import type { Character, ClaimResponse, Dungeon, DungeonMiniGameAttempt, EquipmentSlot, Inventory, InventoryCard, InventoryMutationResponse } from "@/lib/types";
+import type { Character, ClaimResponse, Dungeon, DungeonMiniGameAttempt, EquipmentSlot, Inventory, InventoryCard, InventoryMutationResponse, Potion } from "@/lib/types";
 
 function setStableDragImage(event: DragEvent<HTMLDivElement>) {
   const node = event.currentTarget;
@@ -616,6 +616,53 @@ function ActiveExpeditionStrip({ run, imageUrl, onClaimed, onSpeedUp, speedUpPen
 }
 
 /* ═══════════════════════════════════════
+   PotionsPanel — минимальный UI Этапа 3
+═══════════════════════════════════════ */
+function PotionsPanel({ hpFull }: { hpFull: boolean }) {
+  const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const potionsQuery = useQuery({ queryKey: ["potions"], queryFn: api.potions });
+  const useMut = useMutation({
+    mutationFn: (potionId: number) => api.usePotion({ potion_id: potionId, quantity: 1 }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["character"] }),
+        queryClient.invalidateQueries({ queryKey: ["potions"] }),
+      ]);
+    },
+  });
+
+  const potions = potionsQuery.data ?? [];
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div className="card-sub" style={{ marginBottom: 10 }}>{t("potions.title")}</div>
+      {potions.length === 0 ? (
+        <div style={{ color: "var(--bone)", fontSize: 13 }}>{t("potions.empty")}</div>
+      ) : (
+        <div className="stat-list" style={{ gridTemplateColumns: "1fr" }}>
+          {potions.map((potion: Potion) => (
+            <div key={potion.id} className="sl-row" style={{ alignItems: "center" }}>
+              <span className="lbl">
+                {potion.name} · +{potion.heal_percent}% · ×{potion.count}
+              </span>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={hpFull || useMut.isPending}
+                onClick={() => useMut.mutate(potion.id)}
+              >
+                {t("potions.use")}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
    CharacterScreen
 ═══════════════════════════════════════ */
 export function CharacterScreen({
@@ -907,6 +954,8 @@ export function CharacterScreen({
             <BarBlock label={t("common.experience")} cur={xp} max={xpMax} kind="xp" />
             <BarBlock label={t("common.vitality")}   cur={hpCur} max={hpMax} kind="hp" />
           </div>
+
+          <PotionsPanel hpFull={hpCur >= hpMax} />
 
           <div className="divider" />
 

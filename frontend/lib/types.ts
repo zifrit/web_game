@@ -55,6 +55,24 @@ export type IconAsset = MediaAssetUrls & {
   name: string;
 };
 
+export type Potion = {
+  id: number;
+  code: string;
+  name: string;
+  heal_percent: number;
+  count: number;
+  media?: MediaAssetUrls | null;
+};
+
+export type UsePotionResponse = {
+  potion_id: number;
+  used: number;
+  healed: number;
+  current_hp: number;
+  max_hp: number;
+  remaining: number;
+};
+
 export type CharacterClass = {
   key: string;
   name: string;

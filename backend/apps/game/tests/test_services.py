@@ -7,8 +7,8 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.game.management.commands.seed_game import Command as SeedCommand
-from apps.game.models import CharacterClass, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonMiniGameConfig, DungeonRun, ItemTemplate, RarityConfig, User, UserItem
-from apps.game.services import DungeonMiniGameService, DungeonRunService, GameBalanceService, GameFormulaService, InventoryService, LootGenerationService
+from apps.game.models import CharacterClass, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonMiniGameConfig, DungeonRun, HeroPotionStorage, ItemTemplate, PotionTemplate, RarityConfig, User, UserItem
+from apps.game.services import DungeonMiniGameService, DungeonRunService, GameBalanceService, GameFormulaService, InventoryService, LootGenerationService, PotionService
 from apps.game.services.ranks import RANKS, rank_for_level
 
 
@@ -709,3 +709,100 @@ class HpPenaltyTests(TestCase):
             - GameFormulaService.success_chance(50, 50, hp_penalty=15),
             15.0,
         )
+
+
+class PotionTests(TestCase):
+    """Проверки Этапа 3: формула лечения, использование зелий и склад героя."""
+
+    def setUp(self):
+        SeedCommand().handle()
+        self.user = User.objects.create_user("potion@example.com", "strongpass123")
+        self.character = GameBalanceService.create_character(self.user, "PotionHero", CharacterClass.objects.get(key="warrior"))
+        self.potion = PotionTemplate.objects.get(code="medium_healing_potion")  # 40%
+        self.storage = HeroPotionStorage.objects.create(character=self.character, potion=self.potion, count=3)
+
+    def _max_hp(self) -> int:
+        self.character.refresh_from_db()
+        return int(GameFormulaService.character_stats(self.character)["max_hp"])
+
+    def test_potion_heal_round_and_minimum(self):
+        # 100 * 40% = 40
+        self.assertEqual(GameFormulaService.potion_heal(100, 40), 40)
+        # 0% -> 0
+        self.assertEqual(GameFormulaService.potion_heal(100, 0), 0)
+        # маленький процент всё равно минимум 1
+        self.assertEqual(GameFormulaService.potion_heal(10, 1), 1)
+
+    def test_use_potion_heals_and_decrements(self):
+        max_hp = self._max_hp()
+        self.character.current_hp = 1
+        self.character.save(update_fields=["current_hp"])
+        expected = GameFormulaService.potion_heal(max_hp, self.potion.heal_percent)
+
+        result = PotionService.use_potion(self.user, self.potion.id, quantity=1)
+
+        self.character.refresh_from_db()
+        self.assertEqual(self.character.current_hp, 1 + expected)
+        self.assertEqual(result["healed"], expected)
+        self.storage.refresh_from_db()
+        self.assertEqual(self.storage.count, 2)
+
+    def test_heal_is_capped_at_max_hp(self):
+        max_hp = self._max_hp()
+        self.character.current_hp = max_hp - 1
+        self.character.save(update_fields=["current_hp"])
+
+        result = PotionService.use_potion(self.user, self.potion.id, quantity=1)
+
+        self.assertEqual(result["current_hp"], max_hp)
+        self.assertEqual(result["healed"], 1)
+
+    def test_use_potion_blocked_at_full_hp(self):
+        self.character.current_hp = self._max_hp()
+        self.character.save(update_fields=["current_hp"])
+
+        with self.assertRaises(Exception):
+            PotionService.use_potion(self.user, self.potion.id, quantity=1)
+
+        self.storage.refresh_from_db()
+        self.assertEqual(self.storage.count, 3)
+
+    def test_not_enough_potions(self):
+        self.character.current_hp = 1
+        self.character.save(update_fields=["current_hp"])
+
+        with self.assertRaises(Exception):
+            PotionService.use_potion(self.user, self.potion.id, quantity=99)
+
+        self.storage.refresh_from_db()
+        self.assertEqual(self.storage.count, 3)
+
+    def test_zero_count_row_kept_and_hidden(self):
+        self.character.current_hp = 1
+        self.character.save(update_fields=["current_hp"])
+        self.storage.count = 1
+        self.storage.save(update_fields=["count"])
+
+        PotionService.use_potion(self.user, self.potion.id, quantity=1)
+
+        self.storage.refresh_from_db()
+        self.assertEqual(self.storage.count, 0)
+        self.assertFalse(PotionService.list_potions(self.user).filter(pk=self.storage.pk).exists())
+
+    def test_api_list_and_use(self):
+        self.character.current_hp = 1
+        self.character.save(update_fields=["current_hp"])
+        client = APIClient()
+        login = client.post("/api/auth/login", {"email": "potion@example.com", "password": "strongpass123"}, format="json")
+        self.assertEqual(login.status_code, 200, login.data)
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access_token']}")
+
+        listing = client.get("/api/potions")
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(len(listing.data), 1)
+        self.assertEqual(listing.data[0]["id"], self.potion.id)
+
+        used = client.post("/api/potions/use", {"potion_id": self.potion.id, "quantity": 1}, format="json")
+        self.assertEqual(used.status_code, 200, used.data)
+        self.assertGreater(used.data["current_hp"], 1)
+        self.assertEqual(used.data["remaining"], 2)

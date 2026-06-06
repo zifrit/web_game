@@ -14,9 +14,11 @@ from .models import (
     DungeonRunClaimItem,
     EquipmentSlotConfig,
     GameConfig,
+    HeroPotionStorage,
     ItemTemplate,
     MediaAsset,
     MiniGameCardFace,
+    PotionTemplate,
     RarityConfig,
     RepairTransaction,
     User,
@@ -310,6 +312,22 @@ class UserItemAdmin(admin.ModelAdmin):
         "equipped_character__character_class",
         "template",
     )
+
+
+@admin.register(PotionTemplate)
+class PotionTemplateAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "heal_percent", "is_active", "sort_order")
+    list_filter = ("is_active",)
+    search_fields = ("code", "name")
+    autocomplete_fields = ("media",)
+
+
+@admin.register(HeroPotionStorage)
+class HeroPotionStorageAdmin(admin.ModelAdmin):
+    list_display = ("character", "potion", "count")
+    search_fields = ("character__name", "potion__code", "potion__name")
+    autocomplete_fields = ("character", "potion")
+    list_select_related = ("character", "potion")
 
 
 @admin.register(RepairTransaction)

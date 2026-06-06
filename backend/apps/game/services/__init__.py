@@ -1,4 +1,5 @@
 from .balance import GameBalanceService
+from .consumables import PotionService
 from .config import (
     DEFAULT_CONFIGS,
     DEFAULT_RARITIES,
@@ -32,6 +33,7 @@ __all__ = [
     "InventoryService",
     "LEADERBOARD_TIMEOUT",
     "LootGenerationService",
+    "PotionService",
     "REFERENCE_TIMEOUT",
     "RarityConfigCache",
     "_invalidate_game_config_cache",

@@ -8,6 +8,7 @@ from apps.game.models import (
     EquipmentSlotConfig,
     GameConfig,
     MiniGameCardFace,
+    PotionTemplate,
     RarityConfig,
 )
 from apps.game.services import DEFAULT_CONFIGS
@@ -172,5 +173,34 @@ class Command(BaseCommand):
                     )
                     active_template_ids.append(template.id)
             DungeonLocationItemTemplate.objects.filter(location=dungeon).exclude(item_template_id__in=active_template_ids).delete()
+
+        # (code, names, descriptions, heal_percent)
+        potions = [
+            (
+                "small_healing_potion",
+                {"en": "Small healing potion", "ru": "Малое зелье лечения"},
+                {"en": "Restores a small amount of HP.", "ru": "Восстанавливает немного HP."},
+                20,
+            ),
+            (
+                "medium_healing_potion",
+                {"en": "Medium healing potion", "ru": "Среднее зелье лечения"},
+                {"en": "Restores a moderate amount of HP.", "ru": "Восстанавливает умеренное количество HP."},
+                40,
+            ),
+        ]
+        for index, (code, names, descriptions, heal_percent) in enumerate(potions):
+            PotionTemplate.objects.update_or_create(
+                code=code,
+                defaults={
+                    "name": names["ru"],
+                    "name_i18n": names,
+                    "description": descriptions["ru"],
+                    "description_i18n": descriptions,
+                    "heal_percent": heal_percent,
+                    "is_active": True,
+                    "sort_order": index,
+                },
+            )
 
         self.stdout.write(self.style.SUCCESS("Seeded MVP game data."))

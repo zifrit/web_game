@@ -1,6 +1,7 @@
 from .auth import LoginSerializer, RegisterSerializer, TotpCodeSerializer, TotpDisableSerializer, TotpLoginSerializer, token_response
 from .characters import CharacterClassSerializer, CharacterCreateSerializer, CharacterMeSerializer, CreateCharacterSerializer
 from .common import localized_item_name, localized_name, media_payload, serializer_locale
+from .consumables import HeroPotionSerializer, UsePotionSerializer
 from .dungeons import (
     ClaimResponseSerializer,
     DungeonLootItemSerializer,
@@ -35,6 +36,7 @@ __all__ = [
     "DungeonRunHistorySerializer",
     "DungeonRunSerializer",
     "DungeonRunStartSerializer",
+    "HeroPotionSerializer",
     "InventorySerializer",
     "LeaderboardItemSerializer",
     "LoginSerializer",
@@ -42,6 +44,7 @@ __all__ = [
     "TotpCodeSerializer",
     "TotpDisableSerializer",
     "TotpLoginSerializer",
+    "UsePotionSerializer",
     "UserItemDetailSerializer",
     "UserItemSummarySerializer",
     "localized_item_name",

@@ -418,6 +418,15 @@ export const api = {
   unequip(itemId: number) {
     return apiFetch<AppTypes.InventoryMutationResponse>(`/inventory/items/${itemId}/unequip`, { method: "POST" });
   },
+  potions() {
+    return apiFetch<AppTypes.Potion[]>("/potions");
+  },
+  usePotion(body: { potion_id: number; quantity: number }) {
+    return apiFetch<AppTypes.UsePotionResponse>("/potions/use", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
   leaderboard(type: AppTypes.LeaderboardMetric = "level") {
     return apiFetch<AppTypes.Leaderboard>(`/leaderboard?type=${type}`);
   },

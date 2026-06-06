@@ -296,6 +296,10 @@ const dictionaries = {
     "nav.guide": "Guide",
     "page.guide.section": "Adventurer's Codex",
     "page.guide.title": "Field Guide",
+    "potions.title": "Potions",
+    "potions.use": "Use",
+    "potions.empty": "No potions available.",
+    "potions.hpFull": "HP is already full.",
   },
   ru: {
     "nav.adventure": "Приключения",
@@ -586,6 +590,10 @@ const dictionaries = {
     "nav.guide": "Гайд",
     "page.guide.section": "Кодекс искателя",
     "page.guide.title": "Руководство",
+    "potions.title": "Зелья",
+    "potions.use": "Использовать",
+    "potions.empty": "Нет доступных зелий.",
+    "potions.hpFull": "HP уже полное.",
   },
 } satisfies Record<Locale, Record<string, string>>;
 

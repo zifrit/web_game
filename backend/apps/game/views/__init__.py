@@ -13,6 +13,7 @@ from .auth import (
     UserAvatarUpdateView,
 )
 from .characters import CharacterClassListView, CharacterCreateView, CharacterMeView
+from .consumables import PotionListView, PotionUseView
 from .dungeons import (
     DungeonLocationLootView,
     DungeonMiniGameHistoryView,
@@ -75,6 +76,8 @@ __all__ = [
     "LoginView",
     "LogoutView",
     "MeView",
+    "PotionListView",
+    "PotionUseView",
     "RegisterView",
     "TotpLoginView",
     "TwoFactorConfirmView",

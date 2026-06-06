@@ -143,6 +143,18 @@ MESSAGES = {
         "en": "Unknown leaderboard type. Use 'level' or 'power'.",
         "ru": "Неизвестный тип рейтинга. Используйте «level» или «power».",
     },
+    "hp_already_full": {
+        "en": "HP is already full.",
+        "ru": "HP уже полное.",
+    },
+    "potion_not_owned": {
+        "en": "You do not own this potion.",
+        "ru": "У вас нет этого зелья.",
+    },
+    "not_enough_potions": {
+        "en": "Not enough potions.",
+        "ru": "Недостаточно зелий.",
+    },
 }
 
 

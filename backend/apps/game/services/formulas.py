@@ -195,6 +195,14 @@ class GameFormulaService:
             return 0
         return max(1, math.ceil(max_hp * float(loss_percent) / 100))
 
+    @staticmethod
+    def potion_heal(max_hp: int, heal_percent: float) -> int:
+        """Считает лечение за одно зелье от максимума HP (минимум 1 при положительном проценте, округление round)."""
+
+        if heal_percent <= 0 or max_hp <= 0:
+            return 0
+        return max(1, round(max_hp * float(heal_percent) / 100))
+
     @classmethod
     def clamp_current_hp(cls, character: Character) -> int:
         """Ограничивает current_hp текущим максимумом HP (с учётом экипировки) и сохраняет при изменении."""
