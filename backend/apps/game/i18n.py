@@ -55,6 +55,10 @@ MESSAGES = {
         "en": "Broken equipped items block starting a new dungeon run.",
         "ru": "Сломанные надетые предметы блокируют запуск нового похода.",
     },
+    "hp_too_low": {
+        "en": "HP is too low to start a dungeon run. Restore HP first.",
+        "ru": "Слишком мало HP для похода. Сначала восстановите здоровье.",
+    },
     "dungeon_not_found": {
         "en": "Dungeon location not found.",
         "ru": "Локация данжа не найдена.",

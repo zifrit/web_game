@@ -201,6 +201,7 @@ class InventoryService:
             item.save(update_fields=["equipped_character", "updated_at"])
         except IntegrityError as exc:
             raise serializers.ValidationError(message("equip_failed", locale)) from exc
+        GameFormulaService.clamp_current_hp(character)
         GameFormulaService.refresh_power_cache(character)
         return item, replaced_item, character
 
@@ -215,5 +216,6 @@ class InventoryService:
             item.equipped_character = None
             item.save(update_fields=["equipped_character", "updated_at"])
         character = Character.objects.select_related("character_class").get(pk=character.pk)
+        GameFormulaService.clamp_current_hp(character)
         GameFormulaService.refresh_power_cache(character)
         return item, character

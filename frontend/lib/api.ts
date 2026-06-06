@@ -73,6 +73,7 @@ export type CurrentRun =
         money_copper: number;
         items_count: number;
         durability_loss: number;
+        hp_loss: number;
       };
     };
 

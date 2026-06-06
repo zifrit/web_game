@@ -237,11 +237,15 @@ export function DungeonsScreen() {
   const [viewMode, setViewMode] = useState<"grid" | "list" | "map">("grid");
   const [lootDungeon, setLootDungeon] = useState<Dungeon | null>(null);
   const dungeonsQuery = useQuery({ queryKey: ["dungeons"],     queryFn: api.dungeons  });
+  const characterQuery = useQuery({ queryKey: ["character"],   queryFn: api.character });
   const currentRun    = useQuery({
     queryKey: ["current-run"],
     queryFn: api.currentRun,
     refetchInterval: (q) => q.state.data?.status === "IN_PROGRESS" ? 5000 : false,
   });
+
+  const hpPercent = characterQuery.data?.stats?.hp_percent ?? 100;
+  const hpTooLow  = hpPercent < 10;
 
   const startMutation = useMutation({
     mutationFn: (id: number) => api.startRun(id),
@@ -315,7 +319,7 @@ export function DungeonsScreen() {
           {dungeonsQuery.data?.map((dungeon, idx) => {
             const tier       = getTier(dungeon.required_power);
             const isActive   = currentRun.data?.location?.id === dungeon.id && isRunning;
-            const disabled   = hasRun || startMutation.isPending;
+            const disabled   = hasRun || startMutation.isPending || hpTooLow;
             const dungeonImage = bestMediaUrl(dungeon.media, ["large_url", "medium_url", "small_url"]);
 
             const durLabel = formatDuration(dungeon.duration_seconds, locale);
@@ -394,7 +398,7 @@ export function DungeonsScreen() {
                       className="btn btn-primary"
                       style={{ flex: 1, opacity: isActive ? 0.7 : undefined }}
                     >
-                      {startMutation.isPending ? t("dungeons.sending") : isActive ? t("dungeons.inProgressButton") : awaitingClaim ? t("dungeons.claimFirst") : isRunning ? t("dungeons.heroBusy") : t("dungeons.sendHero")}
+                      {startMutation.isPending ? t("dungeons.sending") : isActive ? t("dungeons.inProgressButton") : awaitingClaim ? t("dungeons.claimFirst") : isRunning ? t("dungeons.heroBusy") : hpTooLow ? t("dungeons.lowHp") : t("dungeons.sendHero")}
                     </button>
                     <button
                       onClick={() => setLootDungeon(dungeon)}
@@ -418,7 +422,7 @@ export function DungeonsScreen() {
           {dungeonsQuery.data?.map((dungeon) => {
             const tier         = getTier(dungeon.required_power);
             const isActive     = currentRun.data?.location?.id === dungeon.id && isRunning;
-            const disabled     = hasRun || startMutation.isPending;
+            const disabled     = hasRun || startMutation.isPending || hpTooLow;
             const dungeonImage = bestMediaUrl(dungeon.media, ["small_url", "medium_url", "large_url"]);
             const durLabel     = formatDuration(dungeon.duration_seconds, locale);
 
@@ -521,7 +525,9 @@ export function DungeonsScreen() {
                           ? t("dungeons.claimFirst")
                           : isRunning
                             ? t("dungeons.heroBusy")
-                            : t("dungeons.sendHero")}
+                            : hpTooLow
+                              ? t("dungeons.lowHp")
+                              : t("dungeons.sendHero")}
                   </button>
                   <button
                     onClick={() => setLootDungeon(dungeon)}

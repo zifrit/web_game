@@ -23,6 +23,13 @@ DEFAULT_CONFIGS: dict[str, dict[str, Any]] = {
     "experience_curve_config": {"base": 100, "exponent": 1.5, "max_level": MAX_RANK_LEVEL},
     "stat_caps": {"critical_chance": 60, "evasion": 50},
     "durability_loss_config": {"success": 1, "failure": 5},
+    "hp_penalty_config": {
+        "safe_threshold_percent": 50,
+        "mid_threshold_percent": 30,
+        "block_below_percent": 10,
+        "mid_penalty": 5,
+        "low_penalty": 15,
+    },
 }
 
 DEFAULT_RARITIES = {

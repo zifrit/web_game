@@ -163,7 +163,7 @@ class DungeonLocationItemTemplateInline(admin.TabularInline):
 
 @admin.register(DungeonLocation)
 class DungeonLocationAdmin(admin.ModelAdmin):
-    list_display = ("name", "duration_seconds", "required_power", "item_drop_chance", "has_mini_game", "is_active", "sort_order")
+    list_display = ("name", "duration_seconds", "required_power", "hp_loss_success_percent", "hp_loss_fail_percent", "item_drop_chance", "has_mini_game", "is_active", "sort_order")
     list_filter = ("has_mini_game", "is_active")
     search_fields = ("name", "description")
     autocomplete_fields = ("media",)

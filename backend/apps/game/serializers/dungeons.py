@@ -36,12 +36,15 @@ class DungeonLocationSerializer(serializers.ModelSerializer):
         """Считает шанс успеха текущего героя в этой локации."""
 
         character_power = self.context.get("character_power")
+        hp_penalty = self.context.get("hp_penalty", 0.0)
         if character_power is None:
             character = self.context.get("character")
             if not character:
                 return None
-            character_power = GameFormulaService.character_stats(character)["power"]
-        return GameFormulaService.success_chance(character_power, obj.required_power)
+            stats = GameFormulaService.character_stats(character)
+            character_power = stats["power"]
+            hp_penalty = GameFormulaService.hp_success_penalty(character.current_hp, int(stats["max_hp"]))
+        return GameFormulaService.success_chance(character_power, obj.required_power, hp_penalty=hp_penalty)
 
     def get_name(self, obj):
         """Возвращает локализованное название подземелья."""
@@ -117,6 +120,7 @@ class DungeonRunSerializer(serializers.ModelSerializer):
             "money_copper": obj.money_reward_copper or 0,
             "items_count": len(obj.items_reward or []),
             "durability_loss": obj.durability_loss or 0,
+            "hp_loss": obj.hp_loss or 0,
         }
 
     def get_mini_game(self, obj):
@@ -210,7 +214,9 @@ class ClaimResponseSerializer:
                     }
                     for change in result.durability_changes
                 ],
+                "hp_loss": result.hp_loss or 0,
             },
+            "hp": {"current": result.current_hp, "max": result.max_hp},
             "level_up": {"old_level": result.old_level, "new_level": result.new_level},
         }
 

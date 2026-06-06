@@ -590,3 +590,122 @@ class StatRefactorTests(TestCase):
         )
         self.assertEqual(response.status_code, 200, response.data)
         return response.data["access_token"]
+
+
+class HpCycleTests(TestCase):
+    """Проверки Этапа 1: списание HP после данжа и клампинг при смене экипировки."""
+
+    def setUp(self):
+        SeedCommand().handle()
+        self.user = User.objects.create_user("hp@example.com", "strongpass123")
+        self.character = GameBalanceService.create_character(self.user, "HpHero", CharacterClass.objects.get(key="warrior"))
+        self.location = DungeonLocation.objects.get(name="Старый лес")
+
+    def test_hp_formula_ceil_and_min(self):
+        # 120 * 4% = 4.8 -> ceil 5
+        self.assertEqual(GameFormulaService.hp_loss(120, 4), 5)
+        # 0% -> 0
+        self.assertEqual(GameFormulaService.hp_loss(120, 0), 0)
+        # маленький процент всё равно минимум 1
+        self.assertEqual(GameFormulaService.hp_loss(10, 0.1), 1)
+
+    def test_successful_run_deducts_hp(self):
+        run = DungeonRunService.start_run(self.user, self.location.id)
+        run.ends_at = timezone.now() - timezone.timedelta(seconds=1)
+        run.success_chance = 100
+        run.save(update_fields=["ends_at", "success_chance", "updated_at"])
+
+        result = DungeonRunService.claim_run(self.user, run.id)
+        self.character.refresh_from_db()
+
+        expected_loss = GameFormulaService.hp_loss(self.character.max_hp, self.location.hp_loss_success_percent)
+        self.assertGreater(expected_loss, 0)
+        self.assertEqual(result.hp_loss, expected_loss)
+        self.assertEqual(self.character.current_hp, self.character.max_hp - expected_loss)
+        self.assertEqual(result.current_hp, self.character.current_hp)
+
+    def test_hp_never_below_zero(self):
+        # стартуем при полном HP (иначе сработает блок Этапа 2), затем роняем HP перед claim
+        run = DungeonRunService.start_run(self.user, self.location.id)
+        self.character.current_hp = 1
+        self.character.save(update_fields=["current_hp"])
+        run.ends_at = timezone.now() - timezone.timedelta(seconds=1)
+        run.success_chance = 0  # провал -> большая потеря
+        run.save(update_fields=["ends_at", "success_chance", "updated_at"])
+
+        DungeonRunService.claim_run(self.user, run.id)
+        self.character.refresh_from_db()
+        self.assertEqual(self.character.current_hp, 0)
+
+    def test_unequip_clamps_current_hp(self):
+        template = ItemTemplate.objects.filter(slot="armor", item_type="armor").first()
+        item = UserItem.objects.create(
+            owner_user=self.user,
+            template=template,
+            name="HP armor",
+            slot="armor",
+            item_type="armor",
+            rarity="f",
+            item_level=1,
+            stats={"max_hp": 30},
+            durability_current=10,
+            durability_max=10,
+        )
+        InventoryService.equip(self.user, item.id)
+        self.character.refresh_from_db()
+        # «лечим» героя до нового максимума с экипировкой
+        total_max = int(GameFormulaService.character_stats(self.character)["max_hp"])
+        self.character.current_hp = total_max
+        self.character.save(update_fields=["current_hp"])
+
+        InventoryService.unequip(self.user, item.id)
+        self.character.refresh_from_db()
+        self.assertEqual(self.character.current_hp, self.character.max_hp)
+
+
+class HpPenaltyTests(TestCase):
+    """Проверки Этапа 2: штрафы success_chance от низкого HP и блок старта."""
+
+    def setUp(self):
+        SeedCommand().handle()
+        self.user = User.objects.create_user("pen@example.com", "strongpass123")
+        self.character = GameBalanceService.create_character(self.user, "Pen", CharacterClass.objects.get(key="warrior"))
+        self.location = DungeonLocation.objects.get(name="Старый лес")
+
+    def _set_hp_percent(self, pct: float) -> None:
+        self.character.refresh_from_db()
+        self.character.current_hp = int(round(self.character.max_hp * pct / 100))
+        self.character.save(update_fields=["current_hp"])
+
+    def test_penalty_tiers(self):
+        max_hp = self.character.max_hp
+        self.assertEqual(GameFormulaService.hp_success_penalty(max_hp, max_hp), 0.0)
+        self.assertEqual(GameFormulaService.hp_success_penalty(int(max_hp * 0.4), max_hp), 5.0)
+        self.assertEqual(GameFormulaService.hp_success_penalty(int(max_hp * 0.2), max_hp), 15.0)
+
+    def test_block_threshold(self):
+        max_hp = self.character.max_hp
+        self.assertTrue(GameFormulaService.is_hp_too_low_to_start(int(max_hp * 0.05), max_hp))
+        self.assertFalse(GameFormulaService.is_hp_too_low_to_start(int(max_hp * 0.5), max_hp))
+
+    def test_start_blocked_at_low_hp(self):
+        self._set_hp_percent(5)
+        with self.assertRaises(Exception):
+            DungeonRunService.start_run(self.user, self.location.id)
+
+    def test_start_applies_penalty(self):
+        run_full = DungeonRunService.start_run(self.user, self.location.id)
+        base_chance = run_full.success_chance
+        run_full.delete()
+
+        self._set_hp_percent(20)  # 10–29% -> штраф 15
+        run_low = DungeonRunService.start_run(self.user, self.location.id)
+        self.assertEqual(round(base_chance - run_low.success_chance, 2), 15.0)
+
+    def test_success_chance_subtracts_penalty(self):
+        # равные power/required -> base 75 (не упирается в кап), штраф вычитается напрямую
+        self.assertEqual(
+            GameFormulaService.success_chance(50, 50, hp_penalty=0)
+            - GameFormulaService.success_chance(50, 50, hp_penalty=15),
+            15.0,
+        )

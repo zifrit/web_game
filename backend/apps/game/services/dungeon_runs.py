@@ -37,6 +37,9 @@ class ClaimResult(BaseModel):
     new_level: int
     durability_total: int = 0
     durability_changes: list = []
+    hp_loss: int = 0
+    current_hp: int = 0
+    max_hp: int = 0
 
 
 class DungeonRunService:
@@ -75,8 +78,12 @@ class DungeonRunService:
         except DungeonLocation.DoesNotExist as exc:
             raise serializers.ValidationError(message("dungeon_not_found", locale)) from exc
 
-        power = GameFormulaService.character_stats(character)["power"]
-        success_chance = GameFormulaService.success_chance(power, location.required_power)
+        stats = GameFormulaService.character_stats(character)
+        total_max_hp = int(stats["max_hp"])
+        if GameFormulaService.is_hp_too_low_to_start(character.current_hp, total_max_hp):
+            raise serializers.ValidationError(message("hp_too_low", locale))
+        hp_penalty = GameFormulaService.hp_success_penalty(character.current_hp, total_max_hp)
+        success_chance = GameFormulaService.success_chance(stats["power"], location.required_power, hp_penalty=hp_penalty)
         now = timezone.now()
         return DungeonRun.objects.create(
             character=character,
@@ -105,6 +112,9 @@ class DungeonRunService:
         item_reward = LootGenerationService.generate_item_reward(run.character, location) if is_success else None
         run.items_reward = [item_reward] if item_reward else []
         run.durability_loss = GameFormulaService.durability_loss(is_success)
+        total_max_hp = int(GameFormulaService.character_stats(run.character)["max_hp"])
+        hp_loss_percent = location.hp_loss_success_percent if is_success else location.hp_loss_fail_percent
+        run.hp_loss = GameFormulaService.hp_loss(total_max_hp, hp_loss_percent)
         had_active_mini_game = run.mini_game_attempts.filter(
             status=DungeonMiniGameAttemptStatus.IN_PROGRESS
         ).update(
@@ -123,6 +133,7 @@ class DungeonRunService:
                 "money_reward_copper",
                 "items_reward",
                 "durability_loss",
+                "hp_loss",
                 "updated_at",
             ]
         )
@@ -150,6 +161,9 @@ class DungeonRunService:
                 items=[claim_item.user_item for claim_item in existing_claim.claim_items.select_related("user_item")],
                 old_level=run.character.level,
                 new_level=run.character.level,
+                hp_loss=0,
+                current_hp=run.character.current_hp,
+                max_hp=int(GameFormulaService.character_stats(run.character)["max_hp"]),
             )
 
         if run.status not in (DungeonRunStatus.SUCCESS_WAITING_CLAIM, DungeonRunStatus.FAILED_WAITING_CLAIM):
@@ -162,6 +176,8 @@ class DungeonRunService:
         character.experience += experience
         cls._apply_level_ups(character)
         GameFormulaService.apply_level_stats(character)
+        hp_loss = run.hp_loss or 0
+        character.current_hp = max(0, character.current_hp - hp_loss)
         user.money_copper += run.money_reward_copper or 0
         user.save(update_fields=["money_copper", "updated_at"])
         character.save(
@@ -169,6 +185,7 @@ class DungeonRunService:
                 "level",
                 "experience",
                 "max_hp",
+                "current_hp",
                 "intellect",
                 "attack",
                 "defense",
@@ -206,6 +223,7 @@ class DungeonRunService:
 
         durability_total, durability_changes = cls._apply_durability_loss(character, run.durability_loss or 0)
         GameFormulaService.refresh_power_cache(character)
+        total_max_hp = int(GameFormulaService.character_stats(character)["max_hp"])
         run.status = DungeonRunStatus.CLAIMED
         run.save(update_fields=["status", "updated_at"])
         return ClaimResult(
@@ -216,6 +234,9 @@ class DungeonRunService:
             new_level=character.level,
             durability_total=durability_total,
             durability_changes=durability_changes,
+            hp_loss=hp_loss,
+            current_hp=character.current_hp,
+            max_hp=total_max_hp,
         )
 
     @staticmethod

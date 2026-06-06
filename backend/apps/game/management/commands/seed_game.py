@@ -134,13 +134,14 @@ class Command(BaseCommand):
                 },
             )
 
+        # (..., money_min, money_max, hp_loss_success%, hp_loss_fail%, drop, has_mini_game, mini_diff, template_chances)
         dungeons = [
-            ({"en": "Old Forest", "ru": "Старый лес"}, {"en": "A safe starting location.", "ru": "Безопасная стартовая локация."}, 15, 50, 5, 8, 30, 60, 10, True, "6", {"f": 90, "e": 10}),
-            ({"en": "Abandoned Trail", "ru": "Заброшенная тропа"}, {"en": "Light risk and quick farming.", "ru": "Легкий риск и быстрый фарм."}, 30, 70, 8, 14, 45, 90, 15, True, "8", {"f": 70, "e": 25, "d": 5}),
-            ({"en": "Damp Cave", "ru": "Сырая пещера"}, {"en": "A risky early dungeon.", "ru": "Рискованный early dungeon."}, 300, 100, 18, 35, 120, 220, 25, True, "12", {"f": 45, "e": 35, "d": 15, "c": 4, "b": 1}),
+            ({"en": "Old Forest", "ru": "Старый лес"}, {"en": "A safe starting location.", "ru": "Безопасная стартовая локация."}, 15, 50, 5, 8, 30, 60, 4, 9, 10, True, "6", {"f": 90, "e": 10}),
+            ({"en": "Abandoned Trail", "ru": "Заброшенная тропа"}, {"en": "Light risk and quick farming.", "ru": "Легкий риск и быстрый фарм."}, 30, 70, 8, 14, 45, 90, 7, 15, 15, True, "8", {"f": 70, "e": 25, "d": 5}),
+            ({"en": "Damp Cave", "ru": "Сырая пещера"}, {"en": "A risky early dungeon.", "ru": "Рискованный early dungeon."}, 300, 100, 18, 35, 120, 220, 12, 25, 25, True, "12", {"f": 45, "e": 35, "d": 15, "c": 4, "b": 1}),
         ]
         for index, data in enumerate(dungeons):
-            names, descriptions, duration, power, exp_min, exp_max, money_min, money_max, drop, has_mini_game, _mini_game_difficulty, template_chances = data
+            names, descriptions, duration, power, exp_min, exp_max, money_min, money_max, hp_loss_success, hp_loss_fail, drop, has_mini_game, _mini_game_difficulty, template_chances = data
             dungeon, _ = DungeonLocation.objects.update_or_create(
                 name=names["ru"],
                 defaults={
@@ -153,6 +154,8 @@ class Command(BaseCommand):
                     "experience_max": exp_max,
                     "money_min_copper": money_min,
                     "money_max_copper": money_max,
+                    "hp_loss_success_percent": hp_loss_success,
+                    "hp_loss_fail_percent": hp_loss_fail,
                     "item_drop_chance": drop,
                     "has_mini_game": has_mini_game,
                     "is_active": True,

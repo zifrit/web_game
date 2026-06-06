@@ -127,12 +127,39 @@ class GameFormulaService:
         return power
 
     @staticmethod
-    def success_chance(character_power: float, required_power: float) -> float:
-        """Считает шанс успеха забега по силе героя и требуемой силе локации."""
+    def success_chance(character_power: float, required_power: float, hp_penalty: float = 0.0) -> float:
+        """Считает шанс успеха забега по силе героя, требуемой силе и штрафу за низкое HP."""
 
         config = GameConfigService.get_config("success_chance_config")
-        raw = float(config["base"]) + (character_power - required_power) * float(config["power_delta_multiplier"])
+        raw = float(config["base"]) + (character_power - required_power) * float(config["power_delta_multiplier"]) - float(hp_penalty)
         return round(max(float(config["min"]), min(float(config["max"]), raw)), 2)
+
+    @staticmethod
+    def hp_percent(current_hp: int, max_hp: int) -> float:
+        """Возвращает процент текущего HP от максимума (0 при нулевом максимуме)."""
+
+        if max_hp <= 0:
+            return 0.0
+        return current_hp / max_hp * 100
+
+    @classmethod
+    def hp_success_penalty(cls, current_hp: int, max_hp: int) -> float:
+        """Возвращает штраф к шансу успеха за низкое HP по порогам из конфига."""
+
+        config = GameConfigService.get_config("hp_penalty_config")
+        pct = cls.hp_percent(current_hp, max_hp)
+        if pct >= float(config["safe_threshold_percent"]):
+            return 0.0
+        if pct >= float(config["mid_threshold_percent"]):
+            return float(config["mid_penalty"])
+        return float(config["low_penalty"])
+
+    @classmethod
+    def is_hp_too_low_to_start(cls, current_hp: int, max_hp: int) -> bool:
+        """Проверяет, что HP ниже порога, при котором обычный данж нельзя стартовать."""
+
+        config = GameConfigService.get_config("hp_penalty_config")
+        return cls.hp_percent(current_hp, max_hp) < float(config["block_below_percent"])
 
     @staticmethod
     def repair_cost(item: UserItem) -> int:
@@ -159,3 +186,21 @@ class GameFormulaService:
 
         config = GameConfigService.get_config("durability_loss_config")
         return int(config["success" if is_success else "failure"])
+
+    @staticmethod
+    def hp_loss(max_hp: int, loss_percent: float) -> int:
+        """Считает абсолютную потерю HP от максимума по проценту (минимум 1, округление вверх)."""
+
+        if loss_percent <= 0 or max_hp <= 0:
+            return 0
+        return max(1, math.ceil(max_hp * float(loss_percent) / 100))
+
+    @classmethod
+    def clamp_current_hp(cls, character: Character) -> int:
+        """Ограничивает current_hp текущим максимумом HP (с учётом экипировки) и сохраняет при изменении."""
+
+        total_max_hp = int(cls.character_stats(character)["max_hp"])
+        if character.current_hp > total_max_hp:
+            character.current_hp = total_max_hp
+            character.save(update_fields=["current_hp", "updated_at"])
+        return character.current_hp

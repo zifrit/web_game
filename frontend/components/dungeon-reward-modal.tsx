@@ -55,6 +55,13 @@ export function DungeonRewardModal({
               <span>{t("reward.durabilityLoss")}</span>
               <strong>{result.rewards.durability_loss > 0 ? `-${result.rewards.durability_loss}` : "0"}</strong>
             </div>
+            <div className="reward-metric reward-metric-hp">
+              <span>{t("reward.hpLoss")}</span>
+              <strong style={{ color: result.rewards.hp_loss > 0 ? "var(--error)" : undefined }}>
+                {result.rewards.hp_loss > 0 ? `-${result.rewards.hp_loss}` : "0"}
+                {result.hp ? ` (${result.hp.current}/${result.hp.max})` : ""}
+              </strong>
+            </div>
           </div>
 
           {result.rewards.durability_changes.length > 0 && (

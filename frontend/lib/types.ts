@@ -142,6 +142,7 @@ export type DungeonRun = {
     money_copper: number;
     items_count: number;
     durability_loss: number;
+    hp_loss: number;
   };
   mini_game?: DungeonMiniGameState | null;
 };
@@ -283,6 +284,11 @@ export type ClaimResponse = {
       };
       removed: number;
     }>;
+    hp_loss: number;
+  };
+  hp?: {
+    current: number;
+    max: number;
   };
   level_up?: {
     old_level: number;

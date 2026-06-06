@@ -55,6 +55,8 @@ class DungeonLocation(TimestampedModel):
     experience_max = models.PositiveIntegerField("Максимум опыта")
     money_min_copper = models.PositiveIntegerField("Минимум медных монет")
     money_max_copper = models.PositiveIntegerField("Максимум медных монет")
+    hp_loss_success_percent = models.FloatField("Потеря HP при успехе, %", default=0)
+    hp_loss_fail_percent = models.FloatField("Потеря HP при провале, %", default=0)
     item_drop_chance = models.FloatField("Шанс выпадения предмета")
     has_mini_game = models.BooleanField("Доступна мини-игра", default=False)
     is_active = models.BooleanField("Активна", default=True)
@@ -74,6 +76,10 @@ class DungeonLocation(TimestampedModel):
             raise ValidationError("money_min_copper cannot exceed money_max_copper")
         if not 0 <= self.item_drop_chance <= 100:
             raise ValidationError("item_drop_chance must be between 0 and 100")
+        if not 0 <= self.hp_loss_success_percent <= 100:
+            raise ValidationError("hp_loss_success_percent must be between 0 and 100")
+        if not 0 <= self.hp_loss_fail_percent <= 100:
+            raise ValidationError("hp_loss_fail_percent must be between 0 and 100")
         if (
             self.pk
             and self.is_active
@@ -241,6 +247,7 @@ class DungeonRun(TimestampedModel):
     money_reward_copper = models.PositiveIntegerField("Награда в медных монетах", null=True, blank=True)
     items_reward = models.JSONField("Награда предметами", null=True, blank=True)
     durability_loss = models.PositiveIntegerField("Потеря прочности", null=True, blank=True)
+    hp_loss = models.PositiveIntegerField("Потеря HP", null=True, blank=True)
 
     class Meta:
         ordering = ["-started_at"]

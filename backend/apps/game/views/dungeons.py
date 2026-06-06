@@ -48,13 +48,16 @@ class DungeonLocationListView(APIView):
 
         character = None
         character_power = None
+        hp_penalty = 0.0
         try:
             character = Character.objects.select_related("character_class").prefetch_related("equipped_items").get(user=request.user)
-            character_power = GameFormulaService.character_stats(character)["power"]
+            stats = GameFormulaService.character_stats(character)
+            character_power = stats["power"]
+            hp_penalty = GameFormulaService.hp_success_penalty(character.current_hp, int(stats["max_hp"]))
         except Character.DoesNotExist:
             pass
         locations = DungeonLocation.objects.filter(is_active=True).select_related("media")
-        return Response(DungeonLocationSerializer(locations, many=True, context={"request": request, "character": character, "character_power": character_power}).data)
+        return Response(DungeonLocationSerializer(locations, many=True, context={"request": request, "character": character, "character_power": character_power, "hp_penalty": hp_penalty}).data)
 
 
 class DungeonLocationDetailView(APIView):
@@ -65,13 +68,16 @@ class DungeonLocationDetailView(APIView):
 
         character = None
         character_power = None
+        hp_penalty = 0.0
         try:
             character = Character.objects.select_related("character_class").prefetch_related("equipped_items").get(user=request.user)
-            character_power = GameFormulaService.character_stats(character)["power"]
+            stats = GameFormulaService.character_stats(character)
+            character_power = stats["power"]
+            hp_penalty = GameFormulaService.hp_success_penalty(character.current_hp, int(stats["max_hp"]))
         except Character.DoesNotExist:
             pass
         location = get_object_or_404(DungeonLocation.objects.select_related("media"), pk=pk, is_active=True)
-        return Response(DungeonLocationSerializer(location, context={"request": request, "character": character, "character_power": character_power}).data)
+        return Response(DungeonLocationSerializer(location, context={"request": request, "character": character, "character_power": character_power, "hp_penalty": hp_penalty}).data)
 
 
 class DungeonLocationLootView(APIView):
