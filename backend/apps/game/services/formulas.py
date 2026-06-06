@@ -107,6 +107,8 @@ class GameFormulaService:
         stats["critical_chance"] = min(stats["critical_chance"], float(caps.get("critical_chance", 60)))
         stats["evasion"] = min(stats["evasion"], float(caps.get("evasion", 50)))
         stats["power"] = cls.power_from_stats(stats)
+        stats["current_hp"] = character.current_hp
+        stats["hp_percent"] = round(character.current_hp / stats["max_hp"] * 100, 1) if stats.get("max_hp") else 0.0
         return {key: round(value, 2) for key, value in stats.items()}
 
     @staticmethod
