@@ -50,14 +50,14 @@ EQUIPMENT_KINDS: tuple[EquipmentKind, ...] = (
         slot="ring",
         item_type="ring",
         allowed_classes=None,
-        stats={"critical_chance": {"min": 1, "max": 3}, "health": {"min": 4, "max": 10}},
+        stats={"critical_chance": {"min": 1, "max": 3}, "max_hp": {"min": 4, "max": 10}},
     ),
     EquipmentKind(
         key="armor",
         slot="armor",
         item_type="armor",
         allowed_classes=None,
-        stats={"health": {"min": 10, "max": 22}, "defense": {"min": 2, "max": 6}},
+        stats={"max_hp": {"min": 10, "max": 22}, "defense": {"min": 2, "max": 6}},
     ),
     EquipmentKind(
         key="boots",
@@ -71,7 +71,7 @@ EQUIPMENT_KINDS: tuple[EquipmentKind, ...] = (
         slot="helmet",
         item_type="helmet",
         allowed_classes=None,
-        stats={"health": {"min": 6, "max": 14}, "defense": {"min": 1, "max": 4}},
+        stats={"max_hp": {"min": 6, "max": 14}, "defense": {"min": 1, "max": 4}},
     ),
 )
 

@@ -10,7 +10,8 @@ from apps.game.models import Character, UserItem
 from .config import GameConfigService
 
 
-STAT_KEYS = ("health", "attack", "defense", "critical_chance", "evasion")
+STAT_KEYS = ("max_hp", "intellect", "attack", "defense", "critical_chance", "evasion")
+POWER_STAT_KEYS = ("intellect", "attack", "defense", "critical_chance", "evasion")
 
 
 class GameFormulaService:
@@ -29,8 +30,10 @@ class GameFormulaService:
 
         profile = character.character_class.growth_profile or {}
         levels_gained = max(character.level - 1, 0)
+        max_hp_per_level = profile.get("max_hp_per_level", profile.get("health_per_level", 5))
         stats = {
-            "health": float(profile.get("health_per_level", 5)) * levels_gained,
+            "max_hp": float(max_hp_per_level) * levels_gained,
+            "intellect": float(profile.get("intellect_per_level", 1)) * levels_gained,
             "attack": float(profile.get("attack_per_level", 1)) * levels_gained,
             "defense": float(profile.get("defense_per_level", 1)) * levels_gained,
             "critical_chance": 0.0,
@@ -50,7 +53,8 @@ class GameFormulaService:
 
         character_class = character.character_class
         stats = {
-            "health": float(character_class.start_health),
+            "max_hp": float(character_class.start_max_hp),
+            "intellect": float(character_class.start_intellect),
             "attack": float(character_class.start_attack),
             "defense": float(character_class.start_defense),
             "critical_chance": float(character_class.start_critical_chance),
@@ -65,13 +69,15 @@ class GameFormulaService:
         """Обновляет сохранённые характеристики героя по текущему уровню."""
 
         stats = cls.intrinsic_character_stats(character)
-        character.health = int(round(stats["health"]))
+        character.max_hp = int(round(stats["max_hp"]))
+        character.intellect = int(round(stats["intellect"]))
         character.attack = int(round(stats["attack"]))
         character.defense = int(round(stats["defense"]))
         character.critical_chance = stats["critical_chance"]
         character.evasion = stats["evasion"]
         return {
-            "health": float(character.health),
+            "max_hp": float(character.max_hp),
+            "intellect": float(character.intellect),
             "attack": float(character.attack),
             "defense": float(character.defense),
             "critical_chance": character.critical_chance,
@@ -83,7 +89,8 @@ class GameFormulaService:
         """Собирает итоговые характеристики героя с уровнем, экипировкой и капами."""
 
         stats = {
-            "health": float(character.health),
+            "max_hp": float(character.max_hp),
+            "intellect": float(character.intellect),
             "attack": float(character.attack),
             "defense": float(character.defense),
             "critical_chance": float(character.critical_chance),
@@ -107,7 +114,7 @@ class GameFormulaService:
         """Считает показатель силы по набору характеристик и весам формулы."""
 
         config = GameConfigService.get_config("power_formula_config")
-        return round(sum(float(stats.get(key, 0)) * float(config.get(key, 0)) for key in STAT_KEYS), 2)
+        return round(sum(float(stats.get(key, 0)) * float(config.get(key, 0)) for key in POWER_STAT_KEYS), 2)
 
     @classmethod
     def refresh_power_cache(cls, character: Character) -> float:

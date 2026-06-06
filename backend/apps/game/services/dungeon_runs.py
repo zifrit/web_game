@@ -168,7 +168,8 @@ class DungeonRunService:
             update_fields=[
                 "level",
                 "experience",
-                "health",
+                "max_hp",
+                "intellect",
                 "attack",
                 "defense",
                 "critical_chance",

@@ -509,3 +509,84 @@ class ApiSmokeTests(TestCase):
         response = self.client.post("/api/dungeon-runs", {"location_id": response.data[0]["id"]}, format="json")
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["status"], DungeonRun.IN_PROGRESS)
+
+
+class StatRefactorTests(TestCase):
+    """Проверки Этапа 0: max_hp/current_hp, intellect и формула power."""
+
+    def setUp(self):
+        SeedCommand().handle()
+        self.user = User.objects.create_user("stat@example.com", "strongpass123")
+        self.warrior = CharacterClass.objects.get(key="warrior")
+        self.character = GameBalanceService.create_character(self.user, "Stat", self.warrior)
+
+    def test_create_character_initializes_hp_and_intellect(self):
+        self.assertEqual(self.character.max_hp, self.warrior.start_max_hp)
+        self.assertEqual(self.character.current_hp, self.warrior.start_max_hp)
+        self.assertEqual(self.character.intellect, self.warrior.start_intellect)
+        self.assertGreaterEqual(self.character.intellect, 1)
+
+    def test_power_excludes_max_hp_and_weights_intellect(self):
+        from apps.game.services.config import GameConfigService
+
+        weights = GameConfigService.get_config("power_formula_config")
+        self.assertNotIn("health", weights)
+        self.assertEqual(weights["intellect"], 1.5)
+        self.assertEqual(weights["critical_chance"], 1.5)
+        self.assertEqual(weights["evasion"], 1.5)
+
+        base = {
+            "max_hp": 999,
+            "intellect": 10,
+            "attack": 0,
+            "defense": 0,
+            "critical_chance": 0,
+            "evasion": 0,
+        }
+        power_with_hp = GameFormulaService.power_from_stats(base)
+        power_without_hp = GameFormulaService.power_from_stats({**base, "max_hp": 0})
+        self.assertEqual(power_with_hp, power_without_hp)
+        self.assertEqual(power_with_hp, round(10 * 1.5, 2))
+
+    def test_character_stats_aggregates_equipment_max_hp(self):
+        template = ItemTemplate.objects.filter(slot="armor", item_type="armor").first()
+        UserItem.objects.create(
+            owner_user=self.user,
+            equipped_character=self.character,
+            template=template,
+            name="HP armor",
+            slot="armor",
+            item_type="armor",
+            rarity="f",
+            item_level=1,
+            stats={"max_hp": 25},
+            durability_current=10,
+            durability_max=10,
+        )
+        stats = GameFormulaService.character_stats(self.character)
+        self.assertEqual(stats["max_hp"], self.character.max_hp + 25)
+        self.assertIn("intellect", stats)
+
+    def test_character_me_exposes_hp_fields(self):
+        client = APIClient()
+        token = self.client_login()
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+        response = client.get("/api/characters/me")
+        self.assertEqual(response.status_code, 200)
+        stats = response.data["stats"]
+        self.assertIn("max_hp", stats)
+        self.assertIn("current_hp", stats)
+        self.assertIn("hp_percent", stats)
+        self.assertIn("intellect", stats)
+        self.assertEqual(stats["current_hp"], stats["max_hp"])
+        self.assertEqual(stats["hp_percent"], 100.0)
+
+    def client_login(self) -> str:
+        client = APIClient()
+        response = client.post(
+            "/api/auth/login",
+            {"email": "stat@example.com", "password": "strongpass123"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        return response.data["access_token"]

@@ -1,5 +1,8 @@
 export type StatKey =
-  | "health"
+  | "max_hp"
+  | "current_hp"
+  | "hp_percent"
+  | "intellect"
   | "attack"
   | "defense"
   | "critical_chance"

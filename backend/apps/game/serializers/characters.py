@@ -26,7 +26,8 @@ class CharacterClassSerializer(serializers.ModelSerializer):
         """Возвращает стартовые характеристики класса героя одним объектом."""
 
         return {
-            "health": obj.start_health,
+            "max_hp": obj.start_max_hp,
+            "intellect": obj.start_intellect,
             "attack": obj.start_attack,
             "defense": obj.start_defense,
             "critical_chance": obj.start_critical_chance,
@@ -167,9 +168,13 @@ class CharacterMeSerializer(serializers.ModelSerializer):
         return rank_for_level(obj.level).label
 
     def get_stats(self, obj):
-        """Возвращает рассчитанные сервером характеристики героя."""
+        """Возвращает рассчитанные сервером характеристики героя, включая текущее HP."""
 
-        return GameFormulaService.character_stats(obj)
+        stats = GameFormulaService.character_stats(obj)
+        max_hp = stats.get("max_hp") or 0
+        stats["current_hp"] = obj.current_hp
+        stats["hp_percent"] = round(obj.current_hp / max_hp * 100, 1) if max_hp else 0.0
+        return stats
 
     def get_equipment(self, obj):
         """Возвращает предметы, экипированные по слотам."""

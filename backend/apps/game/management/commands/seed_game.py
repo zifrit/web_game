@@ -17,7 +17,8 @@ from apps.game.services.seed_data import seed_ranked_item_templates
 
 
 GROWTH = {
-    "health_per_level": 5,
+    "max_hp_per_level": 5,
+    "intellect_per_level": 1,
     "attack_per_level": 1,
     "defense_per_level": 1,
     "special_bonus_every": 5,
@@ -35,19 +36,21 @@ class Command(BaseCommand):
                 defaults={"value": value, "description": "MVP central balance config", "is_active": True},
             )
 
+        # (key, names, max_hp, intellect, attack, defense, crit, evasion, special_growth)
         classes = [
-            ("warrior", {"en": "Warrior", "ru": "Воин"}, 120, 10, 8, 5, 3, {"critical_chance": 0.5, "evasion": 0}),
-            ("mage", {"en": "Mage", "ru": "Маг"}, 80, 16, 3, 8, 4, {"critical_chance": 0.8, "evasion": 0}),
-            ("archer", {"en": "Archer", "ru": "Лучник"}, 95, 12, 5, 12, 8, {"critical_chance": 0.5, "evasion": 0.5}),
-            ("assassin", {"en": "Assassin", "ru": "Ассассин"}, 75, 14, 3, 20, 15, {"critical_chance": 1, "evasion": 0.8}),
+            ("warrior", {"en": "Warrior", "ru": "Воин"}, 120, 4, 10, 8, 5, 3, {"critical_chance": 0.5, "evasion": 0}),
+            ("mage", {"en": "Mage", "ru": "Маг"}, 80, 18, 16, 3, 8, 4, {"critical_chance": 0.8, "evasion": 0}),
+            ("archer", {"en": "Archer", "ru": "Лучник"}, 95, 8, 12, 5, 12, 8, {"critical_chance": 0.5, "evasion": 0.5}),
+            ("assassin", {"en": "Assassin", "ru": "Ассассин"}, 75, 10, 14, 3, 20, 15, {"critical_chance": 1, "evasion": 0.8}),
         ]
-        for index, (key, names, hp, attack, defense, crit, evasion, special) in enumerate(classes):
+        for index, (key, names, max_hp, intellect, attack, defense, crit, evasion, special) in enumerate(classes):
             CharacterClass.objects.update_or_create(
                 key=key,
                 defaults={
                     "name": names["ru"],
                     "name_i18n": names,
-                    "start_health": hp,
+                    "start_max_hp": max_hp,
+                    "start_intellect": intellect,
                     "start_attack": attack,
                     "start_defense": defense,
                     "start_critical_chance": crit,

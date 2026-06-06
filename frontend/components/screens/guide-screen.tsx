@@ -848,10 +848,10 @@ export function GuidebookScreen() {
           <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
             {[
               {
-                key: "health",     icon: "♥", color: "#EF4444",
-                labelEn: "Health",   labelRu: "Здоровье",
-                descEn: "Your total HP pool. Higher health reduces the chance of expedition failure.",
-                descRu: "Общий запас здоровья. Высокое здоровье снижает шанс провала экспедиции.",
+                key: "intellect",  icon: "✸", color: "#A855F7",
+                labelEn: "Intellect", labelRu: "Интеллект",
+                descEn: "Arcane aptitude. A core Power stat that boosts your overall combat score.",
+                descRu: "Магическая одарённость. Базовая характеристика Мощи, повышающая общий боевой показатель.",
               },
               {
                 key: "attack",     icon: "⚔", color: "#3B82F6",
@@ -931,11 +931,11 @@ export function GuidebookScreen() {
                 {" + "}
                 <span style={{ color: "#60A5FA" }}>{c(locale, "DEF", "ЗАЩ")} × 1.7</span>
                 {" + "}
-                <span style={{ color: "#EF4444" }}>{c(locale, "HP", "ЗДР")} × 0.25</span>
+                <span style={{ color: "#A855F7" }}>{c(locale, "INT", "ИНТ")} × 1.5</span>
                 {" + "}
-                <span style={{ color: "#F59E0B" }}>{c(locale, "CRIT", "КРТ")} × 1.0</span>
+                <span style={{ color: "#F59E0B" }}>{c(locale, "CRIT", "КРТ")} × 1.5</span>
                 {" + "}
-                <span style={{ color: "#22C55E" }}>{c(locale, "EVA", "УКЛ")} × 1.0</span>
+                <span style={{ color: "#22C55E" }}>{c(locale, "EVA", "УКЛ")} × 1.5</span>
               </div>
               <div style={{ marginTop: 10, fontSize: 12, color: "#64748B", lineHeight: 1.5 }}>
                 {c(locale,

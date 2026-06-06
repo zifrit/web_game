@@ -12,11 +12,11 @@ from .ranks import MAX_RANK_LEVEL, RANKS
 
 DEFAULT_CONFIGS: dict[str, dict[str, Any]] = {
     "power_formula_config": {
-        "health": 0.25,
+        "intellect": 1.5,
         "attack": 2.0,
         "defense": 1.7,
-        "critical_chance": 1.0,
-        "evasion": 1.0,
+        "critical_chance": 1.5,
+        "evasion": 1.5,
     },
     "success_chance_config": {"base": 75, "power_delta_multiplier": 1.5, "min": 35, "max": 100},
     "repair_cost_config": {"copper_per_durability": 10},

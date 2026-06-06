@@ -302,9 +302,9 @@ function BarBlock({ label, cur, max, kind }: { label: string; cur: number; max: 
 const POWER_WEIGHTS = {
   attack: 2,
   defense: 1.7,
-  health: 0.25,
-  critical_chance: 1,
-  evasion: 1,
+  intellect: 1.5,
+  critical_chance: 1.5,
+  evasion: 1.5,
 } as const;
 
 function PowerHelp({ stats, power }: { stats: Character["stats"]; power: number }) {
@@ -325,7 +325,7 @@ function PowerHelp({ stats, power }: { stats: Character["stats"]; power: number 
   const rows = [
     { key: "attack", label: t("common.attack"), value: stats?.attack ?? 0, weight: POWER_WEIGHTS.attack },
     { key: "defense", label: t("common.defense"), value: stats?.defense ?? 0, weight: POWER_WEIGHTS.defense },
-    { key: "health", label: t("common.health"), value: stats?.health ?? 0, weight: POWER_WEIGHTS.health },
+    { key: "intellect", label: t("common.intellect"), value: stats?.intellect ?? 0, weight: POWER_WEIGHTS.intellect },
     { key: "critical_chance", label: t("common.crit"), value: stats?.critical_chance ?? 0, weight: POWER_WEIGHTS.critical_chance },
     { key: "evasion", label: t("common.evasion"), value: stats?.evasion ?? 0, weight: POWER_WEIGHTS.evasion },
   ];
@@ -772,8 +772,8 @@ export function CharacterScreen({
     bestMediaUrl(character.class?.media, ["large_url", "medium_url", "small_url"]);
   const xpMax = character.experience_to_next_level ?? 1000;
   const xp    = character.experience;
-  const hpMax = character.stats?.health ?? 220;
-  const hpCur = hpMax;
+  const hpMax = character.stats?.max_hp ?? 220;
+  const hpCur = character.stats?.current_hp ?? hpMax;
 
   const invItems = inventoryQuery.data?.items ?? [];
   const inventoryCount = inventoryQuery.data?.items_count ?? invItems.length;
@@ -803,7 +803,7 @@ export function CharacterScreen({
   const cp = stats.power ?? (
     (stats.attack ?? 0) * POWER_WEIGHTS.attack +
     (stats.defense ?? 0) * POWER_WEIGHTS.defense +
-    (stats.health ?? 0) * POWER_WEIGHTS.health +
+    (stats.intellect ?? 0) * POWER_WEIGHTS.intellect +
     (stats.critical_chance ?? 0) * POWER_WEIGHTS.critical_chance +
     (stats.evasion ?? 0) * POWER_WEIGHTS.evasion
   );
@@ -937,8 +937,12 @@ export function CharacterScreen({
               <span className="val">{stats.evasion ?? 0}%</span>
             </div>
             <div className="sl-row">
-              <span className="lbl">{t("common.health")}</span>
-              <span className="val">{stats.health ?? 0}</span>
+              <span className="lbl">{t("common.intellect")}</span>
+              <span className="val">{stats.intellect ?? 0}</span>
+            </div>
+            <div className="sl-row">
+              <span className="lbl">{t("common.hp")}</span>
+              <span className="val">{hpCur} / {hpMax}</span>
             </div>
           </div>
         </div>
