@@ -46,6 +46,14 @@ touches a balance field directly.
   `User` row just to mutate copper. Copper-touching paths (dungeon claim, shop
   purchase, repair, destroy refund, premium→copper exchange) delegate to
   `MoneyService`.
+- Multi-currency callers go through one seam: `apps.game.services.wallets`
+  exposes `get_wallet(currency_key)` (keys `"money_copper"` /
+  `"premium_currency"`, matching `ShopPurchase.PaymentCurrency` values) and
+  `all_balances(user)` for the `balances` response payload. `ShopService` and
+  `CurrencyExchangeService` charge/grant via the returned `Wallet` adapter
+  instead of branching on currency. Shop has no direct `billing.services`
+  import; the premium adapter imports billing lazily (billing depends on game,
+  not the reverse).
 
 Views and serializers should stay thin. Claim, repair, equip, unequip, and
 start dungeon run require explicit transactional boundaries where they change

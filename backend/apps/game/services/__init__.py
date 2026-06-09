@@ -24,6 +24,13 @@ from .reference_cache import (
     cached_response,
     request_host_part,
 )
+from .wallets import (
+    MONEY_COPPER,
+    PREMIUM_CURRENCY,
+    Wallet,
+    all_balances,
+    get_wallet,
+)
 
 __all__ = [
     "ClaimResult",
@@ -40,8 +47,13 @@ __all__ = [
     "InventoryService",
     "LEADERBOARD_TIMEOUT",
     "LootGenerationService",
+    "MONEY_COPPER",
     "MoneyService",
+    "PREMIUM_CURRENCY",
     "PotionService",
+    "Wallet",
+    "all_balances",
+    "get_wallet",
     "REFERENCE_TIMEOUT",
     "RarityConfigCache",
     "ShopService",

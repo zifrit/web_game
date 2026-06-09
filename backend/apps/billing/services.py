@@ -124,8 +124,11 @@ class CurrencyExchangeService:
         except Character.DoesNotExist as exc:
             raise serializers.ValidationError(message("no_character", locale)) from exc
 
-        premium_transaction = PremiumCurrencyService.charge(
-            user=user,
+        # Обе валюты проходят через один шов кошельков.
+        from apps.game.services.wallets import MONEY_COPPER, PREMIUM_CURRENCY, get_wallet
+
+        premium_transaction = get_wallet(PREMIUM_CURRENCY).charge(
+            user,
             amount=offer.premium_cost,
             reason=PremiumCurrencyTransaction.Reason.EXCHANGE_TO_MONEY,
             metadata={
@@ -135,11 +138,8 @@ class CurrencyExchangeService:
             locale=locale,
         )
 
-        # Медь живёт на User; MoneyService сам блокирует строку и пишет леджер.
-        from apps.game.services import MoneyService
-
-        MoneyService.grant(
-            user=user,
+        get_wallet(MONEY_COPPER).grant(
+            user,
             amount=offer.money_copper_reward,
             reason=MoneyTransaction.Reason.EXCHANGE_FROM_PREMIUM,
             metadata={"exchange_offer_id": offer.id, "premium_cost": offer.premium_cost},

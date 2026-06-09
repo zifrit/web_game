@@ -19,7 +19,7 @@ from apps.game.models import (
 )
 
 from .loot import generate_item_instance
-from .money import MoneyService
+from .wallets import all_balances, get_wallet
 
 
 def _weighted_choice(weighted_items: list[tuple[Any, float]]) -> Any:
@@ -54,7 +54,7 @@ class ShopService:
         except ShopOffer.DoesNotExist as exc:
             raise serializers.ValidationError(message("shop_offer_not_found", locale)) from exc
 
-        # 3. Блокировка героя (медь блокирует MoneyService при списании).
+        # 3. Блокировка героя (баланс валюты блокирует её кошелёк при списании).
         try:
             character = Character.objects.select_for_update().get(user=user)
         except Character.DoesNotExist as exc:
@@ -69,13 +69,13 @@ class ShopService:
 
         total_rewards = offer.quantity * purchase_count
 
-        # 6. Списание выбранной валюты.
-        cls._charge(
-            user=user,
-            payment_currency=payment_currency,
-            total_price=total_price,
-            offer=offer,
-            purchase_count=purchase_count,
+        # 6. Списание через кошелёк выбранной валюты (значение reason общее для леджеров).
+        get_wallet(payment_currency).charge(
+            user,
+            amount=total_price,
+            reason=MoneyTransaction.Reason.SHOP_PURCHASE,
+            metadata={"offer_id": offer.id, "purchase_count": purchase_count},
+            insufficient_message="shop_not_enough_money",
             locale=locale,
         )
 
@@ -103,29 +103,25 @@ class ShopService:
             result_payload=result_payload,
         )
 
-        from apps.billing.services import PremiumCurrencyService
-
         return {
             "purchase": purchase,
-            "balances": {
-                "money_copper": MoneyService.get_amount(user),
-                "premium_currency": PremiumCurrencyService.get_amount(user),
-            },
+            "balances": all_balances(user),
         }
 
     # --- внутренние помощники ---
 
-    @staticmethod
-    def _resolve_unit_price(offer: ShopOffer, payment_currency: str, locale: str) -> int:
+    # Поле цены предложения для каждой валюты оплаты.
+    _PRICE_FIELD = {
+        ShopPurchase.PaymentCurrency.MONEY_COPPER: "price_money_copper",
+        ShopPurchase.PaymentCurrency.PREMIUM_CURRENCY: "price_premium_currency",
+    }
+
+    @classmethod
+    def _resolve_unit_price(cls, offer: ShopOffer, payment_currency: str, locale: str) -> int:
         """Возвращает цену предложения в выбранной валюте или бросает ошибку."""
 
-        if payment_currency == ShopPurchase.PaymentCurrency.MONEY_COPPER:
-            price = offer.price_money_copper
-        elif payment_currency == ShopPurchase.PaymentCurrency.PREMIUM_CURRENCY:
-            price = offer.price_premium_currency
-        else:
-            raise serializers.ValidationError(message("shop_price_unavailable", locale))
-
+        field = cls._PRICE_FIELD.get(payment_currency)
+        price = getattr(offer, field) if field else None
         if price is None:
             raise serializers.ValidationError(message("shop_price_unavailable", locale))
         return price
@@ -150,31 +146,6 @@ class ShopService:
             if len(entries) < 1:
                 raise serializers.ValidationError(message("shop_offer_misconfigured", locale))
         return entries
-
-    @staticmethod
-    def _charge(*, user, payment_currency, total_price, offer, purchase_count, locale) -> None:
-        """Списывает выбранную валюту через её сервис-кошелёк."""
-
-        if payment_currency == ShopPurchase.PaymentCurrency.MONEY_COPPER:
-            MoneyService.charge(
-                user=user,
-                amount=total_price,
-                reason=MoneyTransaction.Reason.SHOP_PURCHASE,
-                metadata={"offer_id": offer.id, "purchase_count": purchase_count},
-                insufficient_message="shop_not_enough_money",
-                locale=locale,
-            )
-        else:
-            from apps.billing.services import PremiumCurrencyService
-            from apps.billing.models import PremiumCurrencyTransaction
-
-            PremiumCurrencyService.charge(
-                user=user,
-                amount=total_price,
-                reason=PremiumCurrencyTransaction.Reason.SHOP_PURCHASE,
-                metadata={"offer_id": offer.id, "purchase_count": purchase_count},
-                locale=locale,
-            )
 
     @classmethod
     def _grant_rewards(cls, *, offer, entries, character, user, total_rewards) -> dict:

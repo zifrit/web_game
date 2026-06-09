@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.game.i18n import request_locale
+from apps.game.services import all_balances
 
 from .models import (
     CurrencyExchangeOffer,
@@ -15,7 +16,7 @@ from .serializers import (
     CurrencyExchangeTransactionSerializer,
     PremiumCurrencyTransactionSerializer,
 )
-from .services import CurrencyExchangeService, PremiumCurrencyService
+from .services import CurrencyExchangeService
 
 
 class ExchangeOfferListView(APIView):
@@ -50,14 +51,10 @@ class ExchangeCurrencyView(APIView):
         transaction_obj = CurrencyExchangeService.exchange(
             user=request.user, offer_id=pk, locale=locale
         )
-        request.user.refresh_from_db(fields=["money_copper"])
         return Response(
             {
                 "transaction": CurrencyExchangeTransactionSerializer(transaction_obj).data,
-                "balances": {
-                    "premium_currency": PremiumCurrencyService.get_amount(request.user),
-                    "money_copper": request.user.money_copper,
-                },
+                "balances": all_balances(request.user),
             }
         )
 
