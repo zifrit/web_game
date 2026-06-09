@@ -74,3 +74,21 @@ Leaderboard:
 Media:
 
 - `GET /api/media/icons`
+
+Shop (system shop, `apps.game`):
+
+- `GET /api/shop/offers` — lightweight active offers (no `possible_rewards`)
+- `GET /api/shop/offers/<id>` — detail with `possible_rewards` (`chance` + `chance_percent`)
+- `POST /api/shop/offers/<id>/buy` — body `{purchase_count, payment_currency}`; backend ignores any client price
+- `GET /api/shop/purchases` — user-scoped history `{results: [...]}`
+- `GET /api/auth/me` now also returns `premium_currency` (0 if no balance row)
+
+Billing (premium currency, `apps.billing`, mounted at `/api/billing/`):
+
+- `GET /api/billing/exchange-offers`
+- `GET /api/billing/exchange-offers/<id>`
+- `POST /api/billing/exchange-offers/<id>/exchange` — empty body; premium → `User.money_copper`
+- `GET /api/billing/exchange-transactions` — user-scoped `{results: [...]}`
+- `GET /api/billing/premium-transactions` — user-scoped `{results: [...]}`
+
+Note: `money_copper` lives on `User`, not `Character` (spec said Character; code is source of truth). Premium balance/ledger live in `apps.billing`; all premium mutations go through `PremiumCurrencyService`.

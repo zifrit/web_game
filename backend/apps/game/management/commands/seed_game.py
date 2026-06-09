@@ -15,7 +15,12 @@ from apps.game.models import (
     MiniGameCardFace,
     PotionTemplate,
     RarityConfig,
+    ShopOffer,
+    ShopOfferIngredient,
+    ShopOfferItem,
+    ShopOfferPotion,
 )
+from apps.billing.models import CurrencyExchangeOffer
 from apps.game.services import DEFAULT_CONFIGS
 from apps.game.services.mini_game_faces import load_seed_card_faces
 from apps.game.services.ranks import MAX_RANK_LEVEL, RANKS
@@ -370,4 +375,106 @@ class Command(BaseCommand):
                     defaults={"quantity": quantity},
                 )
 
+        self._seed_shop(ingredient_by_code, potion_by_code, templates_by_rank)
+        self._seed_exchange_offers()
+
         self.stdout.write(self.style.SUCCESS("Seeded MVP game data."))
+
+    def _seed_shop(self, ingredient_by_code, potion_by_code, templates_by_rank):
+        """Создаёт демонстрационные предложения магазина (идемпотентно по name)."""
+
+        # Одиночный ингредиент за монеты.
+        herb = ingredient_by_code.get("forest_herb")
+        if herb is not None:
+            offer, _ = ShopOffer.objects.update_or_create(
+                name_i18n={"en": "Forest Herb", "ru": "Лесная трава"},
+                defaults={
+                    "reward_kind": ShopOffer.RewardKind.INGREDIENT,
+                    "delivery_mode": ShopOffer.DeliveryMode.SINGLE,
+                    "description_i18n": {"en": "A bundle of fresh forest herbs.", "ru": "Связка свежих лесных трав."},
+                    "quantity": 1,
+                    "price_money_copper": 500,
+                    "is_active": True,
+                    "sort_order": 1,
+                },
+            )
+            offer.ingredient_entries.all().delete()
+            ShopOfferIngredient.objects.create(offer=offer, ingredient_template=herb, chance=1)
+
+        # Сундук ингредиентов за монеты или премиум.
+        chest_ingredients = [ingredient_by_code.get(code) for code in ("forest_herb", "bitter_root", "cave_moss")]
+        chest_ingredients = [item for item in chest_ingredients if item is not None]
+        if chest_ingredients:
+            offer, _ = ShopOffer.objects.update_or_create(
+                name_i18n={"en": "Herbalist's Chest", "ru": "Сундук травника"},
+                defaults={
+                    "reward_kind": ShopOffer.RewardKind.INGREDIENT,
+                    "delivery_mode": ShopOffer.DeliveryMode.CHEST,
+                    "description_i18n": {"en": "5 random herbs.", "ru": "5 случайных трав."},
+                    "quantity": 5,
+                    "price_money_copper": 2000,
+                    "price_premium_currency": 3,
+                    "is_active": True,
+                    "sort_order": 2,
+                },
+            )
+            offer.ingredient_entries.all().delete()
+            chances = [70, 25, 5]
+            for ingredient, chance in zip(chest_ingredients, chances):
+                ShopOfferIngredient.objects.create(offer=offer, ingredient_template=ingredient, chance=chance)
+
+        # Одиночное зелье за монеты.
+        potion = potion_by_code.get("small_healing_potion")
+        if potion is not None:
+            offer, _ = ShopOffer.objects.update_or_create(
+                name_i18n={"en": "Small Healing Potion", "ru": "Малое зелье лечения"},
+                defaults={
+                    "reward_kind": ShopOffer.RewardKind.POTION,
+                    "delivery_mode": ShopOffer.DeliveryMode.SINGLE,
+                    "description_i18n": {"en": "Restores a bit of HP.", "ru": "Восстанавливает немного HP."},
+                    "quantity": 1,
+                    "price_money_copper": 800,
+                    "is_active": True,
+                    "sort_order": 3,
+                },
+            )
+            offer.potion_entries.all().delete()
+            ShopOfferPotion.objects.create(offer=offer, potion_template=potion, chance=1)
+
+        # Сундук предметов ранга C за премиум или монеты.
+        c_items = templates_by_rank.get("c") or templates_by_rank.get("C") or []
+        if c_items:
+            offer, _ = ShopOffer.objects.update_or_create(
+                name_i18n={"en": "Rank C Gear Chest", "ru": "Сундук снаряжения ранга C"},
+                defaults={
+                    "reward_kind": ShopOffer.RewardKind.ITEM,
+                    "delivery_mode": ShopOffer.DeliveryMode.CHEST,
+                    "description_i18n": {"en": "Contains 3 random items.", "ru": "Содержит 3 случайных предмета."},
+                    "quantity": 3,
+                    "price_money_copper": 5000,
+                    "price_premium_currency": 5,
+                    "is_active": True,
+                    "sort_order": 4,
+                },
+            )
+            offer.item_entries.all().delete()
+            for index, template in enumerate(c_items[:4]):
+                ShopOfferItem.objects.create(offer=offer, item_template=template, chance=max(50 - index * 10, 10))
+
+    def _seed_exchange_offers(self):
+        """Создаёт демонстрационные предложения обмена премиума на монеты."""
+
+        offers = [
+            (10, 10_000, 1),
+            (50, 60_000, 2),
+            (100, 130_000, 3),
+        ]
+        for premium_cost, money_copper_reward, sort_order in offers:
+            CurrencyExchangeOffer.objects.update_or_create(
+                premium_cost=premium_cost,
+                defaults={
+                    "money_copper_reward": money_copper_reward,
+                    "is_active": True,
+                    "sort_order": sort_order,
+                },
+            )
