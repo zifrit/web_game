@@ -2,6 +2,7 @@ from .base import MediaAsset, TimestampedModel
 from .characters import Character, CharacterClass
 from .config import EquipmentSlotConfig, GameConfig, RarityConfig
 from .consumables import HeroPotionStorage, PotionTemplate
+from .crafting import CraftRecipe, CraftRecipeIngredient
 from .dungeons import (
     DungeonLocation,
     DungeonLocationItemTemplate,
@@ -23,6 +24,8 @@ from .users import User, UserManager, UserTwoFactor
 __all__ = [
     "Character",
     "CharacterClass",
+    "CraftRecipe",
+    "CraftRecipeIngredient",
     "DungeonLocation",
     "DungeonLocationItemTemplate",
     "DungeonMiniGameAttempt",

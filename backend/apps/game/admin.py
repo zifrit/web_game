@@ -10,6 +10,8 @@ from .models import (
     DungeonLocationItemTemplate,
     DungeonMiniGameAttempt,
     DungeonMiniGameConfig,
+    CraftRecipe,
+    CraftRecipeIngredient,
     DungeonRun,
     DungeonRunClaim,
     DungeonRunClaimItem,
@@ -349,6 +351,25 @@ class IngredientTemplateAdmin(admin.ModelAdmin):
     list_filter = ("category", "is_active")
     search_fields = ("code", "name")
     autocomplete_fields = ("media",)
+
+
+class CraftRecipeIngredientInline(admin.TabularInline):
+    model = CraftRecipeIngredient
+    extra = 1
+    fields = ("ingredient", "quantity")
+    autocomplete_fields = ("ingredient",)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("recipe", "ingredient")
+
+
+@admin.register(CraftRecipe)
+class CraftRecipeAdmin(admin.ModelAdmin):
+    list_display = ("code", "difficulty", "potion", "required_hero_level", "is_active", "sort_order")
+    list_filter = ("difficulty", "is_active")
+    search_fields = ("code", "potion__code", "potion__name")
+    autocomplete_fields = ("potion",)
+    inlines = [CraftRecipeIngredientInline]
 
 
 @admin.register(HeroIngredientStorage)

@@ -2,6 +2,7 @@ from .auth import LoginSerializer, RegisterSerializer, TotpCodeSerializer, TotpD
 from .characters import CharacterClassSerializer, CharacterCreateSerializer, CharacterMeSerializer, CreateCharacterSerializer
 from .common import localized_item_name, localized_name, media_payload, serializer_locale
 from .consumables import HeroPotionSerializer, UsePotionSerializer
+from .crafting import CraftPotionSerializer, CraftRecipeSerializer
 from .dungeons import (
     ClaimResponseSerializer,
     DungeonLootItemSerializer,
@@ -25,6 +26,8 @@ __all__ = [
     "CharacterCreateSerializer",
     "CharacterMeSerializer",
     "ClaimResponseSerializer",
+    "CraftPotionSerializer",
+    "CraftRecipeSerializer",
     "DungeonLootItemSerializer",
     "DungeonMiniGameAttemptHistorySerializer",
     "DungeonMiniGameAttemptResponseSerializer",

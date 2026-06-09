@@ -2,6 +2,8 @@ from django.core.management.base import BaseCommand
 
 from apps.game.models import (
     CharacterClass,
+    CraftRecipe,
+    CraftRecipeIngredient,
     DungeonIngredientDrop,
     DungeonLocation,
     DungeonLocationItemTemplate,
@@ -220,9 +222,16 @@ class Command(BaseCommand):
                 {"en": "Restores a moderate amount of HP.", "ru": "Восстанавливает умеренное количество HP."},
                 40,
             ),
+            (
+                "large_healing_potion",
+                {"en": "Large healing potion", "ru": "Большое зелье лечения"},
+                {"en": "Restores a large amount of HP.", "ru": "Восстанавливает большое количество HP."},
+                70,
+            ),
         ]
+        potion_by_code = {}
         for index, (code, names, descriptions, heal_percent) in enumerate(potions):
-            PotionTemplate.objects.update_or_create(
+            potion, _ = PotionTemplate.objects.update_or_create(
                 code=code,
                 defaults={
                     "name": names["ru"],
@@ -234,6 +243,7 @@ class Command(BaseCommand):
                     "sort_order": index,
                 },
             )
+            potion_by_code[code] = potion
 
         # (code, names, descriptions, category)
         ingredients = [
@@ -316,6 +326,48 @@ class Command(BaseCommand):
                         "min_quantity": min_quantity,
                         "max_quantity": max_quantity,
                     },
+                )
+
+        # (code, difficulty, potion_code, required_hero_level, {ingredient_code: quantity per potion})
+        recipes = [
+            (
+                "small_healing_recipe",
+                CraftRecipe.Difficulty.SMALL,
+                "small_healing_potion",
+                1,
+                {"forest_herb": 3, "clean_water": 1, "bitter_root": 1},
+            ),
+            (
+                "medium_healing_recipe",
+                CraftRecipe.Difficulty.MEDIUM,
+                "medium_healing_potion",
+                1,
+                {"forest_herb": 4, "clean_water": 2, "bitter_root": 2, "cave_moss": 1},
+            ),
+            (
+                "large_healing_recipe",
+                CraftRecipe.Difficulty.LARGE,
+                "large_healing_potion",
+                5,
+                {"forest_herb": 5, "clean_water": 2, "bitter_root": 2, "cave_moss": 2, "crystal_dust": 1},
+            ),
+        ]
+        for index, (code, difficulty, potion_code, required_level, slots) in enumerate(recipes):
+            recipe, _ = CraftRecipe.objects.update_or_create(
+                code=code,
+                defaults={
+                    "difficulty": difficulty,
+                    "potion": potion_by_code[potion_code],
+                    "required_hero_level": required_level,
+                    "is_active": True,
+                    "sort_order": index,
+                },
+            )
+            for ingredient_code, quantity in slots.items():
+                CraftRecipeIngredient.objects.update_or_create(
+                    recipe=recipe,
+                    ingredient=ingredient_by_code[ingredient_code],
+                    defaults={"quantity": quantity},
                 )
 
         self.stdout.write(self.style.SUCCESS("Seeded MVP game data."))

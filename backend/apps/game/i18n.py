@@ -159,6 +159,22 @@ MESSAGES = {
         "en": "Daily limit for this location has been reached.",
         "ru": "Дневной лимит этой локации исчерпан.",
     },
+    "recipe_not_found": {
+        "en": "Crafting recipe not found.",
+        "ru": "Рецепт крафта не найден.",
+    },
+    "recipe_inactive": {
+        "en": "Crafting recipe is not available.",
+        "ru": "Рецепт крафта недоступен.",
+    },
+    "hero_level_too_low": {
+        "en": "Hero level is too low for this recipe.",
+        "ru": "Уровень героя слишком мал для этого рецепта.",
+    },
+    "not_enough_ingredients": {
+        "en": "Not enough ingredients to craft.",
+        "ru": "Недостаточно ингредиентов для крафта.",
+    },
 }
 
 

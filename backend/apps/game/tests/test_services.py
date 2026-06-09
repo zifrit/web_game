@@ -7,8 +7,10 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.game.management.commands.seed_game import Command as SeedCommand
-from apps.game.models import CharacterClass, DungeonIngredientDrop, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonMiniGameConfig, DungeonRun, HeroIngredientStorage, HeroPotionStorage, IngredientTemplate, ItemTemplate, PotionTemplate, RarityConfig, User, UserItem
-from apps.game.services import DungeonMiniGameService, DungeonRunService, GameBalanceService, GameFormulaService, IngredientDropService, IngredientService, InventoryService, LootGenerationService, PotionService
+from rest_framework.serializers import ValidationError as DRFValidationError
+
+from apps.game.models import CharacterClass, CraftRecipe, DungeonIngredientDrop, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonMiniGameConfig, DungeonRun, HeroIngredientStorage, HeroPotionStorage, IngredientTemplate, ItemTemplate, PotionTemplate, RarityConfig, User, UserItem
+from apps.game.services import CraftService, DungeonMiniGameService, DungeonRunService, GameBalanceService, GameFormulaService, IngredientDropService, IngredientService, InventoryService, LootGenerationService, PotionService
 from apps.game.services.ranks import RANKS, rank_for_level
 
 
@@ -806,6 +808,140 @@ class PotionTests(TestCase):
         self.assertEqual(used.status_code, 200, used.data)
         self.assertGreater(used.data["current_hp"], 1)
         self.assertEqual(used.data["remaining"], 2)
+
+
+class CraftTests(TestCase):
+    """Проверки Этапа 6: крафт зелий по предзаполненным рецептам."""
+
+    def setUp(self):
+        SeedCommand().handle()
+        self.user = User.objects.create_user("craft@example.com", "strongpass123")
+        self.character = GameBalanceService.create_character(self.user, "CraftHero", CharacterClass.objects.get(key="warrior"))
+        self.small_recipe = CraftRecipe.objects.get(code="small_healing_recipe")
+        self.large_recipe = CraftRecipe.objects.get(code="large_healing_recipe")
+        # Запас ингредиентов с избытком для всех рецептов.
+        for code in ("forest_herb", "clean_water", "bitter_root", "cave_moss", "crystal_dust"):
+            HeroIngredientStorage.objects.create(
+                character=self.character,
+                ingredient=IngredientTemplate.objects.get(code=code),
+                count=50,
+            )
+
+    def _count(self, code: str) -> int:
+        return HeroIngredientStorage.objects.get(
+            character=self.character, ingredient__code=code
+        ).count
+
+    def test_successful_craft_batch_one(self):
+        result = CraftService.craft_potions(self.user, self.small_recipe.id, 1)
+
+        # small: forest_herb x3, clean_water x1, bitter_root x1.
+        self.assertEqual(self._count("forest_herb"), 47)
+        self.assertEqual(self._count("clean_water"), 49)
+        self.assertEqual(self._count("bitter_root"), 49)
+        self.assertEqual(result["crafted"], 1)
+        potion = HeroPotionStorage.objects.get(
+            character=self.character, potion=self.small_recipe.potion
+        )
+        self.assertEqual(potion.count, 1)
+        self.assertEqual(result["potion_count"], 1)
+
+    def test_batch_multiplies_consumption_and_output(self):
+        CraftService.craft_potions(self.user, self.small_recipe.id, 3)
+
+        self.assertEqual(self._count("forest_herb"), 50 - 3 * 3)
+        self.assertEqual(self._count("clean_water"), 50 - 1 * 3)
+        self.assertEqual(self._count("bitter_root"), 50 - 1 * 3)
+        potion = HeroPotionStorage.objects.get(
+            character=self.character, potion=self.small_recipe.potion
+        )
+        self.assertEqual(potion.count, 3)
+
+    def test_not_enough_ingredients_rolls_back(self):
+        storage = HeroIngredientStorage.objects.get(
+            character=self.character, ingredient__code="forest_herb"
+        )
+        storage.count = 2  # нужно 3 на одно зелье
+        storage.save(update_fields=["count"])
+
+        with self.assertRaises(DRFValidationError) as ctx:
+            CraftService.craft_potions(self.user, self.small_recipe.id, 1)
+        self.assertIn("ingredient", str(ctx.exception).lower())
+
+        # Полный откат: ничего не списано, зелья не выданы.
+        self.assertEqual(self._count("forest_herb"), 2)
+        self.assertEqual(self._count("clean_water"), 50)
+        self.assertEqual(self._count("bitter_root"), 50)
+        self.assertFalse(
+            HeroPotionStorage.objects.filter(
+                character=self.character, potion=self.small_recipe.potion
+            ).exists()
+        )
+
+    def test_hero_level_too_low(self):
+        self.assertEqual(self.character.level, 1)
+        with self.assertRaises(DRFValidationError):
+            CraftService.craft_potions(self.user, self.large_recipe.id, 1)
+        self.assertEqual(self._count("forest_herb"), 50)
+
+    def test_inactive_recipe_rejected(self):
+        self.small_recipe.is_active = False
+        self.small_recipe.save(update_fields=["is_active"])
+        with self.assertRaises(DRFValidationError):
+            CraftService.craft_potions(self.user, self.small_recipe.id, 1)
+
+    def test_zero_count_row_kept(self):
+        storage = HeroIngredientStorage.objects.get(
+            character=self.character, ingredient__code="clean_water"
+        )
+        storage.count = 1  # ровно на одно зелье
+        storage.save(update_fields=["count"])
+
+        CraftService.craft_potions(self.user, self.small_recipe.id, 1)
+
+        storage.refresh_from_db()
+        self.assertEqual(storage.count, 0)
+        self.assertTrue(
+            HeroIngredientStorage.objects.filter(pk=storage.pk).exists()
+        )
+
+    def test_concurrent_double_craft_cannot_go_negative(self):
+        # Запас ровно на один малый крафт по forest_herb.
+        storage = HeroIngredientStorage.objects.get(
+            character=self.character, ingredient__code="forest_herb"
+        )
+        storage.count = 3
+        storage.save(update_fields=["count"])
+
+        CraftService.craft_potions(self.user, self.small_recipe.id, 1)
+        with self.assertRaises(DRFValidationError):
+            CraftService.craft_potions(self.user, self.small_recipe.id, 1)
+
+        self.assertEqual(self._count("forest_herb"), 0)
+        potion = HeroPotionStorage.objects.get(
+            character=self.character, potion=self.small_recipe.potion
+        )
+        self.assertEqual(potion.count, 1)
+
+    def test_api_recipes_and_craft(self):
+        client = APIClient()
+        login = client.post("/api/auth/login", {"email": "craft@example.com", "password": "strongpass123"}, format="json")
+        self.assertEqual(login.status_code, 200, login.data)
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access_token']}")
+
+        listing = client.get("/api/craft/recipes")
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(len(listing.data), 3)
+        small = next(r for r in listing.data if r["difficulty"] == "small")
+        self.assertEqual(len(small["ingredients"]), 3)
+        self.assertIn("heal_percent", small["potion"])
+        self.assertIn("quantity", small["ingredients"][0])
+
+        crafted = client.post("/api/craft/potions", {"recipe_id": self.small_recipe.id, "quantity": 2}, format="json")
+        self.assertEqual(crafted.status_code, 200, crafted.data)
+        self.assertEqual(crafted.data["crafted"], 2)
+        self.assertEqual(crafted.data["potion_count"], 2)
+        self.assertEqual(self._count("forest_herb"), 50 - 3 * 2)
 
 
 class IngredientTests(TestCase):

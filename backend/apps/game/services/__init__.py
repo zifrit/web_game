@@ -1,5 +1,6 @@
 from .balance import GameBalanceService
 from .consumables import PotionService
+from .crafting import CraftService
 from .config import (
     DEFAULT_CONFIGS,
     DEFAULT_RARITIES,
@@ -24,6 +25,7 @@ from .reference_cache import (
 
 __all__ = [
     "ClaimResult",
+    "CraftService",
     "DEFAULT_CONFIGS",
     "DEFAULT_RARITIES",
     "DungeonRunService",
