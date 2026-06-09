@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from apps.game.models import ShopOffer
+from apps.game.services.shop_rewards import reward_descriptor
 
 from .common import localized_name, media_payload, serializer_locale
 
@@ -56,29 +57,26 @@ class ShopOfferDetailSerializer(ShopOfferListSerializer):
 
     def get_possible_rewards(self, obj) -> list:
         locale = serializer_locale(self.context)
-        if obj.reward_kind == ShopOffer.RewardKind.INGREDIENT:
-            entries = list(obj.ingredient_entries.all())
-            template_attr, type_label = "ingredient_template", "ingredient"
-        elif obj.reward_kind == ShopOffer.RewardKind.POTION:
-            entries = list(obj.potion_entries.all())
-            template_attr, type_label = "potion_template", "potion"
-        else:
-            entries = list(obj.item_entries.all())
-            template_attr, type_label = "item_template", "item"
+        descriptor = reward_descriptor(obj.reward_kind)
+        if descriptor is None:
+            return []
 
+        entries = list(
+            getattr(obj, descriptor.related_name).select_related(descriptor.template_attr).all()
+        )
         total = sum(entry.chance for entry in entries) or 1
         rewards = []
         for entry in entries:
-            template = getattr(entry, template_attr)
+            template = getattr(entry, descriptor.template_attr)
             reward = {
-                "type": type_label,
+                "type": descriptor.type_label,
                 "template_id": template.id,
                 "name": localized_name(template, locale),
                 "chance": entry.chance,
                 "chance_percent": round(entry.chance / total * 100, 1),
                 "media": media_payload(getattr(template, "media", None), self.context),
             }
-            if type_label == "item":
+            if descriptor.type_label == "item":
                 reward["rarity_key"] = template.rarity_key
             rewards.append(reward)
         return rewards

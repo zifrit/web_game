@@ -10,8 +10,6 @@ from rest_framework import serializers
 from apps.game.i18n import DEFAULT_LOCALE, message
 from apps.game.models import (
     Character,
-    HeroIngredientStorage,
-    HeroPotionStorage,
     MoneyTransaction,
     ShopOffer,
     ShopPurchase,
@@ -19,6 +17,7 @@ from apps.game.models import (
 )
 
 from .loot import generate_item_instance
+from .shop_rewards import reward_descriptor
 from .wallets import all_balances, get_wallet
 
 
@@ -130,14 +129,13 @@ class ShopService:
     def _offer_entries(offer: ShopOffer, locale: str) -> list:
         """Возвращает список записей-наград и проверяет правила количества записей."""
 
-        if offer.reward_kind == ShopOffer.RewardKind.INGREDIENT:
-            entries = list(offer.ingredient_entries.select_related("ingredient_template").all())
-        elif offer.reward_kind == ShopOffer.RewardKind.POTION:
-            entries = list(offer.potion_entries.select_related("potion_template").all())
-        elif offer.reward_kind == ShopOffer.RewardKind.ITEM:
-            entries = list(offer.item_entries.select_related("item_template").all())
-        else:
+        descriptor = reward_descriptor(offer.reward_kind)
+        if descriptor is None:
             raise serializers.ValidationError(message("shop_offer_misconfigured", locale))
+
+        entries = list(
+            getattr(offer, descriptor.related_name).select_related(descriptor.template_attr).all()
+        )
 
         if offer.delivery_mode == ShopOffer.DeliveryMode.SINGLE:
             if len(entries) != 1:
@@ -149,29 +147,16 @@ class ShopService:
 
     @classmethod
     def _grant_rewards(cls, *, offer, entries, character, user, total_rewards) -> dict:
-        """Прокатывает и выдаёт награды в зависимости от вида и режима предложения."""
+        """Прокатывает и выдаёт награды по дескриптору вида (склад либо предмет)."""
 
-        if offer.reward_kind == ShopOffer.RewardKind.INGREDIENT:
+        descriptor = reward_descriptor(offer.reward_kind)
+        if descriptor.stackable:
             return cls._grant_storage(
                 offer=offer,
                 entries=entries,
                 character=character,
                 total_rewards=total_rewards,
-                template_attr="ingredient_template_id",
-                storage_model=HeroIngredientStorage,
-                storage_fk="ingredient_id",
-                payload_key="ingredients",
-            )
-        if offer.reward_kind == ShopOffer.RewardKind.POTION:
-            return cls._grant_storage(
-                offer=offer,
-                entries=entries,
-                character=character,
-                total_rewards=total_rewards,
-                template_attr="potion_template_id",
-                storage_model=HeroPotionStorage,
-                storage_fk="potion_id",
-                payload_key="potions",
+                descriptor=descriptor,
             )
         return cls._grant_items(
             offer=offer,
@@ -179,6 +164,7 @@ class ShopService:
             character=character,
             user=user,
             total_rewards=total_rewards,
+            descriptor=descriptor,
         )
 
     @staticmethod
@@ -192,10 +178,13 @@ class ShopService:
         return Counter(getattr(entry, template_attr) for entry in rolls)
 
     @classmethod
-    def _grant_storage(cls, *, offer, entries, character, total_rewards, template_attr, storage_model, storage_fk, payload_key) -> dict:
+    def _grant_storage(cls, *, offer, entries, character, total_rewards, descriptor) -> dict:
         """Выдаёт стекируемые награды (ингредиенты/зелья) на склад героя."""
 
-        counter = cls._roll_counter(offer, entries, total_rewards, template_attr)
+        storage_model = descriptor.storage_model
+        storage_fk = descriptor.storage_fk
+        payload_key = descriptor.payload_key
+        counter = cls._roll_counter(offer, entries, total_rewards, descriptor.template_id_attr)
 
         existing = {
             getattr(row, storage_fk): row
@@ -227,14 +216,15 @@ class ShopService:
         }
 
     @classmethod
-    def _grant_items(cls, *, offer, entries, character, user, total_rewards) -> dict:
+    def _grant_items(cls, *, offer, entries, character, user, total_rewards, descriptor) -> dict:
         """Прокатывает и создаёт уникальные предметы пользователя одним bulk_create."""
 
+        template_attr = descriptor.template_attr
         if offer.delivery_mode == ShopOffer.DeliveryMode.SINGLE:
-            templates = [entries[0].item_template for _ in range(total_rewards)]
+            templates = [getattr(entries[0], template_attr) for _ in range(total_rewards)]
         else:
             weighted = [(entry, entry.chance) for entry in entries]
-            templates = [_weighted_choice(weighted).item_template for _ in range(total_rewards)]
+            templates = [getattr(_weighted_choice(weighted), template_attr) for _ in range(total_rewards)]
 
         drafts = [generate_item_instance(template) for template in templates]
         items = [
@@ -256,7 +246,7 @@ class ShopService:
         created = UserItem.objects.bulk_create(items)
 
         return {
-            "items": [
+            descriptor.payload_key: [
                 {
                     "user_item_id": item.id,
                     "template_id": item.template_id,
