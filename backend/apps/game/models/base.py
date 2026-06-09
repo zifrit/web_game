@@ -26,6 +26,8 @@ class MediaAsset(TimestampedModel):
         ICONS = "icons", "Иконки"
         WEAPONS = "weapons", "Оружие"
         DUNGEONS = "dungeons", "Данжи"
+        POTION = "potion", "Зелья"
+        INGREDIENT = "ingredient", "Ингредиенты"
 
     name = models.CharField("Название", max_length=120, blank=True, default="")
     asset_type = models.CharField("Тип", max_length=20, choices=AssetType.choices, null=True, blank=True)

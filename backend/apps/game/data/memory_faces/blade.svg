@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="void greatblade">
+  <defs>
+    <radialGradient id="voidBg" cx="50%" cy="45%" r="78%">
+      <stop offset="0%" stop-color="#1b2550"/>
+      <stop offset="45%" stop-color="#0a1024"/>
+      <stop offset="100%" stop-color="#03040a"/>
+    </radialGradient>
+
+    <linearGradient id="edgeMetal" x1="12%" y1="8%" x2="92%" y2="92%">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="16%" stop-color="#94a3b8"/>
+      <stop offset="46%" stop-color="#26324a"/>
+      <stop offset="78%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+
+    <linearGradient id="darkSteel" x1="15%" y1="0%" x2="85%" y2="100%">
+      <stop offset="0%" stop-color="#64748b"/>
+      <stop offset="35%" stop-color="#1f2937"/>
+      <stop offset="100%" stop-color="#030712"/>
+    </linearGradient>
+
+    <linearGradient id="arcane" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#dbeafe"/>
+      <stop offset="20%" stop-color="#93c5fd"/>
+      <stop offset="46%" stop-color="#7c3aed"/>
+      <stop offset="74%" stop-color="#312e81"/>
+      <stop offset="100%" stop-color="#060716"/>
+    </linearGradient>
+
+    <linearGradient id="deepViolet" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a78bfa"/>
+      <stop offset="45%" stop-color="#4c1d95"/>
+      <stop offset="100%" stop-color="#09090f"/>
+    </linearGradient>
+
+    <filter id="glow" x="-70%" y="-70%" width="240%" height="240%">
+      <feGaussianBlur stdDeviation="3.4" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="0.25 0 0 0 0.14
+                0 0.18 0 0 0.08
+                0 0 1.00 0 0.92
+                0 0 0 0.9 0"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <filter id="bigGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="6.5" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="0.18 0 0 0 0.12
+                0 0.12 0 0 0.04
+                0 0 1.00 0 1.00
+                0 0 0 1 0"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <filter id="drop" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000" flood-opacity=".95"/>
+    </filter>
+  </defs>
+
+  <rect width="128" height="128" fill="url(#voidBg)"/>
+  <path d="M7 105 C26 91, 44 114, 65 101 C85 89, 103 93, 122 80" fill="none" stroke="#312e81" stroke-width="2.5" opacity=".42"/>
+  <path d="M14 28 C35 12, 54 23, 72 16 C89 10, 108 16, 119 34" fill="none" stroke="#1e1b4b" stroke-width="2" opacity=".45"/>
+  <g opacity=".75">
+    <circle cx="17" cy="73" r="1" fill="#818cf8"/>
+    <circle cx="33" cy="21" r="1.1" fill="#93c5fd"/>
+    <circle cx="101" cy="25" r="1.2" fill="#a78bfa"/>
+    <circle cx="112" cy="101" r="1" fill="#c4b5fd"/>
+    <circle cx="59" cy="113" r="1.1" fill="#818cf8"/>
+  </g>
+
+
+  <g filter="url(#drop)">
+    <path d="M67 7 L91 38 L78 103 L64 121 L50 103 L37 38 Z" fill="url(#edgeMetal)" stroke="#c4b5fd" stroke-width="2.8" stroke-linejoin="round"/>
+    <path d="M64 12 L75 41 L64 114 L53 41 Z" fill="#050711" opacity=".72"/>
+    <path d="M46 39 L82 39" stroke="#8b5cf6" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+    <path d="M54 20 L64 48 L74 20" fill="none" stroke="#dbeafe" stroke-width="2" opacity=".8"/>
+    <path d="M58 64 L72 78 L59 94" fill="none" stroke="#7c3aed" stroke-width="2.4" filter="url(#glow)"/>
+    <path d="M42 31 L86 31 L78 44 L50 44 Z" fill="url(#deepViolet)" stroke="#c4b5fd" stroke-width="2"/>
+  </g>
+
+</svg>

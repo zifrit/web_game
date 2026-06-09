@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useI18n } from "@/components/providers";
 import { ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { bestMediaUrl } from "@/lib/media";
+import type { LeaderboardMetric } from "@/lib/types";
 
 function rankStyle(rank: number): { borderColor: string; background: string; color: string } {
   if (rank === 1) return { borderColor: "rgba(245,158,11,0.5)", background: "rgba(245,158,11,0.12)", color: "#F59E0B" };
@@ -15,9 +17,10 @@ function rankStyle(rank: number): { borderColor: string; background: string; col
 
 export function LeaderboardScreen() {
   const { t } = useI18n();
+  const [metric, setMetric] = useState<LeaderboardMetric>("level");
   const boardQuery = useQuery({
-    queryKey: ["leaderboard", "level"],
-    queryFn: api.leaderboard,
+    queryKey: ["leaderboard", metric],
+    queryFn: () => api.leaderboard(metric),
   });
 
   return (
@@ -27,24 +30,59 @@ export function LeaderboardScreen() {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 22 }}>🏅</span>
             <div>
-              <div className="card-sub">{t("leaderboard.top")}</div>
+              <div className="card-sub">{metric === "power" ? t("leaderboard.topByPower") : t("leaderboard.top")}</div>
               <div className="card-title">{t("nav.leaderboard")}</div>
             </div>
           </div>
 
-          {boardQuery.data?.my_rank && (
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {/* Metric toggle: level / power */}
             <div style={{
-              borderRadius: 12, border: "1px solid rgba(59,130,246,0.3)",
-              background: "rgba(59,130,246,0.10)", padding: "8px 16px", textAlign: "right",
+              display: "flex",
+              background: "rgba(255,255,255,0.05)",
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.08)",
+              padding: 3,
+              gap: 2,
             }}>
-              <div className="mono" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-mute)" }}>
-                {t("leaderboard.myRank")}
-              </div>
-              <div style={{ fontWeight: 700, color: "var(--text)", marginTop: 2 }}>
-                #{boardQuery.data.my_rank.rank} · {t("common.level")} {boardQuery.data.my_rank.level}
-              </div>
+              {(["level", "power"] as const).map((m) => {
+                const active = metric === m;
+                return (
+                  <button
+                    key={m}
+                    onClick={() => setMetric(m)}
+                    style={{
+                      padding: "6px 14px",
+                      border: "none", borderRadius: 7, cursor: "pointer",
+                      fontSize: 12, fontWeight: 600,
+                      background: active ? "var(--primary)" : "transparent",
+                      color: active ? "#fff" : "rgba(255,255,255,0.35)",
+                      boxShadow: active ? "0 0 12px color-mix(in srgb, var(--primary) 60%, transparent)" : "none",
+                      transition: "all 0.18s ease",
+                    }}
+                  >
+                    {m === "power" ? t("leaderboard.byPower") : t("leaderboard.byLevel")}
+                  </button>
+                );
+              })}
             </div>
-          )}
+
+            {boardQuery.data?.my_rank && (
+              <div style={{
+                borderRadius: 12, border: "1px solid rgba(59,130,246,0.3)",
+                background: "rgba(59,130,246,0.10)", padding: "8px 16px", textAlign: "right",
+              }}>
+                <div className="mono" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-mute)" }}>
+                  {t("leaderboard.myRank")}
+                </div>
+                <div style={{ fontWeight: 700, color: "var(--text)", marginTop: 2 }}>
+                  #{boardQuery.data.my_rank.rank} · {metric === "power"
+                    ? `${t("common.power")} ${boardQuery.data.my_rank.power ?? 0}`
+                    : `${t("common.level")} ${boardQuery.data.my_rank.level ?? 0}`}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="card-body">
@@ -132,16 +170,16 @@ export function LeaderboardScreen() {
                     </div>
                   </div>
 
-                  {/* Level */}
+                  {/* Metric: level or power */}
                   <div style={{ textAlign: "right" }}>
                     <div className="mono" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-mute)" }}>
-                      {t("common.level")}
+                      {metric === "power" ? t("common.power") : t("common.level")}
                     </div>
                     <div style={{
                       fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
                       fontSize: 22, fontWeight: 700, color: "var(--bone)", lineHeight: 1,
                     }}>
-                      {entry.level}
+                      {metric === "power" ? entry.power : entry.level}
                     </div>
                   </div>
                 </div>

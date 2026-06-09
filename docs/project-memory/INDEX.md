@@ -9,9 +9,15 @@ source_of_truth:
   - backend/config/urls.py
   - backend/config/celery.py
   - backend/apps/game/urls.py
-  - backend/apps/game/ranks.py
-  - backend/apps/game/seed_data.py
+  - backend/apps/game/services/ranks.py
+  - backend/apps/game/services/seed_data.py
+  - backend/apps/game/services/ingredients.py
+  - backend/apps/game/services/consumables.py
+  - backend/apps/game/services/crafting.py
   - backend/apps/game/views/auth.py
+  - backend/apps/game/views/ingredients.py
+  - backend/apps/game/views/consumables.py
+  - backend/apps/game/views/crafting.py
   - backend/apps/game/image_generation.py
   - backend/apps/game/management/commands/seed_game.py
   - backend/apps/game/management/commands/seed_item_templates.py
@@ -23,10 +29,16 @@ source_of_truth:
   - frontend/lib/types.ts
   - frontend/components/rpg-client.tsx
   - frontend/components/screens/settings-screen.tsx
+  - frontend/components/screens/inventory-screen.tsx
   - frontend/package.json
   - docker-compose.yml
-last_verified: 2026-05-31
+last_verified: 2026-06-08
 verified_from:
+  - backend/apps/game/services/mini_games.py
+  - backend/apps/game/services/mini_game_store.py
+  - backend/apps/game/services/mini_game_faces.py
+  - backend/apps/game/models/dungeons.py
+  - backend/apps/game/views/dungeons.py
   - AGENTS.md
   - README.md
   - specs/
@@ -35,19 +47,33 @@ verified_from:
   - backend/apps/game/urls.py
   - backend/apps/game/tasks.py
   - backend/apps/game/models/base.py
-  - backend/apps/game/ranks.py
-  - backend/apps/game/seed_data.py
+  - backend/apps/game/models/ingredients.py
+  - backend/apps/game/models/consumables.py
+  - backend/apps/game/models/crafting.py
+  - backend/apps/game/services/ranks.py
+  - backend/apps/game/services/seed_data.py
+  - backend/apps/game/services/ingredients.py
+  - backend/apps/game/services/consumables.py
+  - backend/apps/game/services/crafting.py
   - backend/apps/game/serializers/common.py
   - backend/apps/game/serializers/inventory.py
+  - backend/apps/game/serializers/ingredients.py
+  - backend/apps/game/serializers/consumables.py
+  - backend/apps/game/serializers/crafting.py
   - backend/apps/game/views/auth.py
+  - backend/apps/game/views/ingredients.py
+  - backend/apps/game/views/consumables.py
+  - backend/apps/game/views/crafting.py
   - backend/apps/game/image_generation.py
   - backend/apps/game/management/commands/generate_game_images.py
   - backend/apps/game/management/commands/seed_item_templates.py
+  - backend/apps/game/management/commands/seed_game.py
   - frontend/lib/api.ts
   - frontend/lib/i18n.ts
   - frontend/lib/media.ts
   - frontend/lib/types.ts
   - frontend/components/rpg-client.tsx
+  - frontend/components/screens/inventory-screen.tsx
   - frontend/components/screens/settings-screen.tsx
   - frontend/package.json
   - docker-compose.yml
@@ -55,78 +81,76 @@ verified_from:
 
 # Project Memory Index
 
-`docs/project-memory/` - точка входа в контекст Browser Async RPG MVP. Сначала
-открывай этот индекс, затем нужный curated-файл, а за точными списками переходи
-в inventories.
+`docs/project-memory/` is the entry point for Browser Async RPG MVP context.
+First open this index, then the relevant curated file, and use inventories for
+exact lists.
 
-## Как пользоваться
+## How To Use
 
-1. Начинай с `INDEX.md`.
-2. Для общего понимания проекта читай `curated/`.
-3. Для точных списков API, модулей, экранов, runtime-сервисов и проверок
-   открывай `inventories/`.
-4. Для codebase-вопросов используй Graphify, если есть `graphify-out/graph.json`;
-   для широкой навигации предпочитай `graphify-out/wiki/index.md`, если он
-   существует.
-5. Если память, Graphify или документация расходятся с кодом, доверяй коду и
-   обновляй память.
+1. Start with `INDEX.md`.
+2. Read `curated/` for broad project understanding.
+3. Open `inventories/` for exact lists of APIs, modules, screens, runtime
+   services, and checks.
+4. For codebase questions, use Graphify when `graphify-out/graph.json` exists;
+   for broad navigation prefer `graphify-out/wiki/index.md` if it exists.
+5. If memory, Graphify, or documentation disagrees with code, trust the code and
+   update memory.
 
-## Что читать по типу запроса
+## What To Read By Request Type
 
-- Что это за игра и какие MVP-границы важны:
+- What the game is and which MVP boundaries matter:
   [curated/overview.md](curated/overview.md)
-- Где находятся backend, frontend, runtime и основные entrypoints:
+- Where backend, frontend, runtime, and main entrypoints live:
   [curated/architecture.md](curated/architecture.md)
-- Какие backend-правила важны для services, dungeon runs, claim и inventory:
+- Backend rules for services, dungeon runs, claim, and inventory:
   [curated/backend-rules.md](curated/backend-rules.md)
-- Какие frontend-правила важны для API client, state, screens и UI intent:
+- Frontend rules for the API client, state, screens, and UI intent:
   [curated/frontend-rules.md](curated/frontend-rules.md)
-- Какие gotchas нужно проверить перед изменениями:
+- Gotchas to check before changes:
   [curated/gotchas.md](curated/gotchas.md)
-- Какие правила git hygiene, security и handoff важны:
+- Git hygiene, security, and handoff rules:
   [curated/working-rules.md](curated/working-rules.md)
-- Какие правила Graphify важны для вопросов по кодовой базе и больших
-  изменений:
+- Graphify rules for codebase questions and large changes:
   [curated/working-rules.md](curated/working-rules.md)
-- Нужен список публичных API routes:
+- Public API routes:
   [inventories/api-routes.md](inventories/api-routes.md)
-- Нужна карта backend modules, models, services, serializers, views и tasks:
+- Backend modules, models, services, serializers, views, and tasks:
   [inventories/backend-inventory.md](inventories/backend-inventory.md)
-- Нужна карта frontend entrypoints, providers, screens, libs и package scripts:
+- Frontend entrypoints, providers, screens, libraries, and package scripts:
   [inventories/frontend-inventory.md](inventories/frontend-inventory.md)
-- Нужны runtime, Docker Compose, settings, Celery и dependency facts:
+- Runtime, Docker Compose, settings, Celery, and dependency facts:
   [inventories/runtime-and-config.md](inventories/runtime-and-config.md)
-- Нужны команды локального запуска и prior smoke facts:
+- Local run commands and prior smoke facts:
   [inventories/local-run.md](inventories/local-run.md)
-- Нужны команды проверки и smoke checks:
+- Verification commands and smoke checks:
   [inventories/verification.md](inventories/verification.md)
 
-## Как понимать достоверность
+## How To Interpret Reliability
 
-- Приоритет доверия: текущий код; тесты, миграции, схемы, конфиги и runtime;
-  свежий Graphify-анализ; документация проекта; Project Memory; предыдущие
-  обсуждения.
-- `curated/*` - ручная память для человека: смысл, правила, навигация и места,
-  где легко ошибиться.
-- `inventories/*` - generated-style markdown snapshots: списки, вручную
-  собранные и подтвержденные кодом. Генератора в этом проекте нет.
-- `source_of_truth` и `verified_from` в frontmatter показывают, откуда взята и
-  чем подтверждена информация.
+- Trust priority: current code; tests, migrations, schemas, configs, and
+  runtime; fresh Graphify analysis; project documentation; Project Memory;
+  previous discussions.
+- `curated/*` is hand-written human memory: meaning, rules, navigation, and
+  places where mistakes are easy.
+- `inventories/*` are generated-style markdown snapshots: lists manually
+  collected and confirmed against code. There is no generator in this project.
+- `source_of_truth` and `verified_from` in frontmatter show where information
+  came from and how it was confirmed.
 
-## Контракт актуальности
+## Freshness Contract
 
-- Curated-файлы обновляются вручную, когда меняется архитектура, product scope,
-  domain rules или локальные правила работы.
-- Inventories обновляются вручную после изменений API routes, моделей,
-  services, frontend screens, runtime config или verification-команд.
-- Если нужно быстро понять риск устаревания, сначала смотри
-  [curated/gotchas.md](curated/gotchas.md), затем relevant inventory.
+- Curated files are updated manually when architecture, product scope, domain
+  rules, or local working rules change.
+- Inventories are updated manually after changes to API routes, models,
+  services, frontend screens, runtime config, or verification commands.
+- To quickly estimate staleness risk, first check
+  [curated/gotchas.md](curated/gotchas.md), then the relevant inventory.
 
-## Принципы этого слоя памяти
+## Principles Of This Memory Layer
 
-- Память не заменяет код, `README.md` или `specs/`.
-- Память должна помогать быстро найти source-of-truth, а не дублировать его
-  целиком.
-- Graphify помогает понять структуру, но текущий код остается источником истины.
-- Секреты и `.env` / `.env.*` файлы не читаются, не индексируются и не
-  пересказываются.
+- Memory does not replace code, `README.md`, or `specs/`.
+- Memory should help find the source of truth quickly, not duplicate it
+  wholesale.
+- Graphify helps understand structure, but current code remains the source of
+  truth.
+- Secrets and `.env` / `.env.*` files are not read, indexed, or summarized.

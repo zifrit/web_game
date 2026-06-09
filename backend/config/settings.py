@@ -1,15 +1,31 @@
 from datetime import timedelta
 from pathlib import Path
 import os
+import sys
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Тестовый прогон: pytest или manage.py test. В тестах не требуем Redis
+# и не ограничиваем частоту запросов, чтобы наборы тестов не упирались в лимиты.
+TESTING = "pytest" in sys.modules or "test" in sys.argv
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-secret-key")
 TOTP_ENCRYPTION_KEY = os.getenv("TOTP_ENCRYPTION_KEY", "")
 DEBUG = os.getenv("DJANGO_DEBUG", "1") == "1"
-SQL_DEBUG = True
+# Логирование каждого SQL-запроса. По умолчанию включено только в DEBUG,
+# в проде шумит и тормозит — управляется переменной SQL_DEBUG.
+SQL_DEBUG = os.getenv("SQL_DEBUG", "1" if DEBUG else "0") == "1"
+
+# В продакшене (DEBUG=0) обязательны реальные секреты. Падаем на старте,
+# если они не заданы, чтобы не уехать в онлайн с dev-ключами.
+if not DEBUG and not TESTING:
+    if SECRET_KEY == "dev-secret-key":
+        raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set in production (DEBUG=0).")
+    if not TOTP_ENCRYPTION_KEY:
+        raise ImproperlyConfigured("TOTP_ENCRYPTION_KEY must be set in production (DEBUG=0).")
 POLZA_AI_API_KEY = os.getenv("POLZA_AI_API_KEY")
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0,backend").split(",") if host.strip()]
 if DEBUG and "testserver" not in ALLOWED_HOSTS:
@@ -28,11 +44,13 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "django_extensions",
     "apps.game",
+    "apps.billing",
 ]
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -102,9 +120,47 @@ CORS_ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 
+# Доверенные источники для CSRF (нужно для admin/сессий за HTTPS-доменом).
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+
+# Безопасность транспорта. Активна только в продакшене (DEBUG=0). Приложение
+# работает за обратным прокси (Caddy), который терминирует TLS и проставляет
+# X-Forwarded-Proto, поэтому Django доверяет этому заголовку.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
-    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_PERMISSION_CLASSES": ("apps.game.permissions.IsSuperuserOrOwner",),
+    # ScopedRateThrottle применяется только к view с заданным throttle_scope,
+    # поэтому высокочастотные игровые ручки без скоупа не ограничиваются.
+    "DEFAULT_THROTTLE_CLASSES": () if TESTING else ("rest_framework.throttling.ScopedRateThrottle",),
+    "DEFAULT_THROTTLE_RATES": {
+        # Аутентификация: ключ по IP (анонимные запросы) — защита от перебора.
+        "auth_login": "10/min",
+        "auth_register": "5/min",
+        "auth_totp": "10/min",
+        "auth_refresh": "30/min",
+        # Чувствительные операции 2FA: ключ по пользователю.
+        "two_factor": "10/min",
+        # Игровая экономика и запись инвентаря — защита от фарма/эксплойтов.
+        "economy": "60/min",
+        "dungeon_write": "60/min",
+        "inventory_write": "60/min",
+        # Мини-игра допускает частые ходы, но всё же ограничена.
+        "mini_game": "120/min",
+    },
 }
 
 SIMPLE_JWT = {
@@ -120,6 +176,35 @@ SIMPLE_JWT = {
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
+
+# Соль для детерминированной, но непредсказуемой раскладки карт мини-игры и
+# буфер TTL для Redis-стейта активной партии сверх таймера попытки.
+MINIGAME_BOARD_SALT = os.getenv("MINIGAME_BOARD_SALT", SECRET_KEY)
+MINIGAME_STATE_TTL_BUFFER_SECONDS = int(os.getenv("MINIGAME_STATE_TTL_BUFFER_SECONDS", "60"))
+
+# Кэш ответов и backend для DRF-троттлинга. По умолчанию берём тот же хост, что и
+# брокер Celery (REDIS_URL), но отдельную базу (db 1), чтобы не смешивать ключи.
+def _derive_cache_url(redis_url: str) -> str:
+    """Возвращает URL Redis с подменой номера базы данных на 1."""
+
+    base, _, _ = redis_url.rpartition("/")
+    if base.startswith("redis://") or base.startswith("rediss://"):
+        return f"{base}/1"
+    return redis_url.rstrip("/") + "/1"
+
+
+REDIS_CACHE_URL = os.getenv("REDIS_CACHE_URL") or _derive_cache_url(REDIS_URL)
+if TESTING:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_CACHE_URL,
+            "KEY_PREFIX": "webgame",
+            "TIMEOUT": 300,
+        }
+    }
 CELERY_BEAT_SCHEDULE = {
     "complete-dungeon-runs": {
         "task": "apps.game.tasks.complete_due_dungeon_runs",
@@ -147,23 +232,32 @@ STORAGES = {
         else "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
 
-if SQL_DEBUG:
-    LOGGING = {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "handlers": {
-            "console": {
-                "class": "logging.StreamHandler",
-            },
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {"format": "{asctime} {levelname} {name} {message}", "style": "{"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
         },
-        "loggers": {
-            "django.db.backends": {
-                "handlers": ["console"],
-                "level": "DEBUG",
-            },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
+    },
+    "loggers": {
+        # Логи SQL включаются только при SQL_DEBUG=1 (по умолчанию в DEBUG).
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "DEBUG" if SQL_DEBUG else "WARNING",
+            "propagate": False,
         },
-    }
+    },
+}

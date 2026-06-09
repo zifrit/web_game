@@ -1,38 +1,18 @@
 "use client";
 
-import { useEffect, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type DragEvent } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
-import { CircleHelp } from "lucide-react";
+import { CircleHelp, Zap } from "lucide-react";
+import { canOpenMiniGame, DungeonMiniGameDifficultyModal, DungeonMiniGameModal, DungeonMiniGameResultModal } from "@/components/dungeon-mini-game-modal";
 import { useI18n } from "@/components/providers";
+import { DungeonRewardModal } from "@/components/dungeon-reward-modal";
 import { CharacterScreenSkeleton, ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatDuration, type Locale, type TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
-import type { Character, Dungeon, EquipmentSlot, Inventory, InventoryCard, InventoryMutationResponse } from "@/lib/types";
-
-/* ── Rarity helpers ── */
-const RARITY_COLOR: Record<string, string> = {
-  f: "#94A3B8",
-  e: "#22C55E",
-  d: "#38BDF8",
-  c: "#3B82F6",
-  b: "#A855F7",
-  a: "#F59E0B",
-  s: "#EF4444",
-  ex:"#F8FAFC",
-};
-const RARITY_GLOW: Record<string, string> = {
-  f: "rgba(148,163,184,0.25)",
-  e: "rgba(34,197,94,0.30)",
-  d: "rgba(56,189,248,0.32)",
-  c: "rgba(59,130,246,0.35)",
-  b: "rgba(168,85,247,0.35)",
-  a: "rgba(245,158,11,0.35)",
-  s: "rgba(239,68,68,0.35)",
-  ex:"rgba(248,250,252,0.35)",
-};
-function rc(rarity?: string) { return RARITY_COLOR[(rarity ?? "f").toLowerCase()] ?? RARITY_COLOR.f; }
-function rg(rarity?: string) { return RARITY_GLOW[(rarity ?? "f").toLowerCase()]  ?? RARITY_GLOW.f;  }
+import { rarityColor as rc, rarityGlow as rg } from "@/lib/rarity";
+import type { Character, ClaimResponse, Dungeon, DungeonMiniGameAttempt, EquipmentSlot, Inventory, InventoryCard, InventoryMutationResponse, Potion } from "@/lib/types";
 
 function setStableDragImage(event: DragEvent<HTMLDivElement>) {
   const node = event.currentTarget;
@@ -322,52 +302,187 @@ function BarBlock({ label, cur, max, kind }: { label: string; cur: number; max: 
 const POWER_WEIGHTS = {
   attack: 2,
   defense: 1.7,
-  health: 0.25,
-  critical_chance: 1,
-  evasion: 1,
+  intellect: 1.5,
+  critical_chance: 1.5,
+  evasion: 1.5,
 } as const;
 
 function PowerHelp({ stats, power }: { stats: Character["stats"]; power: number }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [placement, setPlacement] = useState<"top" | "right" | "bottom" | "left">("bottom");
+  const [popoverPosition, setPopoverPosition] = useState({
+    left: 0,
+    top: 0,
+    arrowLeft: 0,
+    arrowTop: 0,
+    ready: false,
+  });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLSpanElement>(null);
   const rows = [
     { key: "attack", label: t("common.attack"), value: stats?.attack ?? 0, weight: POWER_WEIGHTS.attack },
     { key: "defense", label: t("common.defense"), value: stats?.defense ?? 0, weight: POWER_WEIGHTS.defense },
-    { key: "health", label: t("common.health"), value: stats?.health ?? 0, weight: POWER_WEIGHTS.health },
+    { key: "intellect", label: t("common.intellect"), value: stats?.intellect ?? 0, weight: POWER_WEIGHTS.intellect },
     { key: "critical_chance", label: t("common.crit"), value: stats?.critical_chance ?? 0, weight: POWER_WEIGHTS.critical_chance },
     { key: "evasion", label: t("common.evasion"), value: stats?.evasion ?? 0, weight: POWER_WEIGHTS.evasion },
   ];
 
+  const updatePopoverPosition = useCallback(() => {
+    const button = buttonRef.current;
+    const popover = popoverRef.current;
+    if (!button || !popover) return;
+
+    const margin = 12;
+    const gap = 12;
+    const trigger = button.getBoundingClientRect();
+    const { width, height } = popover.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const space = {
+      top: trigger.top - margin,
+      right: viewportWidth - trigger.right - margin,
+      bottom: viewportHeight - trigger.bottom - margin,
+      left: trigger.left - margin,
+    };
+    const fits = {
+      bottom: space.bottom >= height + gap,
+      top: space.top >= height + gap,
+      right: space.right >= width + gap,
+      left: space.left >= width + gap,
+    };
+    const nextPlacement =
+      (fits.bottom && "bottom") ||
+      (fits.top && "top") ||
+      (fits.right && "right") ||
+      (fits.left && "left") ||
+      (Object.entries(space).sort((a, b) => b[1] - a[1])[0][0] as "top" | "right" | "bottom" | "left");
+
+    const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
+    const centeredLeft = trigger.left + trigger.width / 2 - width / 2;
+    const centeredTop = trigger.top + trigger.height / 2 - height / 2;
+    const maxLeft = Math.max(margin, viewportWidth - width - margin);
+    const maxTop = Math.max(margin, viewportHeight - height - margin);
+    const positionByPlacement = {
+      bottom: {
+        left: clamp(centeredLeft, margin, maxLeft),
+        top: clamp(trigger.bottom + gap, margin, maxTop),
+      },
+      top: {
+        left: clamp(centeredLeft, margin, maxLeft),
+        top: clamp(trigger.top - height - gap, margin, maxTop),
+      },
+      right: {
+        left: clamp(trigger.right + gap, margin, maxLeft),
+        top: clamp(centeredTop, margin, maxTop),
+      },
+      left: {
+        left: clamp(trigger.left - width - gap, margin, maxLeft),
+        top: clamp(centeredTop, margin, maxTop),
+      },
+    };
+    const nextPosition = positionByPlacement[nextPlacement];
+    const arrowInset = 14;
+    const triggerCenterX = trigger.left + trigger.width / 2;
+    const triggerCenterY = trigger.top + trigger.height / 2;
+    const arrowLeft = clamp(triggerCenterX - nextPosition.left, arrowInset, width - arrowInset);
+    const arrowTop = clamp(triggerCenterY - nextPosition.top, arrowInset, height - arrowInset);
+
+    setPlacement(nextPlacement);
+    setPopoverPosition({ ...nextPosition, arrowLeft, arrowTop, ready: true });
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePopoverPosition();
+  }, [open, updatePopoverPosition]);
+
+  useEffect(() => {
+    if (!open) return;
+    window.addEventListener("resize", updatePopoverPosition);
+    window.addEventListener("scroll", updatePopoverPosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePopoverPosition);
+      window.removeEventListener("scroll", updatePopoverPosition, true);
+    };
+  }, [open, updatePopoverPosition]);
+
+  const popover = mounted && open ? createPortal(
+    <span
+      ref={popoverRef}
+      className={`power-help-popover open${popoverPosition.ready ? " positioned" : ""}`}
+      data-placement={placement}
+      role="tooltip"
+      style={{
+        left: popoverPosition.left,
+        top: popoverPosition.top,
+        "--power-help-arrow-left": `${popoverPosition.arrowLeft}px`,
+        "--power-help-arrow-top": `${popoverPosition.arrowTop}px`,
+      } as CSSProperties}
+    >
+      <strong>{t("powerHelp.title")}</strong>
+      <span className="power-help-formula">{t("powerHelp.formula")}</span>
+      {rows.map((row) => (
+        <span key={row.key} className="power-help-row">
+          <span>{row.label}</span>
+          <span>{row.value} x {row.weight} = {(row.value * row.weight).toFixed(2)}</span>
+        </span>
+      ))}
+      <span className="power-help-total">{t("powerHelp.total", { value: power.toFixed(2) })}</span>
+    </span>,
+    document.body
+  ) : null;
+
   return (
-    <span className={`power-help${open ? " open" : ""}`}>
-      <button
-        type="button"
-        className="power-help-btn"
-        aria-label={t("powerHelp.title")}
-        aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
+    <>
+      <span
+        className={`power-help${open ? " open" : ""}`}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => {
+          if (!pinned) setOpen(false);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            setPinned(false);
+            setOpen(false);
+          }
+        }}
       >
-        <CircleHelp size={14} strokeWidth={2} />
-      </button>
-      <span className="power-help-popover" role="tooltip">
-        <strong>{t("powerHelp.title")}</strong>
-        <span className="power-help-formula">{t("powerHelp.formula")}</span>
-        {rows.map((row) => (
-          <span key={row.key} className="power-help-row">
-            <span>{row.label}</span>
-            <span>{row.value} x {row.weight} = {(row.value * row.weight).toFixed(2)}</span>
-          </span>
-        ))}
-        <span className="power-help-total">{t("powerHelp.total", { value: power.toFixed(2) })}</span>
+        <button
+          ref={buttonRef}
+          type="button"
+          className="power-help-btn"
+          aria-label={t("powerHelp.title")}
+          aria-expanded={open}
+          onClick={() => {
+            setPinned((current) => {
+              setOpen(!current);
+              return !current;
+            });
+          }}
+        >
+          <CircleHelp size={14} strokeWidth={2} />
+        </button>
       </span>
-    </span>
+      {popover}
+    </>
   );
 }
 
 /* ── Active expedition strip ── */
-function ActiveExpeditionStrip({ run, imageUrl }: {
+function ActiveExpeditionStrip({ run, imageUrl, onClaimed, onSpeedUp, speedUpPending }: {
   run: NonNullable<Awaited<ReturnType<typeof api.currentRun>>>;
   imageUrl?: string;
+  onClaimed: (result: ClaimResponse) => void;
+  onSpeedUp: () => void;
+  speedUpPending: boolean;
 }) {
   const queryClient = useQueryClient();
   const { t } = useI18n();
@@ -381,7 +496,8 @@ function ActiveExpeditionStrip({ run, imageUrl }: {
 
   const claimMut = useMutation({
     mutationFn: (id: number) => api.claimRun(id),
-    onSuccess: async () => {
+    onSuccess: async (result) => {
+      onClaimed(result);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["current-run"] }),
         queryClient.invalidateQueries({ queryKey: ["character"] }),
@@ -393,6 +509,7 @@ function ActiveExpeditionStrip({ run, imageUrl }: {
 
   const waitingClaim = run.status === "SUCCESS_WAITING_CLAIM" || run.status === "FAILED_WAITING_CLAIM";
   const inProgress   = run.status === "IN_PROGRESS";
+  const canStartMiniGame = canOpenMiniGame(run);
 
   let remaining  = 0;
   let totalSecs  = 1;
@@ -413,6 +530,12 @@ function ActiveExpeditionStrip({ run, imageUrl }: {
   const timeLabel = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 
   const done = waitingClaim;
+
+  useEffect(() => {
+    if (inProgress && remaining === 0) {
+      void queryClient.invalidateQueries({ queryKey: ["current-run"] });
+    }
+  }, [inProgress, queryClient, remaining]);
 
   return (
     <div className="card active-strip" style={{
@@ -465,8 +588,18 @@ function ActiveExpeditionStrip({ run, imageUrl }: {
             </div>
           </div>
         </div>
-        <div>
-          {done ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
+          {canStartMiniGame && (
+            <button
+              className="btn btn-secondary"
+              disabled={speedUpPending}
+              onClick={onSpeedUp}
+            >
+              <Zap size={16} />
+              {speedUpPending ? t("miniGame.starting") : t("miniGame.speedUp")}
+            </button>
+          )}
+          {done && (
             <button
               className="btn btn-primary"
               onClick={() => claimMut.mutate(run.id)}
@@ -474,16 +607,57 @@ function ActiveExpeditionStrip({ run, imageUrl }: {
             >
               {claimMut.isPending ? t("dungeons.claiming") : t("dungeons.claim")}
             </button>
-          ) : (
-            <button
-              className="btn"
-              onClick={() => queryClient.invalidateQueries({ queryKey: ["current-run"] })}
-            >
-              {t("dungeons.view")}
-            </button>
           )}
         </div>
       </div>
+      <ErrorNotice message={(claimMut.error as Error | null)?.message} />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
+   PotionsPanel — минимальный UI Этапа 3
+═══════════════════════════════════════ */
+function PotionsPanel({ hpFull }: { hpFull: boolean }) {
+  const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const potionsQuery = useQuery({ queryKey: ["potions"], queryFn: api.potions });
+  const useMut = useMutation({
+    mutationFn: (potionId: number) => api.usePotion({ potion_id: potionId, quantity: 1 }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["character"] }),
+        queryClient.invalidateQueries({ queryKey: ["potions"] }),
+      ]);
+    },
+  });
+
+  const potions = potionsQuery.data ?? [];
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div className="card-sub" style={{ marginBottom: 10 }}>{t("potions.title")}</div>
+      {potions.length === 0 ? (
+        <div style={{ color: "var(--bone)", fontSize: 13 }}>{t("potions.empty")}</div>
+      ) : (
+        <div className="stat-list" style={{ gridTemplateColumns: "1fr" }}>
+          {potions.map((potion: Potion) => (
+            <div key={potion.id} className="sl-row" style={{ alignItems: "center" }}>
+              <span className="lbl">
+                {potion.name} · +{potion.heal_percent}% · ×{potion.count}
+              </span>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={hpFull || useMut.isPending}
+                onClick={() => useMut.mutate(potion.id)}
+              >
+                {t("potions.use")}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -504,6 +678,10 @@ export function CharacterScreen({
   const [dragOverSlot, setDragOverSlot] = useState<EquipmentSlot | null>(null);
   const [inventoryDropActive, setInventoryDropActive] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
+  const [rewardResult, setRewardResult] = useState<ClaimResponse | null>(null);
+  const [miniGameAttempt, setMiniGameAttempt] = useState<DungeonMiniGameAttempt | null>(null);
+  const [miniGameResult, setMiniGameResult] = useState<DungeonMiniGameAttempt | null>(null);
+  const [choosingDifficulty, setChoosingDifficulty] = useState(false);
   const characterQuery  = useQuery({ queryKey: ["character"],    queryFn: api.character });
   const dungeonsQuery   = useQuery({ queryKey: ["dungeons"],     queryFn: api.dungeons  });
   const currentRunQuery = useQuery({
@@ -517,6 +695,14 @@ export function CharacterScreen({
     mutationFn: (id: number) => api.startRun(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["current-run"] });
+    },
+  });
+
+  const startMiniGameMutation = useMutation({
+    mutationFn: ({ runId, configId }: { runId: number; configId?: number }) => api.startMiniGame(runId, configId),
+    onSuccess: (attempt) => {
+      setChoosingDifficulty(false);
+      setMiniGameAttempt(attempt);
     },
   });
 
@@ -633,8 +819,8 @@ export function CharacterScreen({
     bestMediaUrl(character.class?.media, ["large_url", "medium_url", "small_url"]);
   const xpMax = character.experience_to_next_level ?? 1000;
   const xp    = character.experience;
-  const hpMax = character.stats?.health ?? 220;
-  const hpCur = Math.round(hpMax * 0.84);
+  const hpMax = character.stats?.max_hp ?? 220;
+  const hpCur = character.stats?.current_hp ?? hpMax;
 
   const invItems = inventoryQuery.data?.items ?? [];
   const inventoryCount = inventoryQuery.data?.items_count ?? invItems.length;
@@ -664,7 +850,7 @@ export function CharacterScreen({
   const cp = stats.power ?? (
     (stats.attack ?? 0) * POWER_WEIGHTS.attack +
     (stats.defense ?? 0) * POWER_WEIGHTS.defense +
-    (stats.health ?? 0) * POWER_WEIGHTS.health +
+    (stats.intellect ?? 0) * POWER_WEIGHTS.intellect +
     (stats.critical_chance ?? 0) * POWER_WEIGHTS.critical_chance +
     (stats.evasion ?? 0) * POWER_WEIGHTS.evasion
   );
@@ -769,21 +955,21 @@ export function CharacterScreen({
             <BarBlock label={t("common.vitality")}   cur={hpCur} max={hpMax} kind="hp" />
           </div>
 
+          <PotionsPanel hpFull={hpCur >= hpMax} />
+
           <div className="divider" />
 
           {/* Combat stats */}
           <div className="card-sub" style={{ marginBottom: 10 }}>{t("character.combatStats")}</div>
-          <div className="stat-list" style={{ gridTemplateColumns: "1fr 1fr" }}>
-            <div className="sl-row">
-              <span className="lbl">{t("common.power")}</span>
-              <span className="val power-value" style={{ color: "var(--primary-bright)" }}>
-                {cp}
-                <PowerHelp stats={stats} power={cp} />
-              </span>
-            </div>
+          <div className="combat-stats-divider" aria-hidden="true" />
+          <div className="stat-list stat-list--combat" style={{ gridTemplateColumns: "1fr 1fr" }}>
             <div className="sl-row">
               <span className="lbl">{t("common.attack")}</span>
               <span className="val">{stats.attack ?? 0}</span>
+            </div>
+            <div className="sl-row">
+              <span className="lbl">{t("common.intellect")}</span>
+              <span className="val">{stats.intellect ?? 0}</span>
             </div>
             <div className="sl-row">
               <span className="lbl">{t("common.defense")}</span>
@@ -798,8 +984,15 @@ export function CharacterScreen({
               <span className="val">{stats.evasion ?? 0}%</span>
             </div>
             <div className="sl-row">
-              <span className="lbl">{t("common.health")}</span>
-              <span className="val">{stats.health ?? 0}</span>
+              <span className="lbl">{t("common.hp")}</span>
+              <span className="val">{hpCur} / {hpMax}</span>
+            </div>
+            <div className="sl-row sl-row--power">
+              <span className="lbl">{t("common.power")}</span>
+              <span className="val power-value" style={{ color: "var(--primary-bright)" }}>
+                {cp}
+                <PowerHelp stats={stats} power={cp} />
+              </span>
             </div>
           </div>
         </div>
@@ -810,7 +1003,20 @@ export function CharacterScreen({
 
         {/* Active expedition strip */}
         {currentRunQuery.data && currentRunQuery.data.status !== "CLAIMED" && (
-          <ActiveExpeditionStrip run={currentRunQuery.data} imageUrl={activeRunImage} />
+          <ActiveExpeditionStrip
+            run={currentRunQuery.data}
+            imageUrl={activeRunImage}
+            onClaimed={setRewardResult}
+            onSpeedUp={() => {
+              const mg = currentRunQuery.data!.mini_game;
+              if (mg?.started && mg.status === "IN_PROGRESS") {
+                startMiniGameMutation.mutate({ runId: currentRunQuery.data!.id });
+              } else {
+                setChoosingDifficulty(true);
+              }
+            }}
+            speedUpPending={startMiniGameMutation.isPending}
+          />
         )}
 
         {/* Equipment paperdoll */}
@@ -964,6 +1170,38 @@ export function CharacterScreen({
           )}
         </div>
       </div>
+
+      {rewardResult && (
+        <DungeonRewardModal
+          result={rewardResult}
+          onClose={() => setRewardResult(null)}
+        />
+      )}
+      {choosingDifficulty && !miniGameAttempt && currentRunQuery.data && (
+        <DungeonMiniGameDifficultyModal
+          pending={startMiniGameMutation.isPending}
+          onClose={() => setChoosingDifficulty(false)}
+          onSelect={(configId) => startMiniGameMutation.mutate({ runId: currentRunQuery.data!.id, configId })}
+        />
+      )}
+      {miniGameAttempt && (
+        <DungeonMiniGameModal
+          attempt={miniGameAttempt}
+          onClose={() => setMiniGameAttempt(null)}
+          onFinished={(attempt) => {
+            setMiniGameAttempt(null);
+            setMiniGameResult(attempt);
+            void queryClient.invalidateQueries({ queryKey: ["current-run"] });
+          }}
+        />
+      )}
+      {miniGameResult && (
+        <DungeonMiniGameResultModal
+          attempt={miniGameResult}
+          onClose={() => setMiniGameResult(null)}
+        />
+      )}
+      <ErrorNotice message={(startMiniGameMutation.error as Error | null)?.message} />
 
     </div>
   );

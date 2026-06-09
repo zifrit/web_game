@@ -1,18 +1,63 @@
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.game.i18n import request_locale
-from apps.game.models import Character, DungeonLocation, DungeonRun, DungeonRunStatus
+from apps.game.models import (
+    Character,
+    CharacterClass,
+    DungeonLocation,
+    DungeonLocationItemTemplate,
+    DungeonMiniGameAttempt,
+    DungeonMiniGameConfig,
+    DungeonRun,
+    DungeonRunStatus,
+    MiniGameCardFace,
+)
 from apps.game.serializers import (
     ClaimResponseSerializer,
+    DungeonLootItemSerializer,
+    localized_name,
+    DungeonMiniGameAttemptHistorySerializer,
+    DungeonMiniGameAttemptResponseSerializer,
+    DungeonMiniGameMoveResponseSerializer,
+    DungeonMiniGameMoveSerializer,
+    DungeonMiniGameRevealSerializer,
+    DungeonMiniGameStartSerializer,
     DungeonLocationSerializer,
     DungeonRunHistorySerializer,
     DungeonRunSerializer,
     DungeonRunStartSerializer,
 )
-from apps.game.services import DungeonRunService, GameFormulaService
+from apps.game.services import (
+    DungeonMiniGameService,
+    DungeonRunService,
+    GameFormulaService,
+    cached_response,
+    request_host_part,
+)
+from apps.game.services.reference_cache import reference_version
+
+
+def _resource_daily_used_map(character, location_id=None):
+    """Возвращает {location_id: число сегодняшних заходов} по ресурсным локациям героя."""
+
+    if character is None:
+        return {}
+    rows = (
+        DungeonRun.objects.filter(
+            character=character,
+            location__location_type="resource",
+            started_at__date=timezone.localdate(),
+        )
+    )
+    if location_id is not None:
+        rows = rows.filter(location_id=location_id)
+    rows = rows.values("location_id").annotate(n=Count("id"))
+    return {row["location_id"]: row["n"] for row in rows}
 
 
 class DungeonLocationListView(APIView):
@@ -23,13 +68,17 @@ class DungeonLocationListView(APIView):
 
         character = None
         character_power = None
+        hp_penalty = 0.0
         try:
             character = Character.objects.select_related("character_class").prefetch_related("equipped_items").get(user=request.user)
-            character_power = GameFormulaService.character_stats(character)["power"]
+            stats = GameFormulaService.character_stats(character)
+            character_power = stats["power"]
+            hp_penalty = GameFormulaService.hp_success_penalty(character.current_hp, int(stats["max_hp"]))
         except Character.DoesNotExist:
             pass
+        daily_used_map = _resource_daily_used_map(character)
         locations = DungeonLocation.objects.filter(is_active=True).select_related("media")
-        return Response(DungeonLocationSerializer(locations, many=True, context={"request": request, "character": character, "character_power": character_power}).data)
+        return Response(DungeonLocationSerializer(locations, many=True, context={"request": request, "character": character, "character_power": character_power, "hp_penalty": hp_penalty, "daily_used_map": daily_used_map}).data)
 
 
 class DungeonLocationDetailView(APIView):
@@ -40,17 +89,48 @@ class DungeonLocationDetailView(APIView):
 
         character = None
         character_power = None
+        hp_penalty = 0.0
         try:
             character = Character.objects.select_related("character_class").prefetch_related("equipped_items").get(user=request.user)
-            character_power = GameFormulaService.character_stats(character)["power"]
+            stats = GameFormulaService.character_stats(character)
+            character_power = stats["power"]
+            hp_penalty = GameFormulaService.hp_success_penalty(character.current_hp, int(stats["max_hp"]))
         except Character.DoesNotExist:
             pass
         location = get_object_or_404(DungeonLocation.objects.select_related("media"), pk=pk, is_active=True)
-        return Response(DungeonLocationSerializer(location, context={"request": request, "character": character, "character_power": character_power}).data)
+        daily_used_map = _resource_daily_used_map(character, location_id=location.id)
+        return Response(DungeonLocationSerializer(location, context={"request": request, "character": character, "character_power": character_power, "hp_penalty": hp_penalty, "daily_used_map": daily_used_map}).data)
+
+
+class DungeonLocationLootView(APIView):
+    """API-ручка таблицы лута подземелья."""
+
+    def get(self, request, pk):
+        """Возвращает таблицу лута данжа (кэшируется, admin-only данные)."""
+
+        get_object_or_404(DungeonLocation, pk=pk, is_active=True)
+        locale = request_locale(request)
+
+        def build():
+            classes_map = {c.key: localized_name(c, locale) for c in CharacterClass.objects.all()}
+            templates = (
+                DungeonLocationItemTemplate.objects
+                .filter(location_id=pk)
+                .select_related("item_template")
+                .order_by("item_template__slot")
+            )
+            return DungeonLootItemSerializer(
+                templates, many=True,
+                context={"request": request, "character_classes": classes_map},
+            ).data
+
+        return Response(cached_response("dungeon_loot", build, parts=(request_host_part(request), pk, locale)))
 
 
 class DungeonRunStartView(APIView):
     """API-ручка запуска героя в подземелье."""
+
+    throttle_scope = "dungeon_write"
 
     def post(self, request):
         """Создаёт новый забег, если у героя нет активного забега и сломанных вещей."""
@@ -91,12 +171,107 @@ class DungeonRunCurrentView(APIView):
 class DungeonRunClaimView(APIView):
     """API-ручка получения наград за завершённый забег."""
 
+    throttle_scope = "economy"
+
     def post(self, request, pk):
         """Идемпотентно начисляет опыт, деньги, предметы и потерю прочности."""
 
         locale = request_locale(request)
         result = DungeonRunService.claim_run(request.user, pk, locale=locale)
         return Response(ClaimResponseSerializer.render(result, locale=locale))
+
+
+class DungeonMiniGameStartView(APIView):
+    """API-ручка запуска мини-игры ускорения для активного забега."""
+
+    throttle_scope = "mini_game"
+
+    def post(self, request, pk):
+        """Создаёт попытку memory-pairs мини-игры выбранной сложности или возвращает активную."""
+
+        serializer = DungeonMiniGameStartSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        locale = request_locale(request)
+        attempt = DungeonMiniGameService.start_attempt(
+            request.user, pk, config_id=serializer.validated_data.get("config_id"), locale=locale
+        )
+        return Response(DungeonMiniGameAttemptResponseSerializer.render(attempt), status=status.HTTP_201_CREATED)
+
+
+class MiniGameConfigCatalogView(APIView):
+    """API-ручка каталога сложностей мини-игры для модалки выбора."""
+
+    def get(self, request):
+        """Возвращает активные сложности с процентом ускорения и параметрами."""
+
+        configs = DungeonMiniGameConfig.objects.filter(is_active=True).order_by("sort_order", "pairs_count")
+        return Response([DungeonMiniGameService.config_payload(config) for config in configs])
+
+
+class MiniGameCardFaceCatalogView(APIView):
+    """API-ручка каталога SVG-лиц карт: фронт грузит один раз и кеширует по версии."""
+
+    def get(self, request):
+        """Возвращает все активные лица с версией/ETag для инвалидации кеша."""
+
+        version = reference_version()
+        etag = f'W/"mini-faces-{version}"'
+        if request.headers.get("If-None-Match") == etag:
+            response = Response(status=status.HTTP_304_NOT_MODIFIED)
+            response["ETag"] = etag
+            return response
+
+        def build():
+            faces = MiniGameCardFace.objects.filter(is_active=True).order_by("sort_order", "code")
+            return [{"code": face.code, "name": face.name, "svg": face.svg_markup} for face in faces]
+
+        faces = cached_response("mini_game_faces", build)
+        response = Response({"version": version, "faces": faces})
+        response["ETag"] = etag
+        # private: ответ за аутентификацией, не должен попадать в общие прокси-кеши.
+        response["Cache-Control"] = "private, max-age=60"
+        return response
+
+
+class DungeonMiniGameMoveView(APIView):
+    """API-ручка серверной проверки хода мини-игры."""
+
+    throttle_scope = "mini_game"
+
+    def post(self, request, pk):
+        """Принимает две карточки, проверяет пару и завершает игру только на backend."""
+
+        serializer = DungeonMiniGameMoveSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        locale = request_locale(request)
+        result = DungeonMiniGameService.make_move(
+            request.user,
+            pk,
+            first_card_id=serializer.validated_data["first_card_id"],
+            second_card_id=serializer.validated_data["second_card_id"],
+            locale=locale,
+        )
+        return Response(DungeonMiniGameMoveResponseSerializer.render(result))
+
+
+class DungeonMiniGameRevealView(APIView):
+    """API-ручка открытия первой карточки мини-игры."""
+
+    throttle_scope = "mini_game"
+
+    def post(self, request, pk):
+        """Возвращает лицо одной выбранной карточки без раскрытия всей доски."""
+
+        serializer = DungeonMiniGameRevealSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        locale = request_locale(request)
+        card = DungeonMiniGameService.reveal_card(
+            request.user,
+            pk,
+            card_id=serializer.validated_data["card_id"],
+            locale=locale,
+        )
+        return Response(card)
 
 
 class DungeonRunHistoryView(APIView):
@@ -113,3 +288,20 @@ class DungeonRunHistoryView(APIView):
             .order_by("-started_at")[:limit]
         )
         return Response(DungeonRunHistorySerializer(runs, many=True, context={"request": request}).data)
+
+
+class DungeonMiniGameHistoryView(APIView):
+    """API-ручка истории прохождений мини-игры."""
+
+    def get(self, request):
+        """Возвращает последние попытки memory-pairs мини-игры пользователя."""
+
+        limit = min(int(request.query_params.get("limit", 20)), 100)
+        attempts = (
+            DungeonMiniGameAttempt.objects.filter(user=request.user)
+            .select_related("config", "dungeon_run", "dungeon_run__location")
+            .order_by("-started_at")[:limit]
+        )
+        for attempt in attempts:
+            DungeonMiniGameService.expire_attempt_if_needed(attempt)
+        return Response(DungeonMiniGameAttemptHistorySerializer(attempts, many=True, context={"request": request}).data)

@@ -1,23 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound } from "lucide-react";
 import { useI18n } from "@/components/providers";
+import { useToast } from "@/components/toast";
 import { ErrorNotice } from "@/components/ui";
 import { api } from "@/lib/api";
 import { bestMediaUrl } from "@/lib/media";
 import type { TwoFactorSetup, User } from "@/lib/types";
 import type { Locale } from "@/lib/i18n";
 
-type SettingsToast = {
-  tone: "success" | "error";
-  message: string;
-};
-
 export function SettingsScreen() {
   const { locale, setLocale, t } = useI18n();
+  const { showToast, showSuccess } = useToast();
   const queryClient = useQueryClient();
 
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -27,8 +23,6 @@ export function SettingsScreen() {
   const [disableOpen, setDisableOpen] = useState(false);
   const [disablePassword, setDisablePassword] = useState("");
   const [disableCode, setDisableCode] = useState("");
-  const [toast, setToast] = useState<SettingsToast | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const characterQuery = useQuery({ queryKey: ["character"], queryFn: api.character });
   const userQuery      = useQuery({ queryKey: ["me"],        queryFn: api.me });
@@ -52,29 +46,10 @@ export function SettingsScreen() {
 
   const currentAvatarUrl = user?.avatar ? bestMediaUrl(user.avatar) : undefined;
 
-  const showToast = (nextToast: SettingsToast) => {
-    if (toastTimerRef.current) {
-      clearTimeout(toastTimerRef.current);
-    }
-    setToast(nextToast);
-    toastTimerRef.current = setTimeout(() => {
-      setToast(null);
-      toastTimerRef.current = null;
-    }, 4000);
-  };
-
   const showErrorToast = (error: unknown) => {
     const message = error instanceof Error && error.message ? error.message : t("settings.totpErrorToast");
     showToast({ tone: "error", message });
   };
-
-  useEffect(() => {
-    return () => {
-      if (toastTimerRef.current) {
-        clearTimeout(toastTimerRef.current);
-      }
-    };
-  }, []);
 
   const setTwoFactorEnabled = (totpProtection: boolean) => {
     queryClient.setQueryData<User>(["me"], (prev) =>
@@ -100,7 +75,7 @@ export function SettingsScreen() {
       setTwoFactorSetup(null);
       setConfirmCode("");
       setTwoFactorEnabled(true);
-      showToast({ tone: "success", message: t("settings.totpEnabledToast") });
+      showSuccess(t("settings.totpEnabledToast"));
     },
     onError: showErrorToast,
   });
@@ -112,7 +87,7 @@ export function SettingsScreen() {
       setDisablePassword("");
       setDisableCode("");
       setTwoFactorEnabled(false);
-      showToast({ tone: "success", message: t("settings.totpDisabledToast") });
+      showSuccess(t("settings.totpDisabledToast"));
     },
     onError: showErrorToast,
   });
@@ -131,19 +106,8 @@ export function SettingsScreen() {
     if (selectedIconId) avatarMutation.mutate(selectedIconId);
   };
 
-  const toastNode = toast && typeof document !== "undefined"
-    ? createPortal(
-        <div className={`toast toast-${toast.tone}`} role="status" aria-live="polite">
-          {toast.message}
-        </div>,
-        document.body,
-      )
-    : null;
-
   return (
     <div className="col" style={{ maxWidth: 900, marginLeft: "auto", marginRight: "auto" }}>
-      {toastNode}
-
       {/* Account + Avatar */}
       <div className="card">
         <div className="card-h">

@@ -1,51 +1,51 @@
 # Project Memory
 
-`docs/project-memory/` - короткий навигационный слой над Browser Async RPG MVP.
-Он помогает быстро понять, где находится домен, какие entrypoints есть в проекте,
-и какие знания уже подтверждены кодом.
+`docs/project-memory/` is a compact navigation layer for the Browser Async RPG
+MVP. It helps quickly identify where each domain lives, which entrypoints exist
+in the project, and which knowledge has already been verified against code.
 
-## Источники правды
+## Sources Of Truth
 
-Project Memory помогает понять намерение, историю и правила проекта, но не
-является источником истины для текущей реализации. Если память конфликтует с
-проектом, порядок доверия такой:
+Project Memory helps explain project intent, history, and rules, but it is not
+the source of truth for the current implementation. If memory conflicts with the
+project, use this trust order:
 
-1. Текущий код репозитория.
-2. Тесты, миграции, схемы, конфиги и runtime-настройки.
-3. Свежий сгенерированный анализ проекта, например
+1. Current repository code.
+2. Tests, migrations, schemas, configs, and runtime settings.
+3. Freshly generated project analysis, for example
    `graphify-out/GRAPH_REPORT.md`.
-4. Документация проекта.
-5. Эта project memory.
-6. Предыдущие обсуждения и предположения.
+4. Project documentation.
+5. This project memory.
+6. Previous discussions and assumptions.
 
-При конфликте доверяем коду и обновляем память. Если Graphify или документация
-расходятся с кодом, сначала проверяем реальную реализацию в репозитории. `.env`
-и `.env.*` не читать и не переносить в память.
+When conflicts appear, trust the code and update memory. If Graphify or
+documentation disagrees with code, verify the real repository implementation
+first. Do not read `.env` or `.env.*`, and do not copy their contents into
+memory.
 
-## Модель памяти
+## Memory Model
 
-- `curated/` - ручная память: смысл проекта, архитектурная навигация, правила
-  домена, frontend/backend предпочтения и gotchas.
-- `inventories/` - generated-style inventory: списки и снимки, подтвержденные
-  инспекцией кода. Это markdown-файлы, поддерживаемые вручную, без генератора.
+- `curated/` - hand-written memory: project meaning, architectural navigation,
+  domain rules, frontend/backend preferences, and gotchas.
+- `inventories/` - generated-style inventory: lists and snapshots verified by
+  code inspection. These are manually maintained markdown files; there is no
+  generator.
 
-## Как пользоваться
+## How To Use
 
-- Перед глубокой работой сначала открой `INDEX.md`, затем релевантные файлы из
-  `curated/` и `inventories/`.
-- Для небольших локальных изменений изучи целевой файл напрямую, проверь
-  ближайшие тесты или места использования и внеси минимальное безопасное
-  изменение.
-- Для архитектурной, межмодульной или onboarding-задачи сначала используй
-  Graphify, если есть `graphify-out/graph.json`; предпочитай `graphify query`,
-  `graphify path` и `graphify explain` перед чтением большого
+- Before deep work, first open `INDEX.md`, then the relevant files from
+  `curated/` and `inventories/`.
+- For small local changes, inspect the target file directly, check the nearest
+  tests or usages, and make the smallest safe change.
+- For architectural, cross-module, or onboarding tasks, use Graphify first when
+  `graphify-out/graph.json` exists; prefer `graphify query`, `graphify path`,
+  and `graphify explain` before reading the larger
   `GRAPH_REPORT.md`.
-- Открывай `curated/overview.md`, если нужен общий контекст.
-- Открывай `curated/architecture.md`, чтобы найти домен или entrypoint.
-- Открывай `curated/working-rules.md`, чтобы проверить git/security/handoff и
-  Graphify-правила перед изменениями.
-- Проверяй `inventories/`, когда нужен точный список API routes, модулей,
-  экранов, runtime-сервисов или verification-команд.
-- Перед изменениями сверяйся с `curated/gotchas.md`.
-- После изменения кода запускай `graphify update .`, чтобы поддерживать граф
-  актуальным.
+- Open `curated/overview.md` for broad context.
+- Open `curated/architecture.md` to locate a domain or entrypoint.
+- Open `curated/working-rules.md` to check git/security/handoff and Graphify
+  rules before changes.
+- Check `inventories/` when you need an exact list of API routes, modules,
+  screens, runtime services, or verification commands.
+- Check `curated/gotchas.md` before making changes.
+- After code changes, run `graphify update .` to keep the graph current.

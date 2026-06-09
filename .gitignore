@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.prod.example
 
 __pycache__/
 .venv/
@@ -32,3 +33,7 @@ backend/apps/game/tests/test_image_generation.py
 for_test/
 graphify-out/*
 !graphify-out/GRAPH_REPORT.md
+
+.codex
+.claude
+.agents

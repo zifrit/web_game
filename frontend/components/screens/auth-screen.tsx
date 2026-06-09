@@ -18,6 +18,9 @@ const authSchema = (t: ReturnType<typeof useI18n>["t"]) => z.object({
 type AuthValues = z.infer<ReturnType<typeof authSchema>>;
 type AuthMode = "login" | "register";
 
+const isEmailAlreadyRegisteredError = (error: unknown) =>
+  error instanceof Error && error.message.includes("Email already registered");
+
 export function AuthScreen() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [totpChallenge, setTotpChallenge] = useState<string | null>(null);
@@ -44,6 +47,13 @@ export function AuthScreen() {
       setSession(auth);
       void queryClient.invalidateQueries({ queryKey: ["me"] });
     },
+    onError: (error) => {
+      if (mode !== "register" || !isEmailAlreadyRegisteredError(error)) return;
+      form.setError("email", {
+        type: "server",
+        message: t("validation.emailTaken"),
+      });
+    },
   });
 
   const totpMutation = useMutation({
@@ -67,6 +77,11 @@ export function AuthScreen() {
 
   const isLogin = mode === "login";
   const needsTotp = Boolean(totpChallenge);
+  const mutationError = mutation.error as Error | null;
+  const mutationErrorMessage =
+    mode === "register" && isEmailAlreadyRegisteredError(mutationError)
+      ? undefined
+      : mutationError?.message;
 
   return (
     <main className="auth-shell">
@@ -215,7 +230,7 @@ export function AuthScreen() {
                 )}
               </label>
 
-              <ErrorNotice message={(mutation.error as Error | null)?.message} />
+              <ErrorNotice message={mutationErrorMessage} />
 
               <button
                 type="submit"

@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  MutationCache,
+  QueryCache,
   QueryClient,
   QueryClientProvider,
   onlineManager
@@ -13,7 +15,8 @@ import {
   useMemo,
   useState
 } from "react";
-import { api, clearTokens, getStoredTokens, setApiLocale, storeTokens } from "@/lib/api";
+import { ApiError, api, clearTokens, getStoredTokens, setApiLocale, storeTokens } from "@/lib/api";
+import { ToastProvider, emitToast } from "@/components/toast";
 import {
   type Locale,
   DEFAULT_LOCALE,
@@ -161,7 +164,21 @@ export function useI18n() {
   return context;
 }
 
+function reportError(error: unknown) {
+  // 401 обрабатывается в apiFetch (refresh) / logout-flow — тостом не шумим.
+  if (error instanceof ApiError && error.status === 401) return;
+  const message = error instanceof Error && error.message ? error.message : null;
+  if (!message) return;
+  emitToast({ tone: "error", message });
+}
+
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: reportError
+  }),
+  mutationCache: new MutationCache({
+    onError: reportError
+  }),
   defaultOptions: {
     queries: {
       retry: 1,
@@ -177,10 +194,12 @@ if (typeof window !== "undefined") {
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <LocaleProvider>
-        <SessionProvider>{children}</SessionProvider>
-      </LocaleProvider>
-    </QueryClientProvider>
+    <ToastProvider>
+      <QueryClientProvider client={queryClient}>
+        <LocaleProvider>
+          <SessionProvider>{children}</SessionProvider>
+        </LocaleProvider>
+      </QueryClientProvider>
+    </ToastProvider>
   );
 }

@@ -1,15 +1,18 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { LogOut } from "lucide-react";
+import { Backpack, BookOpen, Compass, Gem, LogOut, Plus, Settings2, ShoppingBag, Swords, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AuthScreen } from "@/components/screens/auth-screen";
 import { CharacterScreen } from "@/components/screens/character-screen";
 import { CreateCharacterScreen } from "@/components/screens/create-character-screen";
 import { DungeonsScreen } from "@/components/screens/dungeons-screen";
+import { GuidebookScreen } from "@/components/screens/guide-screen";
 import { InventoryScreen } from "@/components/screens/inventory-screen";
 import { LeaderboardScreen } from "@/components/screens/leaderboard-screen";
 import { SettingsScreen } from "@/components/screens/settings-screen";
+import { ShopScreen } from "@/components/screens/shop-screen";
+import { ExchangeModal } from "@/components/exchange-modal";
 import { LoadingLine, Skeleton } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useI18n, useSession } from "@/components/providers";
@@ -17,9 +20,9 @@ import { formatNumber, splitCopper, type TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
 import type { MediaAssetUrls } from "@/lib/types";
 
-type Tab = "character" | "dungeons" | "inventory" | "leaderboard" | "settings";
+type Tab = "character" | "dungeons" | "shop" | "inventory" | "leaderboard" | "settings" | "guide";
 
-const VALID_TABS: Tab[] = ["character", "dungeons", "inventory", "leaderboard", "settings"];
+const VALID_TABS: Tab[] = ["character", "dungeons", "shop", "inventory", "leaderboard", "settings", "guide"];
 
 function getInitialTab(): Tab {
   if (typeof window === "undefined") return "character";
@@ -27,24 +30,38 @@ function getInitialTab(): Tab {
   return saved && VALID_TABS.includes(saved) ? saved : "character";
 }
 
-/* ── nav structure matching the HTML prototype ── */
-const ADVENTURE_NAV: Array<{ key: Tab; labelKey: "nav.character" | "nav.dungeons"; glyph: string }> = [
-  { key: "character",   labelKey: "nav.character", glyph: "✦" },
-  { key: "dungeons",    labelKey: "nav.dungeons",  glyph: "⌬" },
+/* ── nav structure ── */
+const ADVENTURE_NAV: Array<{ key: Tab; labelKey: "nav.character" | "nav.dungeons" | "nav.shop" }> = [
+  { key: "character", labelKey: "nav.character" },
+  { key: "dungeons",  labelKey: "nav.dungeons"  },
+  { key: "shop",      labelKey: "nav.shop"      },
 ];
 
-const HERO_NAV: Array<{ key: Tab; labelKey: "nav.inventory" | "nav.leaderboard" | "nav.settings"; glyph: string }> = [
-  { key: "inventory",   labelKey: "nav.inventory",   glyph: "◊" },
-  { key: "leaderboard", labelKey: "nav.leaderboard", glyph: "☰" },
-  { key: "settings",    labelKey: "nav.settings",    glyph: "⚙" },
+const HERO_NAV: Array<{ key: Tab; labelKey: "nav.inventory" | "nav.leaderboard" | "nav.settings" | "nav.guide" }> = [
+  { key: "inventory",   labelKey: "nav.inventory"   },
+  { key: "leaderboard", labelKey: "nav.leaderboard" },
+  { key: "guide",       labelKey: "nav.guide"       },
+  { key: "settings",    labelKey: "nav.settings"    },
 ];
+
+const NAV_ICONS: Record<Tab, React.ReactNode> = {
+  character:   <Swords      size={15} strokeWidth={1.7} />,
+  dungeons:    <Compass     size={15} strokeWidth={1.7} />,
+  shop:        <ShoppingBag size={15} strokeWidth={1.7} />,
+  inventory:   <Backpack    size={15} strokeWidth={1.7} />,
+  leaderboard: <Trophy      size={15} strokeWidth={1.7} />,
+  guide:       <BookOpen    size={15} strokeWidth={1.7} />,
+  settings:    <Settings2   size={15} strokeWidth={1.7} />,
+};
 
 const PAGE_META: Record<Tab, { sectionKey: TranslationKey; titleKey: TranslationKey }> = {
   character:   { sectionKey: "page.character.section",    titleKey: "page.character.title" },
   dungeons:    { sectionKey: "page.dungeons.section",     titleKey: "page.dungeons.title"  },
+  shop:        { sectionKey: "page.shop.section",         titleKey: "page.shop.title" },
   inventory:   { sectionKey: "page.inventory.section",    titleKey: "page.inventory.title" },
   leaderboard: { sectionKey: "page.leaderboard.section",  titleKey: "page.leaderboard.title" },
   settings:    { sectionKey: "page.settings.section",     titleKey: "page.settings.title" },
+  guide:       { sectionKey: "page.guide.section",        titleKey: "page.guide.title" },
 };
 
 /* ─── Sidebar ─── */
@@ -56,7 +73,6 @@ function Sidebar({
   characterLevel,
   characterRank,
   userAvatar,
-  characterAvatar,
   isLoadingCharacter,
   onLogout,
   t,
@@ -68,7 +84,6 @@ function Sidebar({
   characterLevel?: number;
   characterRank?: string;
   userAvatar?: MediaAssetUrls | null;
-  characterAvatar?: MediaAssetUrls | null;
   isLoadingCharacter?: boolean;
   onLogout: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
@@ -95,10 +110,19 @@ function Sidebar({
         display: "flex", alignItems: "center", gap: 10,
         padding: "0 6px 22px", borderBottom: "1px solid #243150", marginBottom: 18,
       }}>
+        <div style={{
+          width: 32, height: 32, flexShrink: 0,
+          background: "linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%)",
+          borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
+          border: "1px solid rgba(96,165,250,0.35)",
+          boxShadow: "0 0 16px rgba(59,130,246,0.28), inset 0 1px 0 rgba(255,255,255,0.1)",
+        }}>
+          <Swords size={15} color="#93C5FD" strokeWidth={1.7} />
+        </div>
         <div>
           <div style={{
             fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
-            fontSize: 22, fontWeight: 600, letterSpacing: "0.02em",
+            fontSize: 20, fontWeight: 600, letterSpacing: "0.02em",
           }}>Ashreach</div>
         </div>
       </div>
@@ -117,10 +141,9 @@ function Sidebar({
           className={`nav-item ${tab === item.key ? "active" : ""}`}
         >
           <span style={{
-            width: 18, textAlign: "center",
-            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
-            fontSize: 13, color: tab === item.key ? "#60A5FA" : "#64748B",
-          }}>{item.glyph}</span>
+            width: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            color: tab === item.key ? "#60A5FA" : "#4B5E7A",
+          }}>{NAV_ICONS[item.key]}</span>
           <span>{t(item.labelKey)}</span>
         </button>
       ))}
@@ -139,10 +162,9 @@ function Sidebar({
           className={`nav-item ${tab === item.key ? "active" : ""}`}
         >
           <span style={{
-            width: 18, textAlign: "center",
-            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
-            fontSize: 13, color: tab === item.key ? "#60A5FA" : "#64748B",
-          }}>{item.glyph}</span>
+            width: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            color: tab === item.key ? "#60A5FA" : "#4B5E7A",
+          }}>{NAV_ICONS[item.key]}</span>
           <span>{t(item.labelKey)}</span>
         </button>
       ))}
@@ -243,7 +265,9 @@ function MobileNav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
             transition: "all 150ms ease",
           }}
         >
-          <span style={{ fontSize: 16 }}>{item.glyph}</span>
+          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 18, height: 18 }}>
+            {NAV_ICONS[item.key]}
+          </span>
           {t(item.labelKey)}
         </button>
       ))}
@@ -252,12 +276,14 @@ function MobileNav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
 }
 
 /* ─── Topbar ─── */
-function Topbar({ meta, title, level, rank, gold }: {
+function Topbar({ meta, title, level, rank, gold, premium, onOpenExchange }: {
   meta: { section: string };
   title: string;
   level?: number;
   rank?: string;
   gold?: number;
+  premium?: number;
+  onOpenExchange?: () => void;
 }) {
   const { locale, t } = useI18n();
   const money = splitCopper(gold);
@@ -309,6 +335,32 @@ function Topbar({ meta, title, level, rank, gold }: {
               <span style={{ color: "#CBD5E1" }}>{money.silver}{moneyLabels.silver}</span>
               <span style={{ color: "#CD7C45" }}>{money.copper}{moneyLabels.copper}</span>
             </span>
+            {onOpenExchange && (
+              <button
+                onClick={onOpenExchange}
+                title={t("exchange.title")}
+                aria-label={t("exchange.title")}
+                style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  width: 24, height: 24, marginLeft: 2, borderRadius: 7, cursor: "pointer",
+                  background: "rgba(96,165,250,0.14)", border: "1px solid rgba(96,165,250,0.35)",
+                  color: "#93C5FD",
+                }}
+              >
+                <Plus size={14} strokeWidth={2.2} />
+              </button>
+            )}
+          </div>
+        )}
+        {premium !== undefined && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 7,
+            padding: "10px 15px", borderRadius: 12,
+            background: "#1A2235", border: "1px solid #3B2A55",
+            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", fontSize: 14, fontWeight: 700,
+            color: "#C084FC",
+          }}>
+            <Gem size={14} /> {formatNumber(premium, locale)}
           </div>
         )}
       </div>
@@ -327,6 +379,7 @@ export function RpgClient() {
     setTabState(next);
     localStorage.setItem("activeTab", next);
   };
+  const [exchangeOpen, setExchangeOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const meQuery = useQuery({
@@ -369,6 +422,7 @@ export function RpgClient() {
 
   const charLevel = characterQuery.data?.level;
   const gold = activeUser.money_copper ?? 0;
+  const premium = activeUser.premium_currency ?? 0;
   const pageMeta = PAGE_META[tab];
   const meta = { section: t(pageMeta.sectionKey) };
   const pageTitle = tab === "character" && characterQuery.data
@@ -393,7 +447,6 @@ export function RpgClient() {
           characterLevel={characterQuery.data?.level}
           characterRank={characterQuery.data?.rank}
           userAvatar={activeUser?.avatar}
-          characterAvatar={characterQuery.data?.avatar}
           isLoadingCharacter={characterQuery.isLoading}
           onLogout={handleLogout}
           t={t}
@@ -410,6 +463,8 @@ export function RpgClient() {
           level={charLevel}
           rank={characterQuery.data?.rank}
           gold={gold}
+          premium={premium}
+          onOpenExchange={() => setExchangeOpen(true)}
         />
 
         {/* Mobile nav */}
@@ -427,12 +482,16 @@ export function RpgClient() {
               />
             )}
             {tab === "dungeons"    && <DungeonsScreen />}
+            {tab === "shop"        && <ShopScreen />}
             {tab === "inventory"   && <InventoryScreen />}
             {tab === "leaderboard" && <LeaderboardScreen />}
             {tab === "settings"    && <SettingsScreen />}
+            {tab === "guide"       && <GuidebookScreen />}
           </div>
         </div>
       </div>
+
+      {exchangeOpen && <ExchangeModal onClose={() => setExchangeOpen(false)} />}
     </div>
   );
 }

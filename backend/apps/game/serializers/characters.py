@@ -2,8 +2,8 @@ from rest_framework import serializers
 
 from apps.game.i18n import message
 from apps.game.models import Character, CharacterClass
-from apps.game.ranks import rank_for_level
 from apps.game.services import GameFormulaService
+from apps.game.services.ranks import rank_for_level
 
 from .common import localized_name, media_payload, serializer_locale
 from .inventory import UserItemSummarySerializer
@@ -15,16 +15,19 @@ class CharacterClassSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     start_stats = serializers.SerializerMethodField()
     media = serializers.SerializerMethodField()
+    male_media = serializers.SerializerMethodField()
+    female_media = serializers.SerializerMethodField()
 
     class Meta:
         model = CharacterClass
-        fields = ["key", "name", "start_stats", "media"]
+        fields = ["key", "name", "start_stats", "media", "male_media", "female_media"]
 
     def get_start_stats(self, obj):
         """Возвращает стартовые характеристики класса героя одним объектом."""
 
         return {
-            "health": obj.start_health,
+            "max_hp": obj.start_max_hp,
+            "intellect": obj.start_intellect,
             "attack": obj.start_attack,
             "defense": obj.start_defense,
             "critical_chance": obj.start_critical_chance,
@@ -37,9 +40,19 @@ class CharacterClassSerializer(serializers.ModelSerializer):
         return localized_name(obj, serializer_locale(self.context))
 
     def get_media(self, obj):
-        """Возвращает медиа-версии изображения класса героя."""
+        """Возвращает совместимый alias мужского изображения класса героя."""
 
-        return media_payload(obj.media, self.context)
+        return media_payload(obj.male_media, self.context)
+
+    def get_male_media(self, obj):
+        """Возвращает медиа-версии мужского изображения класса героя."""
+
+        return media_payload(obj.male_media, self.context)
+
+    def get_female_media(self, obj):
+        """Возвращает медиа-версии женского изображения класса героя."""
+
+        return media_payload(obj.female_media, self.context)
 
 
 class CreateCharacterSerializer(serializers.Serializer):
@@ -47,6 +60,7 @@ class CreateCharacterSerializer(serializers.Serializer):
 
     name = serializers.CharField(min_length=2, max_length=80)
     class_key = serializers.SlugField()
+    gender = serializers.ChoiceField(choices=Character.Gender.choices)
 
     def validate_class_key(self, value):
         """Проверяет, что выбранный класс существует и активен."""
@@ -60,10 +74,11 @@ class CharacterCreateSerializer(serializers.ModelSerializer):
     """Сериализатор создания героя и ответа с базовым прогрессом."""
 
     class_key = serializers.SlugField(write_only=True)
+    gender = serializers.ChoiceField(choices=Character.Gender.choices)
 
     class Meta:
         model = Character
-        fields = ["id", "name", "class_key", "level", "experience"]
+        fields = ["id", "name", "class_key", "gender", "level", "experience"]
         read_only_fields = ["id", "level", "experience"]
 
     def validate_class_key(self, value):
@@ -87,8 +102,16 @@ class CharacterCreateSerializer(serializers.ModelSerializer):
         from apps.game.services import GameBalanceService
 
         class_key = validated_data.pop("class_key")
+        gender = validated_data["gender"]
         character_class = CharacterClass.objects.get(key=class_key)
-        return GameBalanceService.create_character(self.context["request"].user, validated_data["name"], character_class)
+        avatar_media = class_media_for_gender(character_class, gender)
+        return GameBalanceService.create_character(
+            self.context["request"].user,
+            validated_data["name"],
+            character_class,
+            gender=gender,
+            avatar_media=avatar_media,
+        )
 
     def to_representation(self, instance):
         """Возвращает совместимый формат ответа после создания героя."""
@@ -97,6 +120,7 @@ class CharacterCreateSerializer(serializers.ModelSerializer):
             "id": instance.id,
             "name": instance.name,
             "class_key": instance.character_class_id,
+            "gender": instance.gender,
             "level": instance.level,
             "rank": rank_for_level(instance.level).label,
             "experience": instance.experience,
@@ -115,7 +139,7 @@ class CharacterMeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Character
-        fields = ["id", "name", "avatar", "class_info", "level", "rank", "experience", "experience_to_next_level", "stats", "equipment"]
+        fields = ["id", "name", "gender", "avatar", "class_info", "level", "rank", "experience", "experience_to_next_level", "stats", "equipment"]
 
     def to_representation(self, instance):
         """Переименовывает class_info в поле class для API-контракта."""
@@ -130,7 +154,7 @@ class CharacterMeSerializer(serializers.ModelSerializer):
         return {
             "key": obj.character_class_id,
             "name": localized_name(obj.character_class, serializer_locale(self.context)),
-            "media": media_payload(obj.character_class.media, self.context),
+            "media": media_payload(class_media_for_gender(obj.character_class, obj.gender), self.context),
         }
 
     def get_experience_to_next_level(self, obj):
@@ -144,9 +168,13 @@ class CharacterMeSerializer(serializers.ModelSerializer):
         return rank_for_level(obj.level).label
 
     def get_stats(self, obj):
-        """Возвращает рассчитанные сервером характеристики героя."""
+        """Возвращает рассчитанные сервером характеристики героя, включая текущее HP."""
 
-        return GameFormulaService.character_stats(obj)
+        stats = GameFormulaService.character_stats(obj)
+        max_hp = stats.get("max_hp") or 0
+        stats["current_hp"] = obj.current_hp
+        stats["hp_percent"] = round(obj.current_hp / max_hp * 100, 1) if max_hp else 0.0
+        return stats
 
     def get_equipment(self, obj):
         """Возвращает предметы, экипированные по слотам."""
@@ -160,3 +188,10 @@ class CharacterMeSerializer(serializers.ModelSerializer):
         """Возвращает медиа-версии аватара героя."""
 
         return media_payload(obj.avatar_media, self.context)
+
+
+def class_media_for_gender(character_class: CharacterClass, gender: str):
+    """Возвращает медиа класса по полу с fallback для неполных данных."""
+
+    selected_media = character_class.female_media if gender == Character.Gender.FEMALE else character_class.male_media
+    return selected_media or character_class.male_media or character_class.female_media

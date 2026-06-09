@@ -2,134 +2,152 @@
 
 ## Project Memory
 
-`docs/project-memory/` — это точка входа в контекст проекта, прошлые решения, архитектурные договоренности и накопленную проектную память.
+`docs/project-memory/` is the entry point for project context, past decisions, architectural agreements, and accumulated project memory.
 
-Project Memory помогает понять намерение, историю и правила проекта, но не является источником истины для текущей реализации.
+Project Memory helps understand the intent, history, and rules of the project, but is not the source of truth for the current implementation.
 
-### Приоритет источников
+### Source Priority
 
-При работе с проектом используй следующий порядок доверия:
+When working with the project, use the following order of trust:
 
-1. Текущий код репозитория
-2. Тесты, миграции, схемы, конфиги и runtime-настройки
-3. Свежий сгенерированный анализ проекта, например `graphify-out/GRAPH_REPORT.md`
-4. Документация проекта
+1. Current repository code
+2. Tests, migrations, schemas, configs, and runtime settings
+3. Freshly generated project analysis, e.g. `graphify-out/GRAPH_REPORT.md`
+4. Project documentation
 5. `docs/project-memory/`
-6. Предыдущие обсуждения и предположения
+6. Previous discussions and assumptions
 
-Если `docs/project-memory/` конфликтует с текущим кодом, доверяй коду.
+If `docs/project-memory/` conflicts with current code, trust the code.
 
-Если Graphify конфликтует с текущим кодом, доверяй коду.
+If Graphify conflicts with current code, trust the code.
 
-Если документация конфликтует с текущим кодом, сначала проверь реальную реализацию в репозитории.
+If documentation conflicts with current code, first verify the actual implementation in the repository.
 
-### Как использовать Project Memory
+### How to Use Project Memory
 
-Перед любой глубокой работой по этому репозиторию сначала открой:
+Before any deep work on this repository, first open:
 
 1. `docs/project-memory/INDEX.md`
-2. релевантные файлы из `docs/project-memory/curated/`
-3. релевантные файлы из `docs/project-memory/inventories/`
+2. Relevant files from `docs/project-memory/curated/`
+3. Relevant files from `docs/project-memory/inventories/`
 
-Используй Project Memory для:
+Use Project Memory for:
 
-- понимания целей проекта
-- понимания архитектурных предпочтений
-- учета прошлых решений
-- соблюдения согласованного стиля работы
-- понимания причин, почему были выбраны или отклонены определенные подходы
-- сохранения контекста между сессиями
+- Understanding project goals
+- Understanding architectural preferences
+- Accounting for past decisions
+- Following the agreed working style
+- Understanding why certain approaches were chosen or rejected
+- Preserving context between sessions
 
-Не используй Project Memory как доказательство:
+Do NOT use Project Memory as evidence of:
 
-- точного расположения файлов
-- текущих полей моделей
-- текущего поведения API
-- текущих сигнатур функций
-- текущей бизнес-логики
-- текущих зависимостей между модулями
-- текущей схемы базы данных
-- текущего flow фоновых задач
-- текущей структуры frontend-компонентов
+- Exact file locations
+- Current model fields
+- Current API behavior
+- Current function signatures
+- Current business logic
+- Current inter-module dependencies
+- Current database schema
+- Current background task flow
+- Current frontend component structure
 
-Все такие детали нужно проверять по реальным файлам репозитория.
+All such details must be verified against the actual repository files.
 
-### Перед внесением изменений
+### Before Making Changes
 
-Для небольших локальных изменений:
+For small, localized changes:
 
-1. Изучи целевой файл напрямую.
-2. Проверь ближайшие тесты или места использования.
-3. Внеси минимальное безопасное изменение.
+1. Examine the target file directly.
+2. Check the nearest tests or usages.
+3. Make the minimal safe change.
 
-Для глубокой, архитектурной или межмодульной работы:
+For deep, architectural, or cross-module work:
 
-1. Открой `docs/project-memory/INDEX.md`.
-2. Изучи релевантные файлы из `docs/project-memory/curated/` и `docs/project-memory/inventories/`.
-3. Если существует актуальный `graphify-out/GRAPH_REPORT.md`, используй его для понимания структуры и связей.
-4. Проверь все важные предположения по текущему коду.
-5. Определи затронутые модули, тесты, миграции, конфиги и API-контракты.
-6. Сначала объясни план.
-7. Затем вноси минимальные безопасные изменения.
-8. Запусти или предложи релевантные тесты.
+1. Open `docs/project-memory/INDEX.md`.
+2. Review relevant files from `docs/project-memory/curated/` and `docs/project-memory/inventories/`.
+3. If an up-to-date `graphify-out/GRAPH_REPORT.md` exists, use it to understand structure and relationships.
+4. Verify all important assumptions against the current code.
+5. Identify affected modules, tests, migrations, configs, and API contracts.
+6. Explain the plan first.
+7. Then make minimal safe changes.
+8. Run or suggest relevant tests.
 
-### Работа с устаревшей памятью
+### Working with Stale Memory
 
-Project Memory может быть устаревшей.
+Project Memory may be outdated.
 
-Если память говорит одно, а код показывает другое:
+If memory says one thing but the code shows another:
 
-- доверяй текущему коду
-- кратко укажи на расхождение
-- не подгоняй код под память без явной просьбы
-- после изменений обнови соответствующие файлы в `docs/project-memory/`
+- Trust the current code
+- Briefly note the discrepancy
+- Do not bend the code to match memory without an explicit request
+- After changes, update the relevant files in `docs/project-memory/`
 
-Пример:
+Example:
 
-> Project Memory указывает, что генерация отчетов находится только в `reports/tasks.py`, но текущий код также использует `reports/services/`. Я буду следовать текущей структуре кода и после изменения обновлю память.
+> Project Memory indicates that report generation lives only in `reports/tasks.py`, but the current code also uses `reports/services/`. I will follow the current code structure and update the memory after the change.
 
-### Что стоит хранить в Project Memory
+### What Is Worth Storing in Project Memory
 
-Хорошие кандидаты для `docs/project-memory/`:
+Good candidates for `docs/project-memory/`:
 
-- назначение проекта
-- архитектурные принципы
-- соглашения по стилю кода
-- требования к тестированию
-- требования безопасности
-- правила именования
-- принятые компромиссы
-- отклоненные подходы
-- продуктовые решения
-- особенности окружения, которые редко меняются
+- Project purpose
+- Architectural principles
+- Code style conventions
+- Testing requirements
+- Security requirements
+- Naming rules
+- Accepted trade-offs
+- Rejected approaches
+- Product decisions
+- Environment specifics that rarely change
 
-Плохие кандидаты:
+Bad candidates:
 
-- точные пути к файлам без необходимости
-- точные имена функций
-- временные баги
-- текущие TODO
-- содержимое сгенерированного графа
-- детали, которые легко получить из кода
-- устаревающие списки всех моделей, endpoint’ов или задач
+- Exact file paths without necessity
+- Exact function names
+- Temporary bugs
+- Current TODOs
+- Generated graph content
+- Details that are easy to derive from the code
+- Aging lists of all models, endpoints, or tasks
 
-### Практическое правило
+## Agent Skills
 
-Используй `docs/project-memory/`, чтобы понять намерение.
+This project may use selected skills from `mattpocock/skills`.
 
-Используй Graphify, чтобы понять структуру.
+Use skills only when they match the task. Do not invoke skills for every request.
 
-Используй код репозитория, чтобы понять реальность.
+Recommended usage:
 
-Если есть сомнения — изучи код.
+- `diagnose`: for unclear bugs, regressions, flaky behavior, Celery/API/DB issues.
+- `tdd`: for behavior changes where tests can define the expected result.
+- `zoom-out`: when local code needs to be understood in the broader system context.
+- `grill-me`: when the user proposes a raw idea and requirements are unclear.
+- `grill-with-docs`: before larger changes that must respect existing docs, memory, ADRs, or architecture.
+- `handoff`: when summarizing work for another session, another agent, or a future continuation.
+
+Do not use these skills as a replacement for reading the actual source code.
+The repository code remains the source of truth.
+
+### Rule of Thumb
+
+Use `docs/project-memory/` to understand intent.
+
+Use Graphify to understand structure.
+
+Use the repository code to understand reality.
+
+When in doubt — read the code.
 
 ## Security Rules
 
-- Никогда не открывай, не читай и не анализируй файлы `.env` и `.env.*`.
-- Не выполняй команды, которые выводят содержимое `.env` файлов (`cat`, `less`,
-  `more`, `grep`, `rg`, `awk`, `sed` и т.д. по этим файлам).
-- Если для задачи требуется доступ к секретам, запрашивай у пользователя только
-  замаскированные значения, например `API_KEY=***`.
+- Never open, read, or analyze `.env` and `.env.*` files.
+- Do not run commands that print the contents of `.env` files (`cat`, `less`,
+  `more`, `grep`, `rg`, `awk`, `sed`, etc. on those files).
+- If a task requires access to secrets, ask the user only for masked values,
+  e.g. `API_KEY=***`.
 
 ## graphify
 

@@ -10,13 +10,29 @@ class CharacterClass(models.Model):
     key = models.SlugField("Ключ класса", primary_key=True)
     name = models.CharField("Название", max_length=80)
     name_i18n = models.JSONField("Переводы названия", default=dict, blank=True)
-    start_health = models.PositiveIntegerField("Стартовое здоровье")
+    start_max_hp = models.PositiveIntegerField("Стартовое максимальное HP")
+    start_intellect = models.PositiveIntegerField("Стартовый интеллект", default=0)
     start_attack = models.PositiveIntegerField("Стартовая атака")
     start_defense = models.PositiveIntegerField("Стартовая защита")
     start_critical_chance = models.FloatField("Стартовый шанс критического удара")
     start_evasion = models.FloatField("Стартовое уклонение")
     growth_profile = models.JSONField("Профиль роста")
-    media = models.ForeignKey(MediaAsset, verbose_name="Медиа", null=True, blank=True, on_delete=models.SET_NULL)
+    male_media = models.ForeignKey(
+        MediaAsset,
+        verbose_name="Мужчина",
+        null=True,
+        blank=True,
+        related_name="male_character_classes",
+        on_delete=models.SET_NULL,
+    )
+    female_media = models.ForeignKey(
+        MediaAsset,
+        verbose_name="Женщина",
+        null=True,
+        blank=True,
+        related_name="female_character_classes",
+        on_delete=models.SET_NULL,
+    )
     is_active = models.BooleanField("Активен", default=True)
     sort_order = models.PositiveIntegerField("Порядок сортировки", default=0)
 
@@ -32,19 +48,26 @@ class CharacterClass(models.Model):
 
 
 class Character(TimestampedModel):
-    """Единственный герой аккаунта с прогрессом, базовыми статами и экипировкой."""
+    """Единственный герой аккаунта с прогрессом, статами и экипировкой."""
+
+    class Gender(models.TextChoices):
+        MALE = "male", "Мужчина"
+        FEMALE = "female", "Женщина"
 
     user = models.OneToOneField(User, verbose_name="Пользователь", related_name="character", on_delete=models.CASCADE)
     name = models.CharField("Имя героя", max_length=80)
     character_class = models.ForeignKey(CharacterClass, verbose_name="Класс героя", db_column="class_key", on_delete=models.PROTECT)
+    gender = models.CharField("Пол", max_length=10, choices=Gender.choices, default=Gender.MALE)
     avatar_media = models.ForeignKey(MediaAsset, verbose_name="Аватар", null=True, blank=True, on_delete=models.SET_NULL)
     level = models.PositiveIntegerField("Уровень", default=1)
     experience = models.PositiveIntegerField("Опыт", default=0)
-    base_health = models.PositiveIntegerField("Базовое здоровье")
-    base_attack = models.PositiveIntegerField("Базовая атака")
-    base_defense = models.PositiveIntegerField("Базовая защита")
-    base_critical_chance = models.FloatField("Базовый шанс критического удара")
-    base_evasion = models.FloatField("Базовое уклонение")
+    max_hp = models.PositiveIntegerField("Максимальное HP")
+    current_hp = models.PositiveIntegerField("Текущее HP", default=0)
+    intellect = models.PositiveIntegerField("Интеллект", default=0)
+    attack = models.PositiveIntegerField("Атака")
+    defense = models.PositiveIntegerField("Защита")
+    critical_chance = models.FloatField("Шанс критического удара")
+    evasion = models.FloatField("Уклонение")
     power_cached = models.FloatField("Кэш силы", null=True, blank=True)
     power_updated_at = models.DateTimeField("Дата обновления силы", null=True, blank=True)
 

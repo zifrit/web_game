@@ -1,6 +1,6 @@
 # Frontend Inventory
 
-Updated from code inspection on 2026-05-30.
+Updated from code inspection on 2026-06-08.
 
 ## Entrypoints
 
@@ -35,7 +35,7 @@ Updated from code inspection on 2026-05-30.
 - `frontend/lib/media.ts` - media URL selection helper for `large_url`,
   `medium_url`, `small_url`.
 - `frontend/lib/i18n.ts` also owns copper splitting/formatting helpers for
-  topbar money display.
+  topbar money display and consumables/crafting labels.
 
 ## Media usage
 
@@ -43,6 +43,10 @@ Updated from code inspection on 2026-05-30.
 - Medium: equipment slots, inventory item list, create-character class cards.
 - Small: character mini-inventory, quick dungeon rows, sidebar avatar,
   leaderboard avatar.
+
+Create-character class cards choose `male_media` or `female_media` from
+`GET /api/character-classes` based on the selected gender and submit that
+gender through `api.createCharacter()`.
 
 ## Settings and avatar
 
@@ -64,16 +68,26 @@ Updated from code inspection on 2026-05-30.
   `disableTwoFactor`
 - `characterClasses`, `createCharacter`, `character`
 - `dungeons`, `startRun`, `currentRun`, `claimRun`
+- `startMiniGame` (config_id), `revealMiniGameCard`, `moveMiniGame`,
+  `miniGameConfigs`, `miniGameCardFaces`, `miniGameHistory`
+  (the SVG catalog is cached by the `useCardFaces` hook in localStorage by
+  version)
 - `inventory`, `item`, `repairPreview`, `repair`, `destroyPreview`,
   `destroy`, `equip`, `unequip`
+- `ingredients`, `potions`, `usePotion`, `craftRecipes`, `craftPotions`
 - `leaderboard`
 - `iconAssets`, `updateAvatar`
 
 Inventory screen notes:
 
+- Inventory screen has equipment and consumables sections.
 - Top inventory action enters multi-select mode instead of repairing all.
 - Repair and destroy use bulk API calls; detail panel sends a single selected
   item id to the same bulk endpoints.
+- Consumables section fetches ingredients and potions separately, renders stack
+  cells, allows using potions, and hosts the recipe-driven craft panel.
+- Craft panel fetches recipes, switches small/medium/large difficulty tabs,
+  clamps batch size by owned ingredients, and calls `api.craftPotions()`.
 
 ## Package scripts
 

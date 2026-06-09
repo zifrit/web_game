@@ -8,7 +8,8 @@ import pyotp
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.game.models import CharacterClass, DungeonLocation, DungeonRunClaim, ItemTemplate, MediaAsset, UserItem, UserTwoFactor
+from apps.game.models import CharacterClass, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonMiniGameConfig, DungeonRun, DungeonRunClaim, DungeonRunStatus, ItemTemplate, MediaAsset, MiniGameCardFace, UserItem, UserTwoFactor
+from apps.game.permissions import IsSuperuserOrOwner
 from apps.game.two_factor import TOTP_INTERVAL_SECONDS, current_timecode
 
 
@@ -27,10 +28,94 @@ class MvpApiTests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access_token']}")
         return User.objects.get(email=email)
 
-    def create_character(self, class_key="warrior"):
-        response = self.client.post("/api/characters", {"name": "Arthas", "class_key": class_key}, format="json")
+    def create_character(self, class_key="warrior", gender="male"):
+        response = self.client.post("/api/characters", {"name": "Arthas", "class_key": class_key, "gender": gender}, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         return response.data
+
+    def test_public_and_private_endpoint_permissions(self):
+        public_classes = self.client.get("/api/character-classes")
+        self.assertEqual(public_classes.status_code, status.HTTP_200_OK)
+
+        public_register = self.client.post("/api/auth/register", {"email": "public@example.com", "password": "strong_password_123"}, format="json")
+        self.assertEqual(public_register.status_code, status.HTTP_201_CREATED, public_register.data)
+
+        public_login = self.client.post("/api/auth/login", {"email": "public@example.com", "password": "strong_password_123"}, format="json")
+        self.assertEqual(public_login.status_code, status.HTTP_200_OK, public_login.data)
+
+        public_refresh_without_auth_header = self.client.post("/api/auth/refresh", {}, format="json")
+        self.assertEqual(public_refresh_without_auth_header.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.client.credentials()
+        for path in ("/api/auth/me", "/api/characters/me", "/api/inventory", "/api/dungeons", "/api/leaderboard?type=level"):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED, path)
+
+    def test_object_permissions_keep_user_objects_private(self):
+        owner = self.register_and_authenticate("owner@example.com")
+        self.create_character()
+        owner_character = owner.character
+        template = ItemTemplate.objects.filter(slot="weapon", item_type="sword", rarity_key="f").first()
+        item = UserItem.objects.create(
+            owner_user=owner,
+            source_character=owner_character,
+            template=template,
+            name=template.name,
+            slot=template.slot,
+            item_type=template.item_type,
+            rarity="f",
+            item_level=1,
+            stats={"attack": 5},
+            durability_current=10,
+            durability_max=10,
+        )
+        location = DungeonLocation.objects.get(name="Старый лес")
+        run = DungeonRun.objects.create(
+            character=owner_character,
+            location=location,
+            status=DungeonRunStatus.SUCCESS_WAITING_CLAIM,
+            started_at=timezone.now(),
+            ends_at=timezone.now(),
+            completed_at=timezone.now(),
+            success_chance=100,
+            is_success=True,
+            experience_reward=1,
+            money_reward_copper=1,
+            items_reward=[],
+            durability_loss=0,
+        )
+
+        owner_item = self.client.get(f"/api/inventory/items/{item.id}")
+        self.assertEqual(owner_item.status_code, status.HTTP_200_OK, owner_item.data)
+
+        intruder = self.register_and_authenticate("intruder@example.com")
+        self.create_character("mage")
+
+        intruder_item = self.client.get(f"/api/inventory/items/{item.id}")
+        self.assertEqual(intruder_item.status_code, status.HTTP_404_NOT_FOUND)
+
+        intruder_claim = self.client.post(f"/api/dungeon-runs/{run.id}/claim", {}, format="json")
+        self.assertEqual(intruder_claim.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(DungeonRunClaim.objects.filter(dungeon_run=run).exists())
+
+        self.client.credentials()
+        owner_login = self.client.post("/api/auth/login", {"email": owner.email, "password": "strong_password_123"}, format="json")
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {owner_login.data['access_token']}")
+        owner_claim = self.client.post(f"/api/dungeon-runs/{run.id}/claim", {}, format="json")
+        self.assertEqual(owner_claim.status_code, status.HTTP_200_OK, owner_claim.data)
+        self.assertTrue(DungeonRunClaim.objects.filter(dungeon_run=run, user=owner).exists())
+
+        superuser = User.objects.create_superuser(email="admin@example.com", password="strong_password_123")
+        permission = IsSuperuserOrOwner()
+        request = type("Request", (), {"user": superuser})()
+        self.assertTrue(permission.has_permission(request, None))
+        self.assertTrue(permission.has_object_permission(request, None, item))
+
+        self.client.credentials()
+        admin_login = self.client.post("/api/auth/login", {"email": superuser.email, "password": "strong_password_123"}, format="json")
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {admin_login.data['access_token']}")
+        admin_inventory = self.client.get("/api/inventory")
+        self.assertEqual(admin_inventory.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_register_create_character_and_fetch_profile(self):
         user = self.register_and_authenticate()
@@ -55,12 +140,16 @@ class MvpApiTests(APITestCase):
         self.assertNotIn("original_url", me_user.data["avatar"])
         self.assertNotIn("icon_url", me_user.data["avatar"])
 
-        class_media = MediaAsset.objects.create(name="Warrior class art")
-        class_media.medium.save("warrior-medium.png", ContentFile(b"medium-art"), save=True)
-        class_media.small.save("warrior-small.png", ContentFile(b"small-art"), save=True)
+        male_class_media = MediaAsset.objects.create(name="Warrior male class art")
+        male_class_media.medium.save("warrior-male-medium.png", ContentFile(b"medium-art"), save=True)
+        male_class_media.small.save("warrior-male-small.png", ContentFile(b"small-art"), save=True)
+        female_class_media = MediaAsset.objects.create(name="Warrior female class art")
+        female_class_media.medium.save("warrior-female-medium.png", ContentFile(b"female-medium-art"), save=True)
+        female_class_media.small.save("warrior-female-small.png", ContentFile(b"female-small-art"), save=True)
         warrior_class = CharacterClass.objects.get(key="warrior")
-        warrior_class.media = class_media
-        warrior_class.save(update_fields=["media"])
+        warrior_class.male_media = male_class_media
+        warrior_class.female_media = female_class_media
+        warrior_class.save(update_fields=["male_media", "female_media"])
 
         classes = self.client.get("/api/character-classes")
         self.assertEqual(classes.status_code, status.HTTP_200_OK)
@@ -69,6 +158,11 @@ class MvpApiTests(APITestCase):
         self.assertIn("media", classes.data[0])
         self.assertTrue(classes.data[0]["media"]["medium_url"])
         self.assertEqual(set(classes.data[0]["media"].keys()), {"large_url", "medium_url", "small_url"})
+        self.assertIn("male_media", classes.data[0])
+        self.assertIn("female_media", classes.data[0])
+        self.assertTrue(classes.data[0]["male_media"]["medium_url"])
+        self.assertTrue(classes.data[0]["female_media"]["medium_url"])
+        self.assertEqual(classes.data[0]["media"], classes.data[0]["male_media"])
 
         classes_ru = self.client.get("/api/character-classes", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(classes_ru.status_code, status.HTTP_200_OK)
@@ -76,22 +170,21 @@ class MvpApiTests(APITestCase):
 
         character = self.create_character()
         self.assertEqual(character["class_key"], "warrior")
+        self.assertEqual(character["gender"], "male")
 
-        avatar_media = MediaAsset.objects.create(name="Hero avatar")
-        avatar_media.large.save("hero-large.png", ContentFile(b"large-avatar"), save=True)
         hero = User.objects.get(email="hero@example.com").character
-        hero.avatar_media = avatar_media
-        hero.save(update_fields=["avatar_media"])
+        self.assertEqual(hero.avatar_media_id, male_class_media.id)
 
         me = self.client.get("/api/characters/me")
         self.assertEqual(me.status_code, status.HTTP_200_OK)
         self.assertEqual(me.data["class"]["key"], "warrior")
         self.assertEqual(me.data["class"]["name"], "Warrior")
+        self.assertEqual(me.data["gender"], "male")
         self.assertEqual(me.data["rank"], "F")
         self.assertIn("media", me.data["class"])
         self.assertTrue(me.data["class"]["media"]["medium_url"])
         self.assertIn("avatar", me.data)
-        self.assertTrue(me.data["avatar"]["large_url"])
+        self.assertTrue(me.data["avatar"]["medium_url"])
         self.assertNotIn("original_url", me.data["avatar"])
         self.assertNotIn("icon_url", me.data["avatar"])
         self.assertGreater(me.data["stats"]["power"], 0)
@@ -100,6 +193,31 @@ class MvpApiTests(APITestCase):
         me_ru = self.client.get("/api/characters/me", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(me_ru.status_code, status.HTTP_200_OK)
         self.assertEqual(me_ru.data["class"]["name"], "Воин")
+
+    def test_create_character_sets_female_avatar_and_validates_gender(self):
+        self.register_and_authenticate("female@example.com")
+        warrior_class = CharacterClass.objects.get(key="warrior")
+        male_media = MediaAsset.objects.create(name="Male art")
+        male_media.medium.save("male-medium.png", ContentFile(b"male"), save=True)
+        female_media = MediaAsset.objects.create(name="Female art")
+        female_media.medium.save("female-medium.png", ContentFile(b"female"), save=True)
+        warrior_class.male_media = male_media
+        warrior_class.female_media = female_media
+        warrior_class.save(update_fields=["male_media", "female_media"])
+
+        invalid = self.client.post("/api/characters", {"name": "Arthas", "class_key": "warrior", "gender": "other"}, format="json")
+        self.assertEqual(invalid.status_code, status.HTTP_400_BAD_REQUEST)
+
+        character = self.create_character(gender="female")
+        self.assertEqual(character["gender"], "female")
+        hero = User.objects.get(email="female@example.com").character
+        self.assertEqual(hero.gender, "female")
+        self.assertEqual(hero.avatar_media_id, female_media.id)
+
+        me = self.client.get("/api/characters/me")
+        self.assertEqual(me.status_code, status.HTTP_200_OK)
+        self.assertEqual(me.data["gender"], "female")
+        self.assertEqual(me.data["avatar"], me.data["class"]["media"])
 
     @override_settings(TOTP_ENCRYPTION_KEY=Fernet.generate_key().decode())
     def test_totp_two_factor_login_lifecycle(self):
@@ -208,13 +326,154 @@ class MvpApiTests(APITestCase):
         self.assertEqual(claim.status_code, status.HTTP_200_OK, claim.data)
         self.assertEqual(claim.data["status"], "CLAIMED")
         self.assertEqual(claim.data["is_success"], True)
+        self.assertEqual(claim.data["success_chance"], 100)
         if claim.data["rewards"]["items"]:
-            self.assertTrue(claim.data["rewards"]["items"][0]["name"].startswith(("F", "E", "D", "C", "B", "A", "S", "EX")))
+            item = claim.data["rewards"]["items"][0]
+            self.assertFalse(item["name"].startswith(("F ", "E ", "D ", "C ", "B ", "A ", "S ", "EX ")))
+            self.assertIn(item["rarity"], {"f", "e", "d", "c", "b", "a", "s", "ex"})
+            self.assertGreaterEqual(item["item_level"], 1)
+            self.assertIn("stats", item)
+            self.assertIsInstance(item["stats"], dict)
+            self.assertEqual(set(item["durability"].keys()), {"current", "max"})
+            self.assertGreaterEqual(item["durability"]["max"], item["durability"]["current"])
+        # Без экипировки прочность не списывается — потеря должна быть 0, разбивка пустой.
+        self.assertEqual(claim.data["rewards"]["durability_loss"], 0)
+        self.assertEqual(claim.data["rewards"]["durability_changes"], [])
         self.assertEqual(DungeonRunClaim.objects.count(), 1)
 
         second_claim = self.client.post(f"/api/dungeon-runs/{start.data['id']}/claim", {}, format="json")
         self.assertEqual(second_claim.status_code, status.HTTP_200_OK, second_claim.data)
         self.assertEqual(DungeonRunClaim.objects.count(), 1)
+
+    def test_dungeon_run_claim_reports_equipment_durability_loss(self):
+        user = self.register_and_authenticate("durability@example.com")
+        self.create_character()
+        character = user.character
+        template = ItemTemplate.objects.filter(slot="weapon", item_type="sword", rarity_key="f").first()
+        item = UserItem.objects.create(
+            owner_user=user,
+            source_character=character,
+            template=template,
+            name=template.name,
+            slot=template.slot,
+            item_type=template.item_type,
+            rarity="f",
+            item_level=1,
+            stats={"attack": 5},
+            durability_current=10,
+            durability_max=10,
+        )
+        equip = self.client.post(f"/api/inventory/items/{item.id}/equip", {}, format="json")
+        self.assertEqual(equip.status_code, status.HTTP_200_OK, equip.data)
+
+        location = DungeonLocation.objects.get(name="Старый лес")
+        location.duration_seconds = 0
+        location.required_power = 1
+        location.item_drop_chance = 0
+        location.save()
+
+        start = self.client.post("/api/dungeon-runs", {"location_id": location.id}, format="json")
+        self.assertEqual(start.status_code, status.HTTP_201_CREATED, start.data)
+
+        claim = self.client.post(f"/api/dungeon-runs/{start.data['id']}/claim", {}, format="json")
+        self.assertEqual(claim.status_code, status.HTTP_200_OK, claim.data)
+        self.assertEqual(claim.data["is_success"], True)
+        # Успех списывает 1 прочность с каждого одетого предмета.
+        self.assertEqual(claim.data["rewards"]["durability_loss"], 1)
+        changes = claim.data["rewards"]["durability_changes"]
+        self.assertEqual(len(changes), 1)
+        self.assertEqual(changes[0]["slot"], "weapon")
+        self.assertEqual(changes[0]["removed"], 1)
+        self.assertEqual(changes[0]["durability"], {"current": 9, "max": 10})
+        item.refresh_from_db()
+        self.assertEqual(item.durability_current, 9)
+
+    def test_dungeon_mini_game_accelerates_active_run_and_has_history(self):
+        self.register_and_authenticate("mini-game@example.com")
+        self.create_character()
+        location = DungeonLocation.objects.get(name="Старый лес")
+        location.duration_seconds = 120
+        location.has_mini_game = True
+        location.save(update_fields=["duration_seconds", "has_mini_game", "updated_at"])
+
+        config = DungeonMiniGameConfig.objects.get(difficulty="6")
+
+        start = self.client.post("/api/dungeon-runs", {"location_id": location.id}, format="json")
+        self.assertEqual(start.status_code, status.HTTP_201_CREATED, start.data)
+        self.assertTrue(start.data["location"]["has_mini_game"])
+        self.assertTrue(start.data["mini_game"]["available"])
+        self.assertFalse(start.data["mini_game"]["started"])
+
+        # Каталоги для модалки выбора сложности и SVG-лиц.
+        configs = self.client.get("/api/mini-game/configs")
+        self.assertEqual(configs.status_code, status.HTTP_200_OK, configs.data)
+        self.assertTrue(any(c["id"] == config.id and "reward_duration_reduction_percent" in c for c in configs.data))
+        faces = self.client.get("/api/mini-game/card-faces")
+        self.assertEqual(faces.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(faces.data["faces"]), MiniGameCardFace.objects.filter(is_active=True).count())
+
+        attempt = self.client.post(
+            f"/api/dungeon-runs/{start.data['id']}/mini-game/start", {"config_id": config.id}, format="json"
+        )
+        self.assertEqual(attempt.status_code, status.HTTP_201_CREATED, attempt.data)
+        self.assertEqual(len(attempt.data["board"]), attempt.data["config"]["pairs_count"] * 2)
+        self.assertTrue(all(card["state"] == "hidden" for card in attempt.data["board"]))
+        self.assertTrue(all(card["code"] is None for card in attempt.data["board"]))
+        self.assertTrue(all("pair_key" not in card for card in attempt.data["board"]))
+
+        current_started = self.client.get("/api/dungeon-runs/current")
+        self.assertEqual(current_started.status_code, status.HTTP_200_OK, current_started.data)
+        self.assertFalse(current_started.data["mini_game"]["available"])
+        self.assertTrue(current_started.data["mini_game"]["started"])
+        self.assertEqual(current_started.data["mini_game"]["status"], DungeonMiniGameAttempt.IN_PROGRESS)
+
+        existing_attempt = self.client.post(
+            f"/api/dungeon-runs/{start.data['id']}/mini-game/start", {"config_id": config.id}, format="json"
+        )
+        self.assertEqual(existing_attempt.status_code, status.HTTP_201_CREATED, existing_attempt.data)
+        self.assertEqual(existing_attempt.data["id"], attempt.data["id"])
+
+        run_before = DungeonRun.objects.get(pk=start.data["id"])
+        attempt_model = DungeonMiniGameAttempt.objects.get(pk=attempt.data["id"])
+        pairs = {}
+        for card in attempt_model.board:
+            pairs.setdefault(card["pair_key"], []).append(card["id"])
+
+        complete = None
+        for card_ids in pairs.values():
+            reveal = self.client.post(
+                f"/api/dungeon-mini-games/{attempt.data['id']}/reveal",
+                {"card_id": card_ids[0]},
+                format="json",
+            )
+            self.assertEqual(reveal.status_code, status.HTTP_200_OK, reveal.data)
+            self.assertFalse(reveal.data["finished"])
+            self.assertEqual(reveal.data["card"]["id"], card_ids[0])
+            self.assertIsNotNone(reveal.data["card"]["code"])
+            complete = self.client.post(
+                f"/api/dungeon-mini-games/{attempt.data['id']}/move",
+                {"first_card_id": card_ids[0], "second_card_id": card_ids[1]},
+                format="json",
+            )
+            self.assertEqual(complete.status_code, status.HTTP_200_OK, complete.data)
+            self.assertTrue(complete.data["matched"])
+
+        self.assertIsNotNone(complete)
+        self.assertTrue(complete.data["finished"])
+        self.assertEqual(complete.data["attempt"]["status"], DungeonMiniGameAttempt.SUCCESS)
+        self.assertGreater(complete.data["attempt"]["duration_reduction_seconds"], 0)
+        self.assertTrue(complete.data["reward_granted"])
+        run_after = DungeonRun.objects.get(pk=start.data["id"])
+        self.assertLess(run_after.ends_at, run_before.ends_at)
+
+        current = self.client.get("/api/dungeon-runs/current")
+        self.assertEqual(current.status_code, status.HTTP_200_OK, current.data)
+        self.assertFalse(current.data["mini_game"]["available"])
+
+        history = self.client.get("/api/dungeon-mini-games/history")
+        self.assertEqual(history.status_code, status.HTTP_200_OK, history.data)
+        self.assertEqual(history.data[0]["status"], DungeonMiniGameAttempt.SUCCESS)
+        self.assertEqual(history.data[0]["location_name"], "Old Forest")
 
     def test_inventory_equip_repair_and_unequip(self):
         user = self.register_and_authenticate()
@@ -410,6 +669,7 @@ class MvpApiTests(APITestCase):
         self.assertEqual(dungeons.status_code, status.HTTP_200_OK)
         self.assertEqual(dungeons.data[0]["name"], "Old Forest")
         self.assertEqual(dungeons.data[0]["description"], "A safe starting location.")
+        self.assertIn("has_mini_game", dungeons.data[0])
         self.assertTrue(dungeons.data[0]["media"]["medium_url"])
         self.assertNotIn("original_url", dungeons.data[0]["media"])
 
@@ -420,4 +680,204 @@ class MvpApiTests(APITestCase):
 
         bad_board = self.client.get("/api/leaderboard?type=gold", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(bad_board.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(bad_board.data["detail"], "В MVP доступен только рейтинг по уровню.")
+        self.assertEqual(bad_board.data["detail"], "Неизвестный тип рейтинга. Используйте «level» или «power».")
+
+
+class DungeonLootApiTests(APITestCase):
+    """Тесты эндпоинта GET /api/dungeons/<pk>/loot."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_game", verbosity=0)
+        cls.location = DungeonLocation.objects.filter(is_active=True).first()
+
+    def _auth(self, email="loot_tester@example.com"):
+        self.client.post("/api/auth/register", {"email": email, "password": "strong_password_123"}, format="json")
+        login = self.client.post("/api/auth/login", {"email": email, "password": "strong_password_123"}, format="json")
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access_token']}")
+
+    # ── Доступ ──────────────────────────────────────────────────────────────
+
+    def test_unauthenticated_returns_401(self):
+        response = self.client.get(f"/api/dungeons/{self.location.pk}/loot")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_nonexistent_dungeon_returns_404(self):
+        self._auth()
+        response = self.client.get("/api/dungeons/999999/loot")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_inactive_dungeon_returns_404(self):
+        inactive = DungeonLocation.objects.create(
+            name="Hidden Vault",
+            duration_seconds=60,
+            required_power=1,
+            experience_min=1, experience_max=2,
+            money_min_copper=1, money_max_copper=2,
+            item_drop_chance=10,
+            is_active=False,
+        )
+        self._auth("inactive_tester@example.com")
+        response = self.client.get(f"/api/dungeons/{inactive.pk}/loot")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # ── Структура ответа ─────────────────────────────────────────────────────
+
+    def test_returns_list_of_loot_items(self):
+        self._auth("structure_tester@example.com")
+        response = self.client.get(f"/api/dungeons/{self.location.pk}/loot")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(response.data, list)
+
+    def test_loot_item_has_required_fields(self):
+        self._auth("fields_tester@example.com")
+        location_with_loot = DungeonLocation.objects.filter(
+            is_active=True,
+            location_item_templates__isnull=False,
+        ).first()
+        if not location_with_loot:
+            self.skipTest("No dungeon with loot templates in seed data")
+
+        response = self.client.get(f"/api/dungeons/{location_with_loot.pk}/loot")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreater(len(response.data), 0)
+
+        item = response.data[0]
+        for field in ("name", "slot", "item_type", "rarity", "allowed_classes",
+                      "possible_stats", "min_durability", "max_durability", "chance"):
+            self.assertIn(field, item, f"Missing field: {field}")
+
+    def test_chance_is_within_valid_range(self):
+        self._auth("chance_tester@example.com")
+        location_with_loot = DungeonLocation.objects.filter(
+            is_active=True,
+            location_item_templates__isnull=False,
+        ).first()
+        if not location_with_loot:
+            self.skipTest("No dungeon with loot templates in seed data")
+
+        response = self.client.get(f"/api/dungeons/{location_with_loot.pk}/loot")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        for item in response.data:
+            self.assertGreaterEqual(item["chance"], 1)
+            self.assertLessEqual(item["chance"], 100)
+
+    def test_possible_stats_is_dict(self):
+        self._auth("stats_tester@example.com")
+        location_with_loot = DungeonLocation.objects.filter(
+            is_active=True,
+            location_item_templates__isnull=False,
+        ).first()
+        if not location_with_loot:
+            self.skipTest("No dungeon with loot templates in seed data")
+
+        response = self.client.get(f"/api/dungeons/{location_with_loot.pk}/loot")
+        for item in response.data:
+            self.assertIsInstance(item["possible_stats"], dict)
+            for stat_range in item["possible_stats"].values():
+                self.assertIn("min", stat_range)
+                self.assertIn("max", stat_range)
+
+    def test_allowed_classes_is_list(self):
+        self._auth("classes_tester@example.com")
+        location_with_loot = DungeonLocation.objects.filter(
+            is_active=True,
+            location_item_templates__isnull=False,
+        ).first()
+        if not location_with_loot:
+            self.skipTest("No dungeon with loot templates in seed data")
+
+        response = self.client.get(f"/api/dungeons/{location_with_loot.pk}/loot")
+        for item in response.data:
+            self.assertIsInstance(item["allowed_classes"], list)
+
+    # ── Локализация ──────────────────────────────────────────────────────────
+
+    def test_name_is_localized_ru(self):
+        self._auth("locale_tester@example.com")
+        location_with_loot = DungeonLocation.objects.filter(
+            is_active=True,
+            location_item_templates__isnull=False,
+        ).first()
+        if not location_with_loot:
+            self.skipTest("No dungeon with loot templates in seed data")
+
+        en = self.client.get(f"/api/dungeons/{location_with_loot.pk}/loot", HTTP_ACCEPT_LANGUAGE="en")
+        ru = self.client.get(f"/api/dungeons/{location_with_loot.pk}/loot", HTTP_ACCEPT_LANGUAGE="ru")
+        self.assertEqual(en.status_code, status.HTTP_200_OK)
+        self.assertEqual(ru.status_code, status.HTTP_200_OK)
+
+        if en.data and ru.data:
+            en_name = en.data[0]["name"]
+            ru_name = ru.data[0]["name"]
+            # Если у шаблона есть RU перевод — имена должны отличаться
+            template = DungeonLocationItemTemplate.objects.filter(
+                location=location_with_loot
+            ).select_related("item_template").first()
+            if template and template.item_template.name_i18n.get("ru"):
+                self.assertNotEqual(en_name, ru_name)
+
+    def test_allowed_classes_resolved_to_names_in_ru(self):
+        """Разрешённые классы возвращаются как имена, а не ключи."""
+        self._auth("classname_tester@example.com")
+        template = ItemTemplate.objects.filter(
+            allowed_classes__isnull=False,
+        ).first()
+        if not template:
+            self.skipTest("No item template with class restrictions in seed data")
+
+        location = DungeonLocation.objects.filter(is_active=True).first()
+        DungeonLocationItemTemplate.objects.get_or_create(
+            location=location, item_template=template, defaults={"chance": 50}
+        )
+
+        response = self.client.get(
+            f"/api/dungeons/{location.pk}/loot",
+            HTTP_ACCEPT_LANGUAGE="ru",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        item_with_classes = next(
+            (i for i in response.data if i["allowed_classes"]), None
+        )
+        if item_with_classes:
+            # Классы должны быть именами, а не slug-ключами
+            for class_name in item_with_classes["allowed_classes"]:
+                self.assertFalse(
+                    class_name.islower() and "_" not in class_name and " " not in class_name
+                    and len(class_name) < 10,
+                    f"Expected class name, got key-like string: {class_name!r}",
+                )
+
+    # ── Сортировка ───────────────────────────────────────────────────────────
+
+    def test_items_ordered_by_slot(self):
+        self._auth("order_tester@example.com")
+        location_with_loot = DungeonLocation.objects.filter(
+            is_active=True,
+            location_item_templates__isnull=False,
+        ).first()
+        if not location_with_loot:
+            self.skipTest("No dungeon with loot templates in seed data")
+
+        response = self.client.get(f"/api/dungeons/{location_with_loot.pk}/loot")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        slots = [item["slot"] for item in response.data]
+        self.assertEqual(slots, sorted(slots))
+
+    # ── Пустой лут ───────────────────────────────────────────────────────────
+
+    def test_dungeon_without_loot_returns_empty_list(self):
+        self._auth("empty_tester@example.com")
+        empty_location = DungeonLocation.objects.create(
+            name="Empty Dungeon",
+            duration_seconds=60,
+            required_power=1,
+            experience_min=1, experience_max=2,
+            money_min_copper=1, money_max_copper=2,
+            item_drop_chance=0,
+            is_active=True,
+        )
+        response = self.client.get(f"/api/dungeons/{empty_location.pk}/loot")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [])

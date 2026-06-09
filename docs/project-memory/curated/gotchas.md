@@ -1,27 +1,39 @@
 # Gotchas
 
-- `.env` и `.env.*` не читать и не переносить в память.
-- `docker-compose.yml` может ссылаться на env files; фиксировать можно только
-  факт ссылки, но не читать содержимое этих файлов.
-- Project Memory и Graphify могут устаревать; при конфликте доверять текущему
-  коду, затем обновлять память.
-- Для codebase-вопросов и больших изменений сначала использовать scoped Graphify
-  commands, а `GRAPH_REPORT.md` читать только для широкой архитектурной картины.
-- Рабочее дерево может быть грязным; не откатывать чужие изменения.
-- `frontend/next-env.d.ts` может переписываться Next в dev/build mode.
-- `frontend/components/screens/settings-screen.tsx` может быть user-added;
-  не удалять без явной просьбы.
-- Historical migrations импортируют `apps.game.models.UserManager`; держать
-  `UserManager` exported из `backend/apps/game/models/__init__.py`.
-- Celery Beat configured через `CELERY_BEAT_SCHEDULE` в settings, не через
-  `django-celery-beat`; Beat models не должны ожидаться в Django Admin.
-- `backend/celerybeat-schedule`, `.venv`, `.next`, `node_modules`, sqlite db,
-  media/cache/runtime outputs не коммитить.
-- `backend/generated_assets/` - output генератора изображений и игнорируется
-  git; не считать его обязательным source для приложения.
-- `.DS_Store` часто встречается в asset folders; не переносить в память как
-  полезный файл и не коммитить.
-- Docker и curl/local network checks могут требовать elevated permissions в
+- Do not read `.env` or `.env.*`, and do not copy their contents into memory.
+- `docker-compose.yml` may reference env files; record only the fact of the
+  reference, not the contents of those files.
+- Project Memory and Graphify may become stale; when conflicts appear, trust
+  current code first and then update memory.
+- For codebase questions and large changes, first use scoped Graphify commands;
+  read `GRAPH_REPORT.md` only for broad architecture context.
+- The working tree may be dirty; do not revert user changes.
+- `frontend/next-env.d.ts` may be rewritten by Next in dev/build mode.
+- `frontend/components/screens/settings-screen.tsx` may be user-added; do not
+  remove it without an explicit request.
+- Historical migrations import `apps.game.models.UserManager`; keep
+  `UserManager` exported from `backend/apps/game/models/__init__.py`.
+- Celery Beat is configured through `CELERY_BEAT_SCHEDULE` in settings, not
+  through `django-celery-beat`; Beat models should not be expected in Django
+  Admin.
+- Do not commit `backend/celerybeat-schedule`, `.venv`, `.next`,
+  `node_modules`, sqlite db, media/cache/runtime outputs.
+- `backend/generated_assets/` is image generator output and is ignored by git;
+  do not treat it as a required source for the application.
+- `.DS_Store` often appears in asset folders; do not record it as a useful file
+  and do not commit it.
+- Docker and curl/local network checks may require elevated permissions in the
   sandbox.
-- `docker-compose.yml` использует `postgres:17.9`; при изменении verify cold
-  start.
+- `docker-compose.yml` uses `postgres:17.9`; verify cold start when changing it.
+- In an old local dev DB, `game.0011_dungeon_mini_games` may have been applied
+  before `DungeonMiniGameAttempt.matched_card_ids` existed;
+  `0012_ensure_mini_game_matched_card_ids` keeps that DB compatible with the
+  current code.
+- The mini-game keeps live state in Redis (`caches["default"]`, db 1): if Redis
+  is unavailable or the key is lost, an active attempt closes as `SUCCESS` with
+  `system_error=true`. Card SVG faces are in the DB (`MiniGameCardFace`); seeds
+  and the data migration read `backend/apps/game/data/memory_faces/` (frontend
+  `public/memory-faces/` is unavailable to the backend in the container).
+- Potion crafting is current MVP scope, but only for consumables. Do not infer
+  market, equipment crafting, crafting stations, or generic item recipes from
+  the existence of `CraftRecipe`.

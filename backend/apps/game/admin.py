@@ -5,17 +5,33 @@ from django.contrib.admin.widgets import AutocompleteSelect
 from .models import (
     Character,
     CharacterClass,
+    DungeonIngredientDrop,
     DungeonLocation,
     DungeonLocationItemTemplate,
+    DungeonMiniGameAttempt,
+    DungeonMiniGameConfig,
+    CraftRecipe,
+    CraftRecipeIngredient,
     DungeonRun,
     DungeonRunClaim,
     DungeonRunClaimItem,
     EquipmentSlotConfig,
     GameConfig,
+    HeroIngredientStorage,
+    HeroPotionStorage,
+    IngredientTemplate,
     ItemTemplate,
     MediaAsset,
+    MiniGameCardFace,
+    MoneyTransaction,
+    PotionTemplate,
     RarityConfig,
     RepairTransaction,
+    ShopOffer,
+    ShopOfferIngredient,
+    ShopOfferItem,
+    ShopOfferPotion,
+    ShopPurchase,
     User,
     UserItem,
     UserTwoFactor,
@@ -111,16 +127,16 @@ class UserTwoFactorAdmin(admin.ModelAdmin):
 
 @admin.register(CharacterClass)
 class CharacterClassAdmin(admin.ModelAdmin):
-    list_display = ("key", "name", "is_active", "sort_order")
+    list_display = ("key", "name", "male_media", "female_media", "is_active", "sort_order")
     list_filter = ("is_active",)
     search_fields = ("key", "name")
-    autocomplete_fields = ("media",)
+    autocomplete_fields = ("male_media", "female_media")
 
 
 @admin.register(Character)
 class CharacterAdmin(admin.ModelAdmin):
-    list_display = ("name", "user", "character_class", "level", "experience", "power_cached")
-    list_filter = ("character_class", "level")
+    list_display = ("name", "user", "character_class", "gender", "level", "experience", "power_cached")
+    list_filter = ("character_class", "gender", "level")
     search_fields = ("name", "user__email")
     autocomplete_fields = ("user", "character_class", "avatar_media")
     list_select_related = ("user", "character_class", "avatar_media")
@@ -158,13 +174,73 @@ class DungeonLocationItemTemplateInline(admin.TabularInline):
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
+class DungeonIngredientDropInline(admin.TabularInline):
+    model = DungeonIngredientDrop
+    extra = 1
+    fields = ("ingredient", "chance_percent", "min_quantity", "max_quantity")
+    autocomplete_fields = ("ingredient",)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("location", "ingredient")
+
+
 @admin.register(DungeonLocation)
 class DungeonLocationAdmin(admin.ModelAdmin):
-    list_display = ("name", "duration_seconds", "required_power", "item_drop_chance", "is_active", "sort_order")
-    list_filter = ("is_active",)
+    list_display = ("name", "location_type", "duration_seconds", "required_power", "hp_loss_success_percent", "hp_loss_fail_percent", "item_drop_chance", "has_mini_game", "daily_limit", "is_active", "sort_order")
+    list_filter = ("location_type", "has_mini_game", "is_active")
     search_fields = ("name", "description")
     autocomplete_fields = ("media",)
-    inlines = [DungeonLocationItemTemplateInline]
+    inlines = [DungeonLocationItemTemplateInline, DungeonIngredientDropInline]
+
+
+@admin.register(DungeonMiniGameConfig)
+class DungeonMiniGameConfigAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "difficulty",
+        "pairs_count",
+        "time_limit_seconds",
+        "reward_duration_reduction_percent",
+        "max_reduction_seconds",
+        "is_active",
+        "sort_order",
+    )
+    list_filter = ("difficulty", "is_active")
+    search_fields = ("name",)
+
+
+@admin.register(MiniGameCardFace)
+class MiniGameCardFaceAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "is_active", "sort_order")
+    list_filter = ("is_active",)
+    search_fields = ("code", "name")
+    prepopulated_fields = {"code": ("name",)}
+
+
+@admin.register(DungeonMiniGameAttempt)
+class DungeonMiniGameAttemptAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "dungeon_run",
+        "user",
+        "status",
+        "difficulty",
+        "moves_count",
+        "matched_pairs_count",
+        "duration_reduction_seconds",
+        "system_error",
+        "started_at",
+        "completed_at",
+    )
+    list_filter = ("status", "system_error", "config__difficulty")
+    search_fields = ("id", "user__email", "character__name", "dungeon_run__location__name")
+    autocomplete_fields = ("dungeon_run", "config", "user", "character")
+    list_select_related = ("dungeon_run", "dungeon_run__location", "config", "user", "character")
+    readonly_fields = ("created_at", "updated_at")
+
+    @admin.display(ordering="config__difficulty", description="Сложность")
+    def difficulty(self, obj):
+        return obj.config.get_difficulty_display()
 
 
 @admin.register(DungeonLocationItemTemplate)
@@ -259,9 +335,189 @@ class UserItemAdmin(admin.ModelAdmin):
     )
 
 
+@admin.register(PotionTemplate)
+class PotionTemplateAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "heal_percent", "is_active", "sort_order")
+    list_filter = ("is_active",)
+    search_fields = ("code", "name")
+    autocomplete_fields = ("media",)
+
+
+@admin.register(HeroPotionStorage)
+class HeroPotionStorageAdmin(admin.ModelAdmin):
+    list_display = ("character", "potion", "count")
+    search_fields = ("character__name", "potion__code", "potion__name")
+    autocomplete_fields = ("character", "potion")
+    list_select_related = ("character", "potion")
+
+
+@admin.register(IngredientTemplate)
+class IngredientTemplateAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "category", "is_active", "sort_order")
+    list_filter = ("category", "is_active")
+    search_fields = ("code", "name")
+    autocomplete_fields = ("media",)
+
+
+class CraftRecipeIngredientInline(admin.TabularInline):
+    model = CraftRecipeIngredient
+    extra = 1
+    fields = ("ingredient", "quantity")
+    autocomplete_fields = ("ingredient",)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("recipe", "ingredient")
+
+
+@admin.register(CraftRecipe)
+class CraftRecipeAdmin(admin.ModelAdmin):
+    list_display = ("code", "difficulty", "potion", "required_hero_level", "is_active", "sort_order")
+    list_filter = ("difficulty", "is_active")
+    search_fields = ("code", "potion__code", "potion__name")
+    autocomplete_fields = ("potion",)
+    inlines = [CraftRecipeIngredientInline]
+
+
+@admin.register(HeroIngredientStorage)
+class HeroIngredientStorageAdmin(admin.ModelAdmin):
+    list_display = ("character", "ingredient", "count")
+    search_fields = ("character__name", "ingredient__code", "ingredient__name")
+    autocomplete_fields = ("character", "ingredient")
+    list_select_related = ("character", "ingredient")
+
+
 @admin.register(RepairTransaction)
 class RepairTransactionAdmin(admin.ModelAdmin):
     list_display = ("user", "item", "cost_copper", "durability_before", "durability_after", "created_at")
     autocomplete_fields = ("user", "item")
     list_select_related = ("user", "item", "item__owner_user", "item__template")
     readonly_fields = ("user", "item", "cost_copper", "durability_before", "durability_after", "created_at")
+
+
+@admin.register(MoneyTransaction)
+class MoneyTransactionAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "amount", "reason", "balance_after", "created_at")
+    list_filter = ("reason",)
+    search_fields = ("id", "user__email", "idempotency_key")
+    list_select_related = ("user",)
+    readonly_fields = (
+        "user",
+        "amount",
+        "reason",
+        "balance_after",
+        "idempotency_key",
+        "metadata",
+        "created_at",
+        "updated_at",
+    )
+
+    def has_add_permission(self, request) -> bool:
+        """Запрещает ручное добавление: начисления только через сервис."""
+
+        return False
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        """Запрещает удаление: медный леджер неизменяем."""
+
+        return False
+
+
+class ShopOfferIngredientInline(admin.TabularInline):
+    model = ShopOfferIngredient
+    extra = 1
+    fields = ("ingredient_template", "chance")
+    autocomplete_fields = ("ingredient_template",)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("offer", "ingredient_template")
+
+
+class ShopOfferPotionInline(admin.TabularInline):
+    model = ShopOfferPotion
+    extra = 1
+    fields = ("potion_template", "chance")
+    autocomplete_fields = ("potion_template",)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("offer", "potion_template")
+
+
+class ShopOfferItemInline(admin.TabularInline):
+    model = ShopOfferItem
+    extra = 1
+    fields = ("item_template", "chance")
+    autocomplete_fields = ("item_template",)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("offer", "item_template")
+
+
+@admin.register(ShopOffer)
+class ShopOfferAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "display_name",
+        "reward_kind",
+        "delivery_mode",
+        "quantity",
+        "price_money_copper",
+        "price_premium_currency",
+        "is_active",
+        "sort_order",
+        "created_at",
+    )
+    list_filter = ("reward_kind", "delivery_mode", "is_active")
+    search_fields = ("id",)
+    autocomplete_fields = ("media",)
+    inlines = [ShopOfferIngredientInline, ShopOfferPotionInline, ShopOfferItemInline]
+
+    @admin.display(description="Название")
+    def display_name(self, obj: ShopOffer) -> str:
+        """Возвращает локализованное имя предложения для колонки списка."""
+
+        return obj.name_i18n.get("ru") or obj.name_i18n.get("en") or f"ShopOffer #{obj.id}"
+
+
+@admin.register(ShopPurchase)
+class ShopPurchaseAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "user",
+        "character",
+        "offer",
+        "purchase_count",
+        "payment_currency",
+        "unit_price_snapshot",
+        "total_price_snapshot",
+        "reward_kind_snapshot",
+        "delivery_mode_snapshot",
+        "created_at",
+    )
+    list_filter = ("payment_currency", "reward_kind_snapshot", "delivery_mode_snapshot")
+    search_fields = ("id", "user__email", "character__name")
+    list_select_related = ("user", "character", "offer")
+    readonly_fields = (
+        "user",
+        "character",
+        "offer",
+        "purchase_count",
+        "payment_currency",
+        "unit_price_snapshot",
+        "total_price_snapshot",
+        "reward_kind_snapshot",
+        "delivery_mode_snapshot",
+        "quantity_snapshot",
+        "result_payload",
+        "created_at",
+        "updated_at",
+    )
+
+    def has_add_permission(self, request) -> bool:
+        """Запрещает ручное добавление записей истории покупок."""
+
+        return False
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        """Запрещает удаление записей истории покупок (леджер)."""
+
+        return False

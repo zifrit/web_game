@@ -24,6 +24,8 @@ Source: `backend/config/settings.py`.
 
 - Django 5.1, DRF, SimpleJWT, token blacklist, CORS, storages, `apps.game`.
 - `AUTH_USER_MODEL = "game.User"`.
+- DRF uses JWT authentication and `apps.game.permissions.IsSuperuserOrOwner`
+  as the default permission class; views with `AllowAny` stay public.
 - Default DB fallback is sqlite when `DATABASE_URL` is absent.
 - Celery broker/result backend use `REDIS_URL`.
 - TOTP secret encryption uses `TOTP_ENCRYPTION_KEY`, which must be a valid

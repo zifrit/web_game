@@ -10,6 +10,7 @@ export type ApiUser = {
   id: number;
   email: string;
   money_copper?: number;
+  premium_currency?: number;
   has_character: boolean;
   avatar?: AppTypes.MediaAssetUrls | null;
   two_factor?: AppTypes.TwoFactorStatus;
@@ -21,12 +22,17 @@ export type CharacterClass = {
   key: string;
   name: string;
   start_stats: Record<string, number>;
+  media?: AppTypes.MediaAssetUrls | null;
+  male_media?: AppTypes.MediaAssetUrls | null;
+  female_media?: AppTypes.MediaAssetUrls | null;
 };
 
 export type Character = {
   id: number;
   name: string;
-  class: { key: string; name: string };
+  gender?: "male" | "female";
+  avatar?: AppTypes.MediaAssetUrls | null;
+  class: { key: string; name: string; media?: AppTypes.MediaAssetUrls | null };
   level: number;
   experience: number;
   experience_to_next_level: number;
@@ -42,6 +48,7 @@ export type Dungeon = {
   required_power: number;
   success_chance: number;
   item_drop_chance: number;
+  has_mini_game: boolean;
   rewards_preview: {
     experience: { min: number; max: number };
     money_copper: { min: number; max: number };
@@ -67,6 +74,7 @@ export type CurrentRun =
         money_copper: number;
         items_count: number;
         durability_loss: number;
+        hp_loss: number;
       };
     };
 
@@ -164,6 +172,48 @@ export class ApiError extends Error {
   }
 }
 
+function fallbackErrorMessage(status: number, statusText: string): string {
+  if (status >= 500) return "Сервер недоступен. Попробуйте позже.";
+  if (status === 404) return "Ресурс не найден.";
+  if (status === 403) return "Доступ запрещён.";
+  if (status === 401) return "Сессия истекла. Войдите снова.";
+  return statusText || "Что-то пошло не так. Попробуйте ещё раз.";
+}
+
+// Превращает тело ответа DRF в человекочитаемое сообщение.
+// Никогда не возвращает сырой JSON.
+export function extractApiErrorMessage(body: unknown, status: number, statusText: string): string {
+  if (typeof body === "string" && body.trim()) return body;
+  if (!body || typeof body !== "object") return fallbackErrorMessage(status, statusText);
+
+  const record = body as Record<string, unknown>;
+
+  const pickString = (value: unknown): string | null => {
+    if (typeof value === "string" && value.trim()) return value;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const found = pickString(item);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  const detail = pickString(record.detail);
+  if (detail) return detail;
+
+  const nonField = pickString(record.non_field_errors);
+  if (nonField) return nonField;
+
+  // DRF field-errors: { field: ["msg", ...] }
+  for (const value of Object.values(record)) {
+    const message = pickString(value);
+    if (message) return message;
+  }
+
+  return fallbackErrorMessage(status, statusText);
+}
+
 export function readTokens(): Tokens | null {
   if (typeof window === "undefined") return null;
   const raw = window.localStorage.getItem("rpg_tokens");
@@ -226,12 +276,12 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}, retry
     }, false);
   }
   if (!response.ok) {
-    let message = response.statusText;
+    let message = fallbackErrorMessage(response.status, response.statusText);
     try {
       const body = await response.json();
-      message = body.detail ?? body.non_field_errors?.[0] ?? JSON.stringify(body);
+      message = extractApiErrorMessage(body, response.status, response.statusText);
     } catch {
-      // keep status text
+      // keep fallback message
     }
     throw new ApiError(response.status, message);
   }
@@ -277,10 +327,10 @@ export const api = {
   characterClasses() {
     return apiFetch<AppTypes.CharacterClass[]>("/character-classes");
   },
-  createCharacter(name: string, class_key: string) {
+  createCharacter(name: string, class_key: string, gender: "male" | "female") {
     return apiFetch<AppTypes.Character>("/characters", {
       method: "POST",
-      body: JSON.stringify({ name, class_key }),
+      body: JSON.stringify({ name, class_key, gender }),
     });
   },
   character() {
@@ -288,6 +338,9 @@ export const api = {
   },
   dungeons() {
     return apiFetch<AppTypes.Dungeon[]>("/dungeons");
+  },
+  dungeonLoot(dungeonId: number) {
+    return apiFetch<AppTypes.DungeonLootItem[]>(`/dungeons/${dungeonId}/loot`);
   },
   startRun(location_id: number) {
     return apiFetch<AppTypes.DungeonRun>("/dungeon-runs", {
@@ -302,6 +355,33 @@ export const api = {
   },
   claimRun(runId: number) {
     return apiFetch<AppTypes.ClaimResponse>(`/dungeon-runs/${runId}/claim`, { method: "POST" });
+  },
+  miniGameConfigs() {
+    return apiFetch<AppTypes.DungeonMiniGameConfig[]>("/mini-game/configs");
+  },
+  miniGameCardFaces() {
+    return apiFetch<AppTypes.MiniGameCardFaceCatalog>("/mini-game/card-faces");
+  },
+  startMiniGame(runId: number, configId?: number) {
+    return apiFetch<AppTypes.DungeonMiniGameAttempt>(`/dungeon-runs/${runId}/mini-game/start`, {
+      method: "POST",
+      body: JSON.stringify(configId != null ? { config_id: configId } : {}),
+    });
+  },
+  revealMiniGameCard(attemptId: number, cardId: string) {
+    return apiFetch<AppTypes.DungeonMiniGameRevealResponse>(`/dungeon-mini-games/${attemptId}/reveal`, {
+      method: "POST",
+      body: JSON.stringify({ card_id: cardId }),
+    });
+  },
+  moveMiniGame(attemptId: number, payload: { first_card_id: string; second_card_id: string }) {
+    return apiFetch<AppTypes.DungeonMiniGameMoveResponse>(`/dungeon-mini-games/${attemptId}/move`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  miniGameHistory(limit = 20) {
+    return apiFetch<AppTypes.DungeonMiniGameHistoryItem[]>(`/dungeon-mini-games/history?limit=${limit}`);
   },
   inventory(page = 1, pageSize = 24) {
     return apiFetch<AppTypes.Inventory>(`/inventory?page=${page}&page_size=${pageSize}`);
@@ -339,8 +419,29 @@ export const api = {
   unequip(itemId: number) {
     return apiFetch<AppTypes.InventoryMutationResponse>(`/inventory/items/${itemId}/unequip`, { method: "POST" });
   },
-  leaderboard() {
-    return apiFetch<AppTypes.Leaderboard>("/leaderboard?type=level");
+  potions() {
+    return apiFetch<AppTypes.Potion[]>("/potions");
+  },
+  ingredients() {
+    return apiFetch<AppTypes.Ingredient[]>("/ingredients");
+  },
+  usePotion(body: { potion_id: number; quantity: number }) {
+    return apiFetch<AppTypes.UsePotionResponse>("/potions/use", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+  craftRecipes() {
+    return apiFetch<AppTypes.CraftRecipe[]>("/craft/recipes");
+  },
+  craftPotions(body: { recipe_id: number; quantity: number }) {
+    return apiFetch<AppTypes.CraftResponse>("/craft/potions", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+  leaderboard(type: AppTypes.LeaderboardMetric = "level") {
+    return apiFetch<AppTypes.Leaderboard>(`/leaderboard?type=${type}`);
   },
   iconAssets() {
     return apiFetch<AppTypes.IconAsset[]>("/media/icons");
@@ -350,6 +451,39 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ avatar_media_id: avatarMediaId }),
     });
+  },
+  shopOffers() {
+    return apiFetch<AppTypes.ShopOffer[]>("/shop/offers");
+  },
+  shopOffer(id: number) {
+    return apiFetch<AppTypes.ShopOfferDetail>(`/shop/offers/${id}`);
+  },
+  buyShopOffer(id: number, payload: { purchase_count: number; payment_currency: AppTypes.PaymentCurrency }) {
+    return apiFetch<AppTypes.BuyShopOfferResponse>(`/shop/offers/${id}/buy`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  shopPurchases() {
+    return apiFetch<{ results: AppTypes.ShopPurchase[] }>("/shop/purchases");
+  },
+  billingExchangeOffers() {
+    return apiFetch<AppTypes.ExchangeOffer[]>("/billing/exchange-offers");
+  },
+  billingExchangeOffer(id: number) {
+    return apiFetch<AppTypes.ExchangeOffer>(`/billing/exchange-offers/${id}`);
+  },
+  exchangeCurrency(id: number) {
+    return apiFetch<AppTypes.ExchangeResponse>(`/billing/exchange-offers/${id}/exchange`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  },
+  billingExchangeTransactions() {
+    return apiFetch<{ results: AppTypes.ExchangeTransaction[] }>("/billing/exchange-transactions");
+  },
+  billingPremiumTransactions() {
+    return apiFetch<{ results: AppTypes.PremiumTransaction[] }>("/billing/premium-transactions");
   },
   twoFactorStatus() {
     return apiFetch<AppTypes.TwoFactorStatus>("/auth/two-factor");

@@ -47,9 +47,17 @@ MESSAGES = {
         "en": "Character already has an active dungeon run.",
         "ru": "У героя уже есть активный поход.",
     },
+    "unclaimed_run_exists": {
+        "en": "Claim the reward for the finished dungeon run before starting a new one.",
+        "ru": "Сначала заберите награду за завершенный поход, затем запускайте новый.",
+    },
     "broken_items_block_run": {
         "en": "Broken equipped items block starting a new dungeon run.",
         "ru": "Сломанные надетые предметы блокируют запуск нового похода.",
+    },
+    "hp_too_low": {
+        "en": "HP is too low to start a dungeon run. Restore HP first.",
+        "ru": "Слишком мало HP для похода. Сначала восстановите здоровье.",
     },
     "dungeon_not_found": {
         "en": "Dungeon location not found.",
@@ -62,6 +70,46 @@ MESSAGES = {
     "run_not_ready": {
         "en": "Dungeon run is not ready to claim.",
         "ru": "Поход еще не готов к получению награды.",
+    },
+    "mini_game_not_available": {
+        "en": "Mini-game is not available for this dungeon run.",
+        "ru": "Мини-игра недоступна для этого похода.",
+    },
+    "mini_game_run_not_active": {
+        "en": "Mini-game can only be started during an active dungeon run.",
+        "ru": "Мини-игру можно запустить только во время активного похода.",
+    },
+    "mini_game_already_finished": {
+        "en": "Mini-game attempt for this dungeon run is already finished.",
+        "ru": "Попытка мини-игры для этого похода уже завершена.",
+    },
+    "mini_game_attempt_not_found": {
+        "en": "Mini-game attempt not found.",
+        "ru": "Попытка мини-игры не найдена.",
+    },
+    "mini_game_invalid_move": {
+        "en": "Invalid mini-game move.",
+        "ru": "Недопустимый ход мини-игры.",
+    },
+    "mini_game_card_already_matched": {
+        "en": "This mini-game card is already matched.",
+        "ru": "Эта карточка мини-игры уже найдена.",
+    },
+    "mini_game_expired": {
+        "en": "Mini-game timer expired.",
+        "ru": "Таймер мини-игры истек.",
+    },
+    "mini_game_busy": {
+        "en": "Previous mini-game move is still being processed.",
+        "ru": "Предыдущий ход мини-игры еще обрабатывается.",
+    },
+    "mini_game_config_required": {
+        "en": "Select a mini-game difficulty to start.",
+        "ru": "Выберите сложность мини-игры для запуска.",
+    },
+    "mini_game_config_invalid": {
+        "en": "Selected mini-game difficulty is not available.",
+        "ru": "Выбранная сложность мини-игры недоступна.",
     },
     "item_fully_repaired": {
         "en": "Item is already fully repaired.",
@@ -91,9 +139,69 @@ MESSAGES = {
         "en": "Could not equip item in this slot.",
         "ru": "Не удалось экипировать предмет в этот слот.",
     },
-    "leaderboard_level_only": {
-        "en": "Only level leaderboard is available in MVP.",
-        "ru": "В MVP доступен только рейтинг по уровню.",
+    "leaderboard_type_invalid": {
+        "en": "Unknown leaderboard type. Use 'level' or 'power'.",
+        "ru": "Неизвестный тип рейтинга. Используйте «level» или «power».",
+    },
+    "hp_already_full": {
+        "en": "HP is already full.",
+        "ru": "HP уже полное.",
+    },
+    "potion_not_owned": {
+        "en": "You do not own this potion.",
+        "ru": "У вас нет этого зелья.",
+    },
+    "not_enough_potions": {
+        "en": "Not enough potions.",
+        "ru": "Недостаточно зелий.",
+    },
+    "daily_limit_reached": {
+        "en": "Daily limit for this location has been reached.",
+        "ru": "Дневной лимит этой локации исчерпан.",
+    },
+    "recipe_not_found": {
+        "en": "Crafting recipe not found.",
+        "ru": "Рецепт крафта не найден.",
+    },
+    "recipe_inactive": {
+        "en": "Crafting recipe is not available.",
+        "ru": "Рецепт крафта недоступен.",
+    },
+    "hero_level_too_low": {
+        "en": "Hero level is too low for this recipe.",
+        "ru": "Уровень героя слишком мал для этого рецепта.",
+    },
+    "not_enough_ingredients": {
+        "en": "Not enough ingredients to craft.",
+        "ru": "Недостаточно ингредиентов для крафта.",
+    },
+    "shop_offer_not_found": {
+        "en": "Shop offer not found.",
+        "ru": "Предложение магазина не найдено.",
+    },
+    "shop_price_unavailable": {
+        "en": "This offer cannot be bought with the selected currency.",
+        "ru": "Это предложение нельзя купить выбранной валютой.",
+    },
+    "shop_invalid_purchase_count": {
+        "en": "Purchase count must be a positive number.",
+        "ru": "Количество покупок должно быть положительным числом.",
+    },
+    "shop_offer_misconfigured": {
+        "en": "Shop offer is misconfigured. Contact support.",
+        "ru": "Предложение магазина настроено неверно. Обратитесь в поддержку.",
+    },
+    "shop_not_enough_money": {
+        "en": "Not enough money for this purchase.",
+        "ru": "Недостаточно денег для покупки.",
+    },
+    "not_enough_premium": {
+        "en": "Not enough premium currency.",
+        "ru": "Недостаточно премиум-валюты.",
+    },
+    "not_enough_money": {
+        "en": "Not enough money.",
+        "ru": "Недостаточно денег.",
     },
 }
 

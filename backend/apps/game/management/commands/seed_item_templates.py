@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from apps.game.seed_data import seed_ranked_item_templates
+from apps.game.services.seed_data import seed_ranked_item_templates
 
 
 class Command(BaseCommand):

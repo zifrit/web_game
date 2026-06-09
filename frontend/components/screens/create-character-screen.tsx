@@ -16,6 +16,7 @@ import type { CharacterClass } from "@/lib/types";
 const characterSchema = (t: ReturnType<typeof useI18n>["t"]) => z.object({
   name:      z.string().min(3, t("validation.characterName")).max(32),
   class_key: z.string().min(1, t("validation.class")),
+  gender:    z.enum(["male", "female"]),
 });
 type CharacterValues = z.infer<ReturnType<typeof characterSchema>>;
 
@@ -27,7 +28,7 @@ export function CreateCharacterScreen() {
 
   const form = useForm<CharacterValues>({
     resolver: zodResolver(characterSchema(t)),
-    defaultValues: { name: "", class_key: "" },
+    defaultValues: { name: "", class_key: "", gender: "male" },
   });
 
   useEffect(() => {
@@ -38,7 +39,7 @@ export function CreateCharacterScreen() {
   }, [classesQuery.data, form]);
 
   const mutation = useMutation({
-    mutationFn: (values: CharacterValues) => api.createCharacter(values.name, values.class_key),
+    mutationFn: (values: CharacterValues) => api.createCharacter(values.name, values.class_key, values.gender),
     onSuccess: async () => {
       const me = await queryClient.fetchQuery({ queryKey: ["me"], queryFn: api.me });
       setUser(me);
@@ -47,9 +48,15 @@ export function CreateCharacterScreen() {
   });
 
   const selectedKey = form.watch("class_key");
+  const selectedGender = form.watch("gender");
 
   const classImage = (cls: CharacterClass) =>
-    bestMediaUrl(cls.media, ["medium_url", "large_url", "small_url"]);
+    bestMediaUrl(
+      selectedGender === "female"
+        ? (cls.female_media ?? cls.male_media ?? cls.media)
+        : (cls.male_media ?? cls.female_media ?? cls.media),
+      ["medium_url", "large_url", "small_url"],
+    );
 
   const handleBackToAuth = () => {
     queryClient.clear();
@@ -109,6 +116,44 @@ export function CreateCharacterScreen() {
             </label>
 
             <input type="hidden" {...form.register("class_key")} />
+
+            <div style={{ display: "grid", gap: 8 }}>
+              <div style={{ fontSize: 13, color: "#94A3B8" }}>{t("character.gender")}</div>
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 8,
+                padding: 4,
+                borderRadius: 12,
+                background: "#111827",
+                border: "1px solid var(--line)",
+              }}>
+                {(["male", "female"] as const).map((gender) => {
+                  const active = selectedGender === gender;
+                  return (
+                    <button
+                      key={gender}
+                      type="button"
+                      onClick={() => form.setValue("gender", gender, { shouldValidate: true })}
+                      style={{
+                        border: "1px solid",
+                        borderColor: active ? "#3B82F6" : "transparent",
+                        borderRadius: 9,
+                        padding: "9px 12px",
+                        cursor: "pointer",
+                        color: active ? "#E5E7EB" : "#94A3B8",
+                        background: active ? "rgba(59,130,246,0.18)" : "transparent",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        transition: "all 160ms ease",
+                      }}
+                    >
+                      {t(gender === "male" ? "character.genderMale" : "character.genderFemale")}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             <ErrorNotice message={
               (mutation.error as Error | null)?.message ??

@@ -1,3 +1,5 @@
+import re
+
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -5,9 +7,45 @@ from django.db.models import Q
 from django.utils import timezone
 
 from .base import MediaAsset, TimestampedModel
+
+
+_SVG_SCRIPT_RE = re.compile(r"<script\b[^>]*>.*?</script\s*>", re.IGNORECASE | re.DOTALL)
+_SVG_ON_ATTR_RE = re.compile(r"\son[a-z]+\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)", re.IGNORECASE)
+_SVG_EXTERNAL_HREF_RE = re.compile(
+    r"\s(?:xlink:)?href\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)", re.IGNORECASE
+)
+
+
+def sanitize_svg_markup(markup: str) -> str:
+    """Убирает из SVG потенциально опасные части перед инлайном на фронте.
+
+    Контент admin-only, но раз он встраивается в DOM напрямую — вырезаем
+    `<script>`, обработчики событий `on*` и внешние ссылки `href`/`xlink:href`.
+    """
+
+    if not markup:
+        return ""
+    cleaned = _SVG_SCRIPT_RE.sub("", markup)
+    cleaned = _SVG_ON_ATTR_RE.sub("", cleaned)
+
+    def _strip_external(match: "re.Match[str]") -> str:
+        value = match.group(1).strip("\"'").strip()
+        if value.startswith("#"):
+            return match.group(0)
+        return ""
+
+    cleaned = _SVG_EXTERNAL_HREF_RE.sub(_strip_external, cleaned)
+    return cleaned.strip()
 from .characters import Character
 from .items import ItemTemplate, UserItem
 from .users import User
+
+
+class LocationType(models.TextChoices):
+    """Тип локации: боевой данж или мирная ресурсная локация."""
+
+    DUNGEON = "dungeon", "Данж"
+    RESOURCE = "resource", "Ресурсная локация"
 
 
 class DungeonLocation(TimestampedModel):
@@ -24,7 +62,18 @@ class DungeonLocation(TimestampedModel):
     experience_max = models.PositiveIntegerField("Максимум опыта")
     money_min_copper = models.PositiveIntegerField("Минимум медных монет")
     money_max_copper = models.PositiveIntegerField("Максимум медных монет")
+    hp_loss_success_percent = models.FloatField("Потеря HP при успехе, %", default=0)
+    hp_loss_fail_percent = models.FloatField("Потеря HP при провале, %", default=0)
     item_drop_chance = models.FloatField("Шанс выпадения предмета")
+    has_mini_game = models.BooleanField("Доступна мини-игра", default=False)
+    location_type = models.CharField(
+        "Тип локации",
+        max_length=16,
+        choices=LocationType.choices,
+        default=LocationType.DUNGEON,
+        db_index=True,
+    )
+    daily_limit = models.PositiveIntegerField("Дневной лимит заходов (0 = без лимита)", default=0)
     is_active = models.BooleanField("Активна", default=True)
     sort_order = models.PositiveIntegerField("Порядок сортировки", default=0)
 
@@ -42,6 +91,23 @@ class DungeonLocation(TimestampedModel):
             raise ValidationError("money_min_copper cannot exceed money_max_copper")
         if not 0 <= self.item_drop_chance <= 100:
             raise ValidationError("item_drop_chance must be between 0 and 100")
+        if not 0 <= self.hp_loss_success_percent <= 100:
+            raise ValidationError("hp_loss_success_percent must be between 0 and 100")
+        if not 0 <= self.hp_loss_fail_percent <= 100:
+            raise ValidationError("hp_loss_fail_percent must be between 0 and 100")
+        if self.location_type == LocationType.RESOURCE:
+            if self.required_power:
+                raise ValidationError("resource location must have required_power = 0")
+            if self.experience_min or self.experience_max:
+                raise ValidationError("resource location must have zero experience")
+            if self.money_min_copper or self.money_max_copper:
+                raise ValidationError("resource location must have zero money reward")
+            if self.item_drop_chance:
+                raise ValidationError("resource location must have item_drop_chance = 0")
+            if self.hp_loss_success_percent or self.hp_loss_fail_percent:
+                raise ValidationError("resource location must have zero hp loss")
+            if self.daily_limit <= 0:
+                raise ValidationError("resource location must have daily_limit > 0")
         if (
             self.pk
             and self.is_active
@@ -89,6 +155,106 @@ class DungeonRunStatus(models.TextChoices):
     CLAIMED = "CLAIMED", "Claimed"
 
 
+class DungeonMiniGameDifficulty(models.TextChoices):
+    """Доступные размеры memory-pairs мини-игры."""
+
+    SIX = "6", "6/6"
+    EIGHT = "8", "8/8"
+    TEN = "10", "10/10"
+    TWELVE = "12", "12/12"
+
+
+class MiniGameCardFace(TimestampedModel):
+    """SVG-лицо карточки memory-pairs, управляемое контентом из БД."""
+
+    code = models.SlugField("Кодовое обозначение", max_length=64, unique=True)
+    name = models.CharField("Название", max_length=120, blank=True, default="")
+    name_i18n = models.JSONField("Переводы названия", default=dict, blank=True)
+    svg_markup = models.TextField("SVG-разметка")
+    is_active = models.BooleanField("Активна", default=True)
+    sort_order = models.PositiveIntegerField("Порядок сортировки", default=0)
+
+    class Meta:
+        ordering = ["sort_order", "code"]
+        verbose_name = "Лицо карты мини-игры"
+        verbose_name_plural = "Лица карт мини-игр"
+
+    def clean(self) -> None:
+        """Прогоняет SVG через санитайзер перед сохранением."""
+
+        self.svg_markup = sanitize_svg_markup(self.svg_markup)
+
+    def save(self, *args, **kwargs):
+        """Гарантирует санитизацию даже при сохранении в обход формы."""
+
+        self.svg_markup = sanitize_svg_markup(self.svg_markup)
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        """Возвращает кодовое обозначение лица карты."""
+
+        return self.code
+
+
+class DungeonMiniGameConfig(TimestampedModel):
+    """Настройки мини-игры: сложность, таймер и процентное ускорение прохождения."""
+
+    name = models.CharField("Название", max_length=120)
+    difficulty = models.CharField("Сложность", max_length=8, choices=DungeonMiniGameDifficulty.choices, unique=True)
+    pairs_count = models.PositiveSmallIntegerField("Количество пар")
+    time_limit_seconds = models.PositiveIntegerField("Лимит времени в секундах")
+    reward_duration_reduction_percent = models.PositiveSmallIntegerField(
+        "Процент сокращения времени забега",
+        default=10,
+        validators=[MaxValueValidator(100)],
+    )
+    max_reduction_seconds = models.PositiveIntegerField("Абсолютный потолок сокращения в секундах", default=600)
+    card_face_codes = models.JSONField("Коды лиц карт", default=list, blank=True)
+    is_active = models.BooleanField("Активна", default=True)
+    sort_order = models.PositiveIntegerField("Порядок сортировки", default=0)
+
+    class Meta:
+        ordering = ["sort_order", "pairs_count"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(pairs_count__in=[6, 8, 10, 12]),
+                name="dungeon_mini_game_pairs_count_allowed",
+            ),
+        ]
+        verbose_name = "Настройка мини-игры данжа"
+        verbose_name_plural = "Настройки мини-игр данжей"
+
+    def clean(self) -> None:
+        """Проверяет, что набор лиц состоит из активных кодов и покрывает все пары."""
+
+        codes = self.card_face_codes or []
+        if not isinstance(codes, list) or any(not isinstance(code, str) for code in codes):
+            raise ValidationError("card_face_codes must be a list of string codes")
+        if len(set(codes)) != len(codes):
+            raise ValidationError("card_face_codes must not contain duplicates")
+        if len(codes) < self.pairs_count:
+            raise ValidationError("card_face_codes must contain at least pairs_count codes")
+        existing = set(
+            MiniGameCardFace.objects.filter(code__in=codes, is_active=True).values_list("code", flat=True)
+        )
+        missing = [code for code in codes if code not in existing]
+        if missing:
+            raise ValidationError(f"unknown or inactive card face codes: {', '.join(missing)}")
+
+    def __str__(self) -> str:
+        """Возвращает человекочитаемую сложность мини-игры."""
+
+        return f"{self.name} ({self.get_difficulty_display()})"
+
+
+class DungeonMiniGameAttemptStatus(models.TextChoices):
+    """Статусы попытки прохождения мини-игры."""
+
+    IN_PROGRESS = "IN_PROGRESS", "In progress"
+    SUCCESS = "SUCCESS", "Success"
+    FAILED = "FAILED", "Failed"
+
+
 class DungeonRun(TimestampedModel):
     """Один запуск героя в подземелье с таймером, шансом успеха и наградами."""
 
@@ -108,7 +274,9 @@ class DungeonRun(TimestampedModel):
     experience_reward = models.PositiveIntegerField("Награда опытом", null=True, blank=True)
     money_reward_copper = models.PositiveIntegerField("Награда в медных монетах", null=True, blank=True)
     items_reward = models.JSONField("Награда предметами", null=True, blank=True)
+    ingredients_reward = models.JSONField("Награда ингредиентами", null=True, blank=True)
     durability_loss = models.PositiveIntegerField("Потеря прочности", null=True, blank=True)
+    hp_loss = models.PositiveIntegerField("Потеря HP", null=True, blank=True)
 
     class Meta:
         ordering = ["-started_at"]
@@ -126,6 +294,43 @@ class DungeonRun(TimestampedModel):
         """Возвращает краткое описание забега героя в подземелье."""
 
         return f"{self.character} @ {self.location} [{self.status}]"
+
+
+class DungeonMiniGameAttempt(TimestampedModel):
+    """История одной попытки пройти мини-игру ускорения для забега."""
+
+    IN_PROGRESS = DungeonMiniGameAttemptStatus.IN_PROGRESS
+    SUCCESS = DungeonMiniGameAttemptStatus.SUCCESS
+    FAILED = DungeonMiniGameAttemptStatus.FAILED
+
+    dungeon_run = models.ForeignKey(DungeonRun, verbose_name="Забег", related_name="mini_game_attempts", on_delete=models.CASCADE)
+    config = models.ForeignKey(DungeonMiniGameConfig, verbose_name="Настройка", related_name="attempts", on_delete=models.PROTECT)
+    user = models.ForeignKey(User, verbose_name="Пользователь", related_name="dungeon_mini_game_attempts", on_delete=models.CASCADE)
+    character = models.ForeignKey(Character, verbose_name="Герой", related_name="dungeon_mini_game_attempts", on_delete=models.CASCADE)
+    status = models.CharField("Статус", max_length=32, choices=DungeonMiniGameAttemptStatus.choices, default=DungeonMiniGameAttemptStatus.IN_PROGRESS)
+    started_at = models.DateTimeField("Дата старта", default=timezone.now)
+    expires_at = models.DateTimeField("Дата истечения таймера")
+    completed_at = models.DateTimeField("Дата завершения", null=True, blank=True)
+    board = models.JSONField("Карточки поля")
+    matched_card_ids = models.JSONField("Открытые совпавшие карточки", default=list, blank=True)
+    open_card_id = models.CharField("Текущая открытая карточка", max_length=64, blank=True, default="")
+    moves_count = models.PositiveIntegerField("Количество ходов", default=0)
+    matched_pairs_count = models.PositiveSmallIntegerField("Найдено пар", default=0)
+    duration_reduction_seconds = models.PositiveIntegerField("Сокращение времени в секундах", default=0)
+    system_error = models.BooleanField("Завершено из-за системной ошибки", default=False)
+
+    class Meta:
+        ordering = ["-started_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["dungeon_run"], name="unique_mini_game_attempt_per_dungeon_run"),
+        ]
+        verbose_name = "Попытка мини-игры данжа"
+        verbose_name_plural = "Попытки мини-игр данжей"
+
+    def __str__(self) -> str:
+        """Возвращает краткое описание попытки мини-игры."""
+
+        return f"Mini-game #{self.pk} for run #{self.dungeon_run_id} [{self.status}]"
 
 
 class DungeonRunClaim(models.Model):
