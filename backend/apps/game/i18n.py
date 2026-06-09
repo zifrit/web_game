@@ -175,6 +175,30 @@ MESSAGES = {
         "en": "Not enough ingredients to craft.",
         "ru": "Недостаточно ингредиентов для крафта.",
     },
+    "shop_offer_not_found": {
+        "en": "Shop offer not found.",
+        "ru": "Предложение магазина не найдено.",
+    },
+    "shop_price_unavailable": {
+        "en": "This offer cannot be bought with the selected currency.",
+        "ru": "Это предложение нельзя купить выбранной валютой.",
+    },
+    "shop_invalid_purchase_count": {
+        "en": "Purchase count must be a positive number.",
+        "ru": "Количество покупок должно быть положительным числом.",
+    },
+    "shop_offer_misconfigured": {
+        "en": "Shop offer is misconfigured. Contact support.",
+        "ru": "Предложение магазина настроено неверно. Обратитесь в поддержку.",
+    },
+    "shop_not_enough_money": {
+        "en": "Not enough money for this purchase.",
+        "ru": "Недостаточно денег для покупки.",
+    },
+    "not_enough_premium": {
+        "en": "Not enough premium currency.",
+        "ru": "Недостаточно премиум-валюты.",
+    },
 }
 
 

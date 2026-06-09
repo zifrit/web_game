@@ -19,6 +19,13 @@ from .dungeons import (
 )
 from .ingredients import DungeonIngredientDrop, HeroIngredientStorage, IngredientTemplate
 from .items import ItemTemplate, RepairTransaction, UserItem
+from .shop import (
+    ShopOffer,
+    ShopOfferIngredient,
+    ShopOfferItem,
+    ShopOfferPotion,
+    ShopPurchase,
+)
 from .users import User, UserManager, UserTwoFactor
 
 __all__ = [
@@ -49,6 +56,11 @@ __all__ = [
     "PotionTemplate",
     "RarityConfig",
     "RepairTransaction",
+    "ShopOffer",
+    "ShopOfferIngredient",
+    "ShopOfferItem",
+    "ShopOfferPotion",
+    "ShopPurchase",
     "TimestampedModel",
     "User",
     "UserItem",

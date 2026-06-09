@@ -26,6 +26,11 @@ from .models import (
     PotionTemplate,
     RarityConfig,
     RepairTransaction,
+    ShopOffer,
+    ShopOfferIngredient,
+    ShopOfferItem,
+    ShopOfferPotion,
+    ShopPurchase,
     User,
     UserItem,
     UserTwoFactor,
@@ -386,3 +391,104 @@ class RepairTransactionAdmin(admin.ModelAdmin):
     autocomplete_fields = ("user", "item")
     list_select_related = ("user", "item", "item__owner_user", "item__template")
     readonly_fields = ("user", "item", "cost_copper", "durability_before", "durability_after", "created_at")
+
+
+class ShopOfferIngredientInline(admin.TabularInline):
+    model = ShopOfferIngredient
+    extra = 1
+    fields = ("ingredient_template", "chance")
+    autocomplete_fields = ("ingredient_template",)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("offer", "ingredient_template")
+
+
+class ShopOfferPotionInline(admin.TabularInline):
+    model = ShopOfferPotion
+    extra = 1
+    fields = ("potion_template", "chance")
+    autocomplete_fields = ("potion_template",)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("offer", "potion_template")
+
+
+class ShopOfferItemInline(admin.TabularInline):
+    model = ShopOfferItem
+    extra = 1
+    fields = ("item_template", "chance")
+    autocomplete_fields = ("item_template",)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("offer", "item_template")
+
+
+@admin.register(ShopOffer)
+class ShopOfferAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "display_name",
+        "reward_kind",
+        "delivery_mode",
+        "quantity",
+        "price_money_copper",
+        "price_premium_currency",
+        "is_active",
+        "sort_order",
+        "created_at",
+    )
+    list_filter = ("reward_kind", "delivery_mode", "is_active")
+    search_fields = ("id",)
+    autocomplete_fields = ("media",)
+    inlines = [ShopOfferIngredientInline, ShopOfferPotionInline, ShopOfferItemInline]
+
+    @admin.display(description="Название")
+    def display_name(self, obj: ShopOffer) -> str:
+        """Возвращает локализованное имя предложения для колонки списка."""
+
+        return obj.name_i18n.get("ru") or obj.name_i18n.get("en") or f"ShopOffer #{obj.id}"
+
+
+@admin.register(ShopPurchase)
+class ShopPurchaseAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "user",
+        "character",
+        "offer",
+        "purchase_count",
+        "payment_currency",
+        "unit_price_snapshot",
+        "total_price_snapshot",
+        "reward_kind_snapshot",
+        "delivery_mode_snapshot",
+        "created_at",
+    )
+    list_filter = ("payment_currency", "reward_kind_snapshot", "delivery_mode_snapshot")
+    search_fields = ("id", "user__email", "character__name")
+    list_select_related = ("user", "character", "offer")
+    readonly_fields = (
+        "user",
+        "character",
+        "offer",
+        "purchase_count",
+        "payment_currency",
+        "unit_price_snapshot",
+        "total_price_snapshot",
+        "reward_kind_snapshot",
+        "delivery_mode_snapshot",
+        "quantity_snapshot",
+        "result_payload",
+        "created_at",
+        "updated_at",
+    )
+
+    def has_add_permission(self, request) -> bool:
+        """Запрещает ручное добавление записей истории покупок."""
+
+        return False
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        """Запрещает удаление записей истории покупок (леджер)."""
+
+        return False
