@@ -701,6 +701,235 @@ button, input, select, textarea { font: inherit; }
   box-shadow: 0 0 8px rgba(34,197,94,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
   border: 1px solid rgba(74,222,128,0.45);
 }
+/* ── Inventory section tabs ── */
+.inv-section-tabs {
+  display: inline-flex;
+  gap: 8px;
+}
+.inv-section-tab {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: var(--bg-1);
+  color: var(--text-mute);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 9px 18px;
+  min-height: 40px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+.inv-section-tab:hover { color: var(--bone); border-color: var(--line-hover); }
+.inv-section-tab[aria-selected="true"] {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 2px 10px rgba(59,130,246,0.35);
+}
+
+/* ── Consumables grid (ingredients + potions) ── */
+.consumables-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+.consumable-cell {
+  position: relative;
+  aspect-ratio: 1;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+.consumable-cell.is-potion { cursor: pointer; }
+.consumable-cell.is-potion:hover {
+  transform: translateY(-1px);
+  border-color: var(--success);
+  box-shadow: 0 0 0 1px rgba(34,197,94,0.35) inset, 0 4px 16px rgba(0,0,0,0.4);
+}
+.consumable-cell:disabled { cursor: default; }
+.consumable-cell .inv-icon { background: var(--bg-3); }
+.consumable-cell .cc-fallback {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-mute);
+  text-align: center;
+  padding: 4px;
+  line-height: 1.1;
+}
+.consumable-count {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 6px;
+  background: rgba(8,11,18,0.82);
+  border: 1px solid var(--line);
+  color: var(--bone);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.consumable-kind {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+.consumable-kind.potion { background: rgba(34,197,94,0.9); }
+.consumable-kind.ingredient { background: rgba(148,163,184,0.55); }
+
+/* ── Craft panel ── */
+.craft-difficulty-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.craft-difficulty-tab {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: var(--bg-1);
+  color: var(--text-mute);
+  font-size: 12px;
+  font-weight: 600;
+  min-height: 40px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+.craft-difficulty-tab:hover { color: var(--bone); border-color: var(--line-hover); }
+.craft-difficulty-tab[aria-selected="true"] {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.craft-circle {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  margin: 8px auto 20px;
+}
+.craft-node {
+  position: absolute;
+  border-radius: 999px;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transform: translate(-50%, -50%);
+}
+.craft-node img { width: 100%; height: 100%; object-fit: cover; }
+.craft-node.center {
+  width: 96px;
+  height: 96px;
+  left: 50%;
+  top: 50%;
+  border-color: var(--success);
+  box-shadow: 0 0 0 1px rgba(34,197,94,0.35) inset, 0 0 24px rgba(34,197,94,0.18);
+}
+.craft-node.ingredient {
+  width: 56px;
+  height: 56px;
+  border-color: var(--line-hover);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+}
+.craft-node .cn-fallback {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-mute);
+  text-align: center;
+  padding: 3px;
+  line-height: 1.05;
+}
+.craft-ing-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.craft-ing-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--bg-1);
+  border: 1px solid var(--line-soft);
+  font-size: 12px;
+}
+.craft-ing-row .name { color: var(--bone); font-weight: 600; }
+.craft-ing-row .req {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-mute);
+}
+.craft-ing-row.short .req { color: var(--error); }
+.craft-batch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  margin-bottom: 14px;
+}
+.craft-batch-label {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+.craft-batch-stepper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.craft-step-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--bone);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+.craft-step-btn:hover:not(:disabled) { border-color: var(--primary); color: #fff; }
+.craft-step-btn:disabled { opacity: 0.4; cursor: default; }
+.craft-batch-value {
+  min-width: 28px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--bone);
+}
+
 /* ── Inventory page ── */
 .inventory-main-layout {
   display: grid;
@@ -1189,6 +1418,38 @@ button, input, select, textarea { font: inherit; }
 }
 .stat-list .val { font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, monospace); font-size: 13px; color: var(--bone); font-weight: 600; font-variant-numeric: tabular-nums; }
 .power-value { display: inline-flex; align-items: center; gap: 6px; position: relative; }
+
+/* ── Combat stats: decorative divider under the title ── */
+.combat-stats-divider {
+  position: relative;
+  height: 1px;
+  margin: 0 0 12px;
+  background: var(--line-soft);
+}
+.combat-stats-divider::before,
+.combat-stats-divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 5px; height: 5px;
+  border: 1px solid var(--line-hover);
+  background: var(--bg-2);
+  transform: translateY(-50%) rotate(45deg);
+}
+.combat-stats-divider::before { left: 0; }
+.combat-stats-divider::after { right: 0; }
+
+/* ── Combat stats: Power on its own centered full-width row ── */
+.stat-list--combat .sl-row--power {
+  grid-column: 1 / -1;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(46,59,90,0.7);
+  border-bottom: 0;
+}
+.stat-list--combat .sl-row--power .val { font-size: 15px; }
 .power-help { display: inline-flex; position: relative; }
 .power-help-btn {
   width: 18px; height: 18px; display: grid; place-items: center;

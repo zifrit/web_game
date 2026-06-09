@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Info, LayoutGrid, List, MapPin, Zap } from "lucide-react";
+import { Info, LayoutGrid, List, MapPin, Sprout, Swords, Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { canOpenMiniGame, DungeonMiniGameDifficultyModal, DungeonMiniGameModal, DungeonMiniGameResultModal } from "@/components/dungeon-mini-game-modal";
 import { DungeonLootModal } from "@/components/dungeon-loot-modal";
@@ -235,6 +235,7 @@ export function DungeonsScreen() {
   const { locale, t } = useI18n();
   const [rewardResult, setRewardResult] = useState<ClaimResponse | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list" | "map">("grid");
+  const [category, setCategory] = useState<"dungeon" | "resource">("dungeon");
   const [lootDungeon, setLootDungeon] = useState<Dungeon | null>(null);
   const dungeonsQuery = useQuery({ queryKey: ["dungeons"],     queryFn: api.dungeons  });
   const characterQuery = useQuery({ queryKey: ["character"],   queryFn: api.character });
@@ -283,8 +284,43 @@ export function DungeonsScreen() {
       } />
       {dungeonsQuery.isLoading && <LoadingLine label={t("dungeons.loading")} />}
 
-      {/* View toggle */}
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      {/* Toolbar: category tabs (left) + view toggle (right) */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+        {/* Category switcher */}
+        <div style={{
+          display: "flex",
+          background: "rgba(255,255,255,0.05)",
+          borderRadius: 10,
+          border: "1px solid rgba(255,255,255,0.08)",
+          padding: 3,
+          gap: 2,
+        }}>
+          {(["dungeon", "resource"] as const).map((cat) => {
+            const Icon = cat === "dungeon" ? Swords : Sprout;
+            const active = category === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => setCategory(cat)}
+                aria-label={cat === "dungeon" ? t("dungeons.categoryDungeons") : t("dungeons.categoryResources")}
+                aria-pressed={active}
+                style={{
+                  width: 34, height: 34,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  border: "none", borderRadius: 7, cursor: "pointer",
+                  background: active ? "var(--primary)" : "transparent",
+                  color: active ? "#fff" : "rgba(255,255,255,0.35)",
+                  boxShadow: active ? "0 0 12px color-mix(in srgb, var(--primary) 60%, transparent)" : "none",
+                  transition: "all 0.18s ease",
+                }}
+              >
+                <Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
+              </button>
+            );
+          })}
+        </div>
+
+        {/* View toggle */}
         <div style={{
           display: "flex",
           background: "rgba(255,255,255,0.05)",
@@ -318,8 +354,8 @@ export function DungeonsScreen() {
         </div>
       </div>
 
-      {/* Grid view */}
-      {viewMode === "grid" && (
+      {/* Dungeon grid view */}
+      {viewMode === "grid" && category === "dungeon" && (
         <div style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
@@ -425,8 +461,8 @@ export function DungeonsScreen() {
         </div>
       )}
 
-      {/* List view */}
-      {viewMode === "list" && (
+      {/* Dungeon list view */}
+      {viewMode === "list" && category === "dungeon" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {combatDungeons.map((dungeon) => {
             const tier         = getTier(dungeon.required_power);
@@ -580,113 +616,221 @@ export function DungeonsScreen() {
           </span>
         </div>
       )}
-      {/* Resource locations */}
-      {resourceLocations.length > 0 && (
-        <div style={{ marginTop: 8 }}>
-          <h2 style={{
-            fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
-            fontSize: 18, fontWeight: 600, letterSpacing: "0.06em",
-            textTransform: "uppercase", color: "var(--bone)",
-            margin: "0 0 14px",
-          }}>
-            {t("dungeons.resourceSectionTitle")}
-          </h2>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: 18,
-          }}>
-            {resourceLocations.map((location) => {
-              const remaining   = location.daily_remaining ?? location.daily_limit;
-              const used        = location.daily_limit - remaining;
-              const exhausted   = remaining <= 0;
-              const isActive    = currentRun.data?.location?.id === location.id && isRunning;
-              const disabled    = hasRun || startMutation.isPending || exhausted;
-              const locationImage = bestMediaUrl(location.media, ["large_url", "medium_url", "small_url"]);
-              const durLabel    = formatDuration(location.duration_seconds, locale);
+      {/* Resource grid view */}
+      {viewMode === "grid" && category === "resource" && (
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+          gap: 18,
+        }}>
+          {resourceLocations.map((location) => {
+            const remaining   = location.daily_remaining ?? location.daily_limit;
+            const used        = location.daily_limit - remaining;
+            const exhausted   = remaining <= 0;
+            const isActive    = currentRun.data?.location?.id === location.id && isRunning;
+            const disabled    = hasRun || startMutation.isPending || exhausted;
+            const locationImage = bestMediaUrl(location.media, ["large_url", "medium_url", "small_url"]);
+            const durLabel    = formatDuration(location.duration_seconds, locale);
 
-              return (
-                <div key={location.id} className={`dungeon${isActive ? " active" : ""}`}>
-                  <div style={{
-                    aspectRatio: "1 / 1", position: "relative",
-                    background: locationImage ? undefined : "var(--bg-3)",
-                    borderBottom: "1px solid var(--line-soft)",
-                    overflow: "hidden",
-                  }}>
-                    {locationImage && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={locationImage}
-                        alt={location.name}
-                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    )}
+            return (
+              <div key={location.id} className={`dungeon${isActive ? " active" : ""}`}>
+                <div style={{
+                  aspectRatio: "1 / 1", position: "relative",
+                  background: locationImage ? undefined : "var(--bg-3)",
+                  borderBottom: "1px solid var(--line-soft)",
+                  overflow: "hidden",
+                }}>
+                  {locationImage && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={locationImage}
+                      alt={location.name}
+                      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  )}
+                </div>
+
+                <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                    <h3 style={{
+                      fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
+                      fontSize: 23, fontWeight: 600, margin: 0,
+                      lineHeight: 1.2, letterSpacing: "0.03em",
+                      minWidth: 0, flex: 1, color: "var(--bone)",
+                    }}>
+                      {location.name}
+                    </h3>
+                    <span className="mono" style={{
+                      fontSize: 11, color: "var(--success)", letterSpacing: "0.10em",
+                      whiteSpace: "nowrap", paddingTop: 8, flexShrink: 0,
+                    }}>
+                      {t("dungeons.guaranteedSuccess")}
+                    </span>
                   </div>
 
-                  <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                      <h3 style={{
-                        fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
-                        fontSize: 23, fontWeight: 600, margin: 0,
-                        lineHeight: 1.2, letterSpacing: "0.03em",
-                        minWidth: 0, flex: 1, color: "var(--bone)",
-                      }}>
-                        {location.name}
-                      </h3>
-                      <span className="mono" style={{
-                        fontSize: 11, color: "var(--success)", letterSpacing: "0.10em",
-                        whiteSpace: "nowrap", paddingTop: 8, flexShrink: 0,
-                      }}>
-                        {t("dungeons.guaranteedSuccess")}
-                      </span>
-                    </div>
-
-                    {location.description && (
-                      <p style={{
-                        color: "var(--text-dim)", fontSize: 14, margin: 0, lineHeight: 1.5,
-                        overflow: "hidden", display: "-webkit-box",
-                        WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as React.CSSProperties["WebkitBoxOrient"],
-                      }}>
-                        {location.description}
-                      </p>
-                    )}
-
-                    <div style={{
-                      display: "flex", gap: 14,
-                      fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
-                      fontSize: 13, color: "var(--text-mute)",
+                  {location.description && (
+                    <p style={{
+                      color: "var(--text-dim)", fontSize: 14, margin: 0, lineHeight: 1.5,
+                      overflow: "hidden", display: "-webkit-box",
+                      WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as React.CSSProperties["WebkitBoxOrient"],
                     }}>
-                      <span>⏱ <strong style={{ color: "var(--bone)", fontWeight: 500 }}>{durLabel}</strong></span>
-                      <span style={{ color: exhausted ? "var(--warning)" : "var(--text-mute)" }}>
-                        {t("dungeons.dailyRuns", { used, limit: location.daily_limit })}
-                      </span>
-                    </div>
+                      {location.description}
+                    </p>
+                  )}
 
-                    <div style={{ marginTop: "auto", paddingTop: 4 }}>
-                      <button
-                        disabled={disabled}
-                        onClick={() => !disabled && startMutation.mutate(location.id)}
-                        className="btn btn-primary"
-                        style={{ width: "100%", opacity: isActive ? 0.7 : undefined }}
-                      >
-                        {startMutation.isPending
-                          ? t("dungeons.sending")
-                          : isActive
-                            ? t("dungeons.inProgressButton")
-                            : exhausted
-                              ? t("dungeons.dailyLimitReached")
-                              : awaitingClaim
-                                ? t("dungeons.claimFirst")
-                                : isRunning
-                                  ? t("dungeons.heroBusy")
-                                  : t("dungeons.gather")}
-                      </button>
-                    </div>
+                  <div style={{
+                    display: "flex", gap: 14,
+                    fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                    fontSize: 13, color: "var(--text-mute)",
+                  }}>
+                    <span>⏱ <strong style={{ color: "var(--bone)", fontWeight: 500 }}>{durLabel}</strong></span>
+                    <span style={{ color: exhausted ? "var(--warning)" : "var(--text-mute)" }}>
+                      {t("dungeons.dailyRuns", { used, limit: location.daily_limit })}
+                    </span>
+                  </div>
+
+                  <div style={{ marginTop: "auto", paddingTop: 4 }}>
+                    <button
+                      disabled={disabled}
+                      onClick={() => !disabled && startMutation.mutate(location.id)}
+                      className="btn btn-primary"
+                      style={{ width: "100%", opacity: isActive ? 0.7 : undefined }}
+                    >
+                      {startMutation.isPending
+                        ? t("dungeons.sending")
+                        : isActive
+                          ? t("dungeons.inProgressButton")
+                          : exhausted
+                            ? t("dungeons.dailyLimitReached")
+                            : awaitingClaim
+                              ? t("dungeons.claimFirst")
+                              : isRunning
+                                ? t("dungeons.heroBusy")
+                                : t("dungeons.gather")}
+                    </button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Resource list view */}
+      {viewMode === "list" && category === "resource" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {resourceLocations.map((location) => {
+            const remaining     = location.daily_remaining ?? location.daily_limit;
+            const used          = location.daily_limit - remaining;
+            const exhausted     = remaining <= 0;
+            const isActive      = currentRun.data?.location?.id === location.id && isRunning;
+            const disabled      = hasRun || startMutation.isPending || exhausted;
+            const locationImage = bestMediaUrl(location.media, ["small_url", "medium_url", "large_url"]);
+            const durLabel      = formatDuration(location.duration_seconds, locale);
+
+            return (
+              <div
+                key={location.id}
+                className={`dungeon${isActive ? " active" : ""}`}
+                style={{ flexDirection: "row", minHeight: 99, overflow: "hidden" }}
+              >
+                {/* Zone 1 — thumbnail */}
+                <div style={{
+                  width: 140, minWidth: 140,
+                  position: "relative",
+                  background: locationImage ? undefined : "var(--bg-3)",
+                  borderRight: "1px solid var(--line-soft)",
+                  flexShrink: 0, overflow: "hidden",
+                }}>
+                  {locationImage && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={locationImage}
+                      alt={location.name}
+                      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  )}
+                  <div style={{
+                    position: "absolute", inset: 0,
+                    background: "linear-gradient(to right, transparent 60%, color-mix(in srgb, var(--bg-2, #111) 70%, transparent))",
+                    pointerEvents: "none",
+                  }} />
+                </div>
+
+                {/* Zone 2 — main info */}
+                <div style={{
+                  flex: 1, minWidth: 0,
+                  padding: "14px 18px",
+                  display: "flex", flexDirection: "column",
+                  justifyContent: "center", gap: 7,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <h3 style={{
+                      fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
+                      fontSize: 18, fontWeight: 600, margin: 0,
+                      letterSpacing: "0.03em", color: "var(--bone)",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {location.name}
+                    </h3>
+                    <span className="mono" style={{
+                      fontSize: 10, letterSpacing: "0.12em",
+                      padding: "2px 8px", borderRadius: 4, flexShrink: 0,
+                      background: "rgba(34,197,94,0.10)",
+                      border: "1px solid rgba(34,197,94,0.25)",
+                      color: "var(--success)",
+                    }}>
+                      {t("dungeons.guaranteedSuccess")}
+                    </span>
+                  </div>
+
+                  <div style={{
+                    display: "flex", flexWrap: "wrap", gap: "4px 16px",
+                    fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                    fontSize: 12, color: "var(--text-mute)",
+                  }}>
+                    <span>⏱&thinsp;<strong style={{ color: "var(--bone)", fontWeight: 500 }}>{durLabel}</strong></span>
+                    <span style={{ color: exhausted ? "var(--warning)" : "var(--text-mute)" }}>
+                      {t("dungeons.dailyRuns", { used, limit: location.daily_limit })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Zone 3 — action */}
+                <div style={{
+                  width: 160, minWidth: 160, flexShrink: 0,
+                  borderLeft: "1px solid var(--line-soft)",
+                  display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "center",
+                  gap: 8, padding: "12px 18px",
+                }}>
+                  <button
+                    disabled={disabled}
+                    onClick={() => !disabled && startMutation.mutate(location.id)}
+                    className="btn btn-primary"
+                    style={{
+                      width: "100%", minHeight: 44, height: "auto", fontSize: 13,
+                      whiteSpace: "normal", lineHeight: 1.2, textAlign: "center",
+                      paddingTop: 8, paddingBottom: 8,
+                      opacity: isActive ? 0.7 : undefined,
+                    }}
+                  >
+                    {startMutation.isPending
+                      ? t("dungeons.sending")
+                      : isActive
+                        ? t("dungeons.inProgressButton")
+                        : exhausted
+                          ? t("dungeons.dailyLimitReached")
+                          : awaitingClaim
+                            ? t("dungeons.claimFirst")
+                            : isRunning
+                              ? t("dungeons.heroBusy")
+                              : t("dungeons.gather")}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

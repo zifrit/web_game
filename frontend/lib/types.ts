@@ -82,6 +82,39 @@ export type UsePotionResponse = {
   remaining: number;
 };
 
+export type CraftRecipeIngredient = {
+  ingredient_id: number;
+  code: string;
+  name: string;
+  quantity: number;
+  media?: MediaAssetUrls | null;
+};
+
+export type CraftRecipePotion = {
+  id: number;
+  code: string;
+  name: string;
+  heal_percent: number;
+  media?: MediaAssetUrls | null;
+};
+
+export type CraftRecipe = {
+  id: number;
+  code: string;
+  difficulty: "small" | "medium" | "large";
+  required_hero_level: number;
+  potion: CraftRecipePotion;
+  ingredients: CraftRecipeIngredient[];
+};
+
+export type CraftResponse = {
+  recipe_id: number;
+  potion_id: number;
+  potion_code: string;
+  crafted: number;
+  potion_count: number;
+};
+
 export type CharacterClass = {
   key: string;
   name: string;

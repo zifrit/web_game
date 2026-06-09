@@ -430,6 +430,15 @@ export const api = {
       body: JSON.stringify(body),
     });
   },
+  craftRecipes() {
+    return apiFetch<AppTypes.CraftRecipe[]>("/craft/recipes");
+  },
+  craftPotions(body: { recipe_id: number; quantity: number }) {
+    return apiFetch<AppTypes.CraftResponse>("/craft/potions", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
   leaderboard(type: AppTypes.LeaderboardMetric = "level") {
     return apiFetch<AppTypes.Leaderboard>(`/leaderboard?type=${type}`);
   },
