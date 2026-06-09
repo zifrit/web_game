@@ -6,6 +6,7 @@ from typing import Any
 from apps.game.models import Character, DungeonLocation, DungeonLocationItemTemplate, ItemTemplate, UserItem
 
 from .balance import GameBalanceService
+from .probabilities import weighted_choice
 
 
 WEAPON_CLASS_BY_TYPE = {
@@ -18,19 +19,6 @@ WEAPON_CLASS_BY_TYPE = {
 
 class LootGenerationService:
     """Сервис генерации предметных наград за успешные подземелья."""
-
-    @staticmethod
-    def _weighted_choice(weighted_items: list[tuple[Any, float]]) -> Any:
-        """Выбирает элемент из списка весов случайным взвешенным броском."""
-
-        total = sum(float(value) for _, value in weighted_items)
-        roll = random.uniform(0, total)
-        upto = 0.0
-        for item, value in weighted_items:
-            upto += float(value)
-            if roll <= upto:
-                return item
-        return weighted_items[-1][0]
 
     @classmethod
     def generate_item_reward(cls, character: Character, location: DungeonLocation) -> dict[str, Any] | None:
@@ -48,7 +36,7 @@ class LootGenerationService:
         if not weighted_links:
             return None
 
-        link = cls._weighted_choice(weighted_links)
+        link = weighted_choice(weighted_links)
         return generate_item_instance(link.item_template)
 
 

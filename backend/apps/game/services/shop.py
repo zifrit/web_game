@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import random
 from collections import Counter
-from typing import Any
 
 from django.db import transaction
 from rest_framework import serializers
@@ -17,21 +15,9 @@ from apps.game.models import (
 )
 
 from .loot import generate_item_instance
+from .probabilities import weighted_choice
 from .shop_rewards import reward_descriptor
 from .wallets import all_balances, get_wallet
-
-
-def _weighted_choice(weighted_items: list[tuple[Any, float]]) -> Any:
-    """Выбирает элемент из списка пар (элемент, вес) взвешенным случайным броском."""
-
-    total = sum(float(value) for _, value in weighted_items)
-    roll = random.uniform(0, total)
-    upto = 0.0
-    for item, value in weighted_items:
-        upto += float(value)
-        if roll <= upto:
-            return item
-    return weighted_items[-1][0]
 
 
 class ShopService:
@@ -174,7 +160,7 @@ class ShopService:
         if offer.delivery_mode == ShopOffer.DeliveryMode.SINGLE:
             return Counter({getattr(entries[0], template_attr): total_rewards})
         weighted = [(entry, entry.chance) for entry in entries]
-        rolls = [_weighted_choice(weighted) for _ in range(total_rewards)]
+        rolls = [weighted_choice(weighted) for _ in range(total_rewards)]
         return Counter(getattr(entry, template_attr) for entry in rolls)
 
     @classmethod
@@ -224,7 +210,7 @@ class ShopService:
             templates = [getattr(entries[0], template_attr) for _ in range(total_rewards)]
         else:
             weighted = [(entry, entry.chance) for entry in entries]
-            templates = [getattr(_weighted_choice(weighted), template_attr) for _ in range(total_rewards)]
+            templates = [getattr(weighted_choice(weighted), template_attr) for _ in range(total_rewards)]
 
         drafts = [generate_item_instance(template) for template in templates]
         items = [
