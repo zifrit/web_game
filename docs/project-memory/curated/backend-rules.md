@@ -23,6 +23,29 @@ Keep game formulas and mutating economy/game operations in services:
 - `IngredientService`
 - `PotionService`
 - `CraftService`
+- `MoneyService` (copper wallet)
+
+## Currency wallets
+
+Each currency is mutated through exactly one deep wallet module; no caller
+touches a balance field directly.
+
+- Copper (`game.User.money_copper`) goes through `MoneyService` in
+  `apps.game.services.money`. Premium currency
+  (`billing.UserPremiumBalance.amount`) goes through `PremiumCurrencyService` in
+  `apps.billing`.
+- Both wallets expose the same verbs: `grant` (add), `charge` (remove, enforces
+  the non-negative invariant), and `get_amount`. `grant`/`charge` self-lock the
+  balance row, write an immutable ledger row (`MoneyTransaction` /
+  `PremiumCurrencyTransaction`), and return that transaction; callers read the
+  resulting balance from `transaction.balance_after`.
+- `charge` accepts an optional `insufficient_message` i18n key so callers keep
+  context-specific errors (e.g. `not_enough_money_repair`,
+  `shop_not_enough_money`).
+- Because the wallet self-locks, callers no longer `select_for_update` the
+  `User` row just to mutate copper. Copper-touching paths (dungeon claim, shop
+  purchase, repair, destroy refund, premium→copper exchange) delegate to
+  `MoneyService`.
 
 Views and serializers should stay thin. Claim, repair, equip, unequip, and
 start dungeon run require explicit transactional boundaries where they change

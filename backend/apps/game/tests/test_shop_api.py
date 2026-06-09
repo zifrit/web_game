@@ -140,7 +140,7 @@ class AuthMePremiumTests(TestCase):
         self.assertEqual(response.data["premium_currency"], 0)
 
     def test_me_reflects_premium_balance(self):
-        PremiumCurrencyService.add(
+        PremiumCurrencyService.grant(
             user=self.user, amount=40, reason=PremiumCurrencyTransaction.Reason.ADMIN_GRANT
         )
         response = self.client.get("/api/auth/me")

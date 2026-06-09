@@ -23,6 +23,7 @@ from .models import (
     ItemTemplate,
     MediaAsset,
     MiniGameCardFace,
+    MoneyTransaction,
     PotionTemplate,
     RarityConfig,
     RepairTransaction,
@@ -391,6 +392,34 @@ class RepairTransactionAdmin(admin.ModelAdmin):
     autocomplete_fields = ("user", "item")
     list_select_related = ("user", "item", "item__owner_user", "item__template")
     readonly_fields = ("user", "item", "cost_copper", "durability_before", "durability_after", "created_at")
+
+
+@admin.register(MoneyTransaction)
+class MoneyTransactionAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "amount", "reason", "balance_after", "created_at")
+    list_filter = ("reason",)
+    search_fields = ("id", "user__email", "idempotency_key")
+    list_select_related = ("user",)
+    readonly_fields = (
+        "user",
+        "amount",
+        "reason",
+        "balance_after",
+        "idempotency_key",
+        "metadata",
+        "created_at",
+        "updated_at",
+    )
+
+    def has_add_permission(self, request) -> bool:
+        """Запрещает ручное добавление: начисления только через сервис."""
+
+        return False
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        """Запрещает удаление: медный леджер неизменяем."""
+
+        return False
 
 
 class ShopOfferIngredientInline(admin.TabularInline):

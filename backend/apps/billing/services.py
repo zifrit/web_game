@@ -4,7 +4,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from apps.game.i18n import DEFAULT_LOCALE, message
-from apps.game.models import Character, User
+from apps.game.models import Character, MoneyTransaction
 
 from .models import (
     CurrencyExchangeOffer,
@@ -19,7 +19,7 @@ class PremiumCurrencyService:
 
     @classmethod
     @transaction.atomic
-    def add(cls, *, user, amount: int, reason: str, metadata=None, idempotency_key=None):
+    def grant(cls, *, user, amount: int, reason: str, metadata=None, idempotency_key=None):
         """Начисляет премиум-валюту и пишет запись в неизменяемый леджер."""
 
         if amount <= 0:
@@ -51,7 +51,17 @@ class PremiumCurrencyService:
 
     @classmethod
     @transaction.atomic
-    def spend(cls, *, user, amount: int, reason: str, metadata=None, idempotency_key=None, locale=DEFAULT_LOCALE):
+    def charge(
+        cls,
+        *,
+        user,
+        amount: int,
+        reason: str,
+        metadata=None,
+        idempotency_key=None,
+        insufficient_message: str = "not_enough_premium",
+        locale=DEFAULT_LOCALE,
+    ):
         """Списывает премиум-валюту, проверяя достаточность баланса."""
 
         if amount <= 0:
@@ -70,7 +80,7 @@ class PremiumCurrencyService:
                 return existing
 
         if balance.amount < amount:
-            raise serializers.ValidationError(message("not_enough_premium", locale))
+            raise serializers.ValidationError(message(insufficient_message, locale))
 
         balance.amount -= amount
         balance.save(update_fields=["amount", "updated_at"])
@@ -114,10 +124,7 @@ class CurrencyExchangeService:
         except Character.DoesNotExist as exc:
             raise serializers.ValidationError(message("no_character", locale)) from exc
 
-        # money_copper живёт на User (не на Character), поэтому блокируем строку User.
-        user_row = User.objects.select_for_update().get(pk=user.pk)
-
-        premium_transaction = PremiumCurrencyService.spend(
+        premium_transaction = PremiumCurrencyService.charge(
             user=user,
             amount=offer.premium_cost,
             reason=PremiumCurrencyTransaction.Reason.EXCHANGE_TO_MONEY,
@@ -128,11 +135,18 @@ class CurrencyExchangeService:
             locale=locale,
         )
 
-        user_row.money_copper += offer.money_copper_reward
-        user_row.save(update_fields=["money_copper", "updated_at"])
+        # Медь живёт на User; MoneyService сам блокирует строку и пишет леджер.
+        from apps.game.services import MoneyService
+
+        MoneyService.grant(
+            user=user,
+            amount=offer.money_copper_reward,
+            reason=MoneyTransaction.Reason.EXCHANGE_FROM_PREMIUM,
+            metadata={"exchange_offer_id": offer.id, "premium_cost": offer.premium_cost},
+        )
 
         return CurrencyExchangeTransaction.objects.create(
-            user=user_row,
+            user=user,
             character=character,
             offer=offer,
             premium_spent=offer.premium_cost,

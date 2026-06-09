@@ -199,6 +199,10 @@ MESSAGES = {
         "en": "Not enough premium currency.",
         "ru": "Недостаточно премиум-валюты.",
     },
+    "not_enough_money": {
+        "en": "Not enough money.",
+        "ru": "Недостаточно денег.",
+    },
 }
 
 

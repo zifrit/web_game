@@ -17,6 +17,7 @@ from apps.game.models import (
     DungeonRunClaimItem,
     DungeonRunStatus,
     LocationType,
+    MoneyTransaction,
     UserItem,
 )
 
@@ -25,6 +26,7 @@ from .formulas import GameFormulaService
 from .ingredients import IngredientDropService, IngredientService
 from .loot import LootGenerationService
 from .mini_game_store import MiniGameStore
+from .money import MoneyService
 
 
 class ClaimResult(BaseModel):
@@ -201,7 +203,6 @@ class DungeonRunService:
         if run.status not in (DungeonRunStatus.SUCCESS_WAITING_CLAIM, DungeonRunStatus.FAILED_WAITING_CLAIM):
             raise serializers.ValidationError(message("run_not_ready", locale))
 
-        user = type(user).objects.select_for_update().get(pk=user.pk)
         character = Character.objects.select_for_update().select_related("character_class").get(pk=run.character_id)
         old_level = character.level
         experience = run.experience_reward or 0
@@ -210,8 +211,14 @@ class DungeonRunService:
         GameFormulaService.apply_level_stats(character)
         hp_loss = run.hp_loss or 0
         character.current_hp = max(0, character.current_hp - hp_loss)
-        user.money_copper += run.money_reward_copper or 0
-        user.save(update_fields=["money_copper", "updated_at"])
+        money_reward = run.money_reward_copper or 0
+        if money_reward > 0:
+            MoneyService.grant(
+                user=user,
+                amount=money_reward,
+                reason=MoneyTransaction.Reason.DUNGEON_REWARD,
+                metadata={"dungeon_run_id": run.id},
+            )
         character.save(
             update_fields=[
                 "level",

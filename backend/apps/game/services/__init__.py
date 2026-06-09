@@ -15,6 +15,7 @@ from .ingredients import IngredientDropService, IngredientService
 from .inventory import InventoryService
 from .loot import LootGenerationService, generate_item_instance, item_allowed_for_character
 from .mini_games import DungeonMiniGameService
+from .money import MoneyService
 from .shop import ShopService
 from .reference_cache import (
     LEADERBOARD_TIMEOUT,
@@ -39,6 +40,7 @@ __all__ = [
     "InventoryService",
     "LEADERBOARD_TIMEOUT",
     "LootGenerationService",
+    "MoneyService",
     "PotionService",
     "REFERENCE_TIMEOUT",
     "RarityConfigCache",

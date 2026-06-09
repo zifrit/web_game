@@ -12,13 +12,14 @@ from apps.game.models import (
     Character,
     HeroIngredientStorage,
     HeroPotionStorage,
+    MoneyTransaction,
     ShopOffer,
     ShopPurchase,
-    User,
     UserItem,
 )
 
 from .loot import generate_item_instance
+from .money import MoneyService
 
 
 def _weighted_choice(weighted_items: list[tuple[Any, float]]) -> Any:
@@ -53,12 +54,11 @@ class ShopService:
         except ShopOffer.DoesNotExist as exc:
             raise serializers.ValidationError(message("shop_offer_not_found", locale)) from exc
 
-        # 3. Блокировка героя и пользователя (money_copper на User).
+        # 3. Блокировка героя (медь блокирует MoneyService при списании).
         try:
             character = Character.objects.select_for_update().get(user=user)
         except Character.DoesNotExist as exc:
             raise serializers.ValidationError(message("no_character", locale)) from exc
-        user_row = User.objects.select_for_update().get(pk=user.pk)
 
         # 4. Валидация валюты и расчёт цены.
         unit_price = cls._resolve_unit_price(offer, payment_currency, locale)
@@ -72,7 +72,6 @@ class ShopService:
         # 6. Списание выбранной валюты.
         cls._charge(
             user=user,
-            user_row=user_row,
             payment_currency=payment_currency,
             total_price=total_price,
             offer=offer,
@@ -85,13 +84,13 @@ class ShopService:
             offer=offer,
             entries=entries,
             character=character,
-            user=user_row,
+            user=user,
             total_rewards=total_rewards,
         )
 
         # 8. История покупки со снимком условий.
         purchase = ShopPurchase.objects.create(
-            user=user_row,
+            user=user,
             character=character,
             offer=offer,
             purchase_count=purchase_count,
@@ -109,8 +108,8 @@ class ShopService:
         return {
             "purchase": purchase,
             "balances": {
-                "money_copper": user_row.money_copper,
-                "premium_currency": PremiumCurrencyService.get_amount(user_row),
+                "money_copper": MoneyService.get_amount(user),
+                "premium_currency": PremiumCurrencyService.get_amount(user),
             },
         }
 
@@ -153,19 +152,23 @@ class ShopService:
         return entries
 
     @staticmethod
-    def _charge(*, user, user_row, payment_currency, total_price, offer, purchase_count, locale) -> None:
-        """Списывает выбранную валюту: монеты с User или премиум через сервис."""
+    def _charge(*, user, payment_currency, total_price, offer, purchase_count, locale) -> None:
+        """Списывает выбранную валюту через её сервис-кошелёк."""
 
         if payment_currency == ShopPurchase.PaymentCurrency.MONEY_COPPER:
-            if user_row.money_copper < total_price:
-                raise serializers.ValidationError(message("shop_not_enough_money", locale))
-            user_row.money_copper -= total_price
-            user_row.save(update_fields=["money_copper", "updated_at"])
+            MoneyService.charge(
+                user=user,
+                amount=total_price,
+                reason=MoneyTransaction.Reason.SHOP_PURCHASE,
+                metadata={"offer_id": offer.id, "purchase_count": purchase_count},
+                insufficient_message="shop_not_enough_money",
+                locale=locale,
+            )
         else:
             from apps.billing.services import PremiumCurrencyService
             from apps.billing.models import PremiumCurrencyTransaction
 
-            PremiumCurrencyService.spend(
+            PremiumCurrencyService.charge(
                 user=user,
                 amount=total_price,
                 reason=PremiumCurrencyTransaction.Reason.SHOP_PURCHASE,

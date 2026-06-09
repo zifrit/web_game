@@ -19,6 +19,7 @@ from .dungeons import (
 )
 from .ingredients import DungeonIngredientDrop, HeroIngredientStorage, IngredientTemplate
 from .items import ItemTemplate, RepairTransaction, UserItem
+from .money import MoneyTransaction
 from .shop import (
     ShopOffer,
     ShopOfferIngredient,
@@ -53,6 +54,7 @@ __all__ = [
     "ItemTemplate",
     "MediaAsset",
     "MiniGameCardFace",
+    "MoneyTransaction",
     "PotionTemplate",
     "RarityConfig",
     "RepairTransaction",

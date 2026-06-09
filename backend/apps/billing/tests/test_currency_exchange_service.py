@@ -25,7 +25,7 @@ class CurrencyExchangeServiceTests(TestCase):
         )
 
     def test_exchange_subtracts_premium_and_adds_money(self):
-        PremiumCurrencyService.add(
+        PremiumCurrencyService.grant(
             user=self.user, amount=100, reason=PremiumCurrencyTransaction.Reason.ADMIN_GRANT
         )
 
@@ -36,7 +36,7 @@ class CurrencyExchangeServiceTests(TestCase):
         self.assertEqual(self.user.money_copper, 60_000)
 
     def test_exchange_creates_both_transactions(self):
-        PremiumCurrencyService.add(
+        PremiumCurrencyService.grant(
             user=self.user, amount=100, reason=PremiumCurrencyTransaction.Reason.ADMIN_GRANT
         )
 
@@ -52,7 +52,7 @@ class CurrencyExchangeServiceTests(TestCase):
         self.assertEqual(exchange_tx.premium_transaction.amount, -50)
 
     def test_failed_exchange_does_not_mutate_balances(self):
-        PremiumCurrencyService.add(
+        PremiumCurrencyService.grant(
             user=self.user, amount=10, reason=PremiumCurrencyTransaction.Reason.ADMIN_GRANT
         )
 

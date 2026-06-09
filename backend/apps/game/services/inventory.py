@@ -7,11 +7,12 @@ from django.db.models import QuerySet
 from rest_framework import serializers
 
 from apps.game.i18n import DEFAULT_LOCALE, message
-from apps.game.models import Character, RepairTransaction, UserItem
+from apps.game.models import Character, MoneyTransaction, RepairTransaction, UserItem
 
 from .dungeon_runs import DungeonRunService
 from .formulas import GameFormulaService, STAT_KEYS
 from .loot import item_allowed_for_character
+from .money import MoneyService
 
 
 EQUIPMENT_SLOTS = ("weapon", "helmet", "armor", "boots", "ring")
@@ -105,18 +106,24 @@ class InventoryService:
     def repair_items(cls, user, item_ids: list[int] | tuple[int, ...], locale=DEFAULT_LOCALE) -> dict[str, Any]:
         """Транзакционно ремонтирует выбранные предметы и списывает общую стоимость."""
 
-        user = type(user).objects.select_for_update().get(pk=user.pk)
         qs = cls._owned_items(user, item_ids, for_update=True)
         items = list(qs)
         repairable = [item for item in items if item.durability_current < item.durability_max]
         if not repairable:
             raise serializers.ValidationError(message("no_repair_needed", locale))
         cost = sum(GameFormulaService.repair_cost(item) for item in repairable)
-        if user.money_copper < cost:
-            raise serializers.ValidationError(message("not_enough_money_repair", locale))
-
-        user.money_copper -= cost
-        user.save(update_fields=["money_copper", "updated_at"])
+        if cost > 0:
+            charge = MoneyService.charge(
+                user=user,
+                amount=cost,
+                reason=MoneyTransaction.Reason.REPAIR,
+                metadata={"item_ids": [item.id for item in repairable]},
+                insufficient_message="not_enough_money_repair",
+                locale=locale,
+            )
+            remaining_money_copper = charge.balance_after
+        else:
+            remaining_money_copper = MoneyService.get_amount(user)
         repair_transactions = []
         for item in repairable:
             before = item.durability_current
@@ -138,7 +145,7 @@ class InventoryService:
             "item_ids": [item.id for item in repairable],
             "items_count": len(repairable),
             "repair_cost_copper": cost,
-            "remaining_money_copper": user.money_copper,
+            "remaining_money_copper": remaining_money_copper,
         }
 
     @classmethod
@@ -154,22 +161,29 @@ class InventoryService:
     def destroy_items(cls, user, item_ids: list[int] | tuple[int, ...], locale=DEFAULT_LOCALE) -> dict[str, Any]:
         """Транзакционно удаляет выбранные предметы и начисляет возврат."""
 
-        user = type(user).objects.select_for_update().get(pk=user.pk)
         qs = cls._owned_items(user, item_ids, for_update=True)
         items = list(qs)
         if not items:
             raise serializers.ValidationError(message("no_items_selected", locale))
         refund = sum(GameFormulaService.destroy_refund(item) for item in items)
         destroyed_ids = [item.id for item in items]
-        user.money_copper += refund
-        user.save(update_fields=["money_copper", "updated_at"])
+        if refund > 0:
+            grant = MoneyService.grant(
+                user=user,
+                amount=refund,
+                reason=MoneyTransaction.Reason.DESTROY_REFUND,
+                metadata={"item_ids": destroyed_ids},
+            )
+            remaining_money_copper = grant.balance_after
+        else:
+            remaining_money_copper = MoneyService.get_amount(user)
         UserItem.objects.filter(pk__in=destroyed_ids, owner_user=user).delete()
         return {
             "success": True,
             "item_ids": destroyed_ids,
             "items_count": len(destroyed_ids),
             "refund_copper": refund,
-            "remaining_money_copper": user.money_copper,
+            "remaining_money_copper": remaining_money_copper,
         }
 
     @staticmethod

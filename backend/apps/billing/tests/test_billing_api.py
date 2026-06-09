@@ -36,7 +36,7 @@ class BillingApiTests(TestCase):
         self.assertTrue(response.data["is_active"])
 
     def test_exchange_performs_and_returns_balances(self):
-        PremiumCurrencyService.add(
+        PremiumCurrencyService.grant(
             user=self.user, amount=100, reason=PremiumCurrencyTransaction.Reason.ADMIN_GRANT
         )
         response = self.client.post(
@@ -48,7 +48,7 @@ class BillingApiTests(TestCase):
         self.assertEqual(response.data["balances"]["money_copper"], 60_000)
 
     def test_exchange_rejects_insufficient_premium(self):
-        PremiumCurrencyService.add(
+        PremiumCurrencyService.grant(
             user=self.user, amount=10, reason=PremiumCurrencyTransaction.Reason.ADMIN_GRANT
         )
         response = self.client.post(
@@ -57,7 +57,7 @@ class BillingApiTests(TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_exchange_transactions_user_scoped(self):
-        PremiumCurrencyService.add(
+        PremiumCurrencyService.grant(
             user=self.user, amount=100, reason=PremiumCurrencyTransaction.Reason.ADMIN_GRANT
         )
         self.client.post(f"/api/billing/exchange-offers/{self.offer.id}/exchange", {}, format="json")
@@ -73,7 +73,7 @@ class BillingApiTests(TestCase):
         self.assertEqual(other_response.data["results"], [])
 
     def test_premium_transactions_user_scoped(self):
-        PremiumCurrencyService.add(
+        PremiumCurrencyService.grant(
             user=self.user, amount=100, reason=PremiumCurrencyTransaction.Reason.ADMIN_GRANT
         )
         response = self.client.get("/api/billing/premium-transactions")

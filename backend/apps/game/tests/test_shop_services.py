@@ -211,7 +211,7 @@ class ShopPaymentTests(ShopServiceTestBase):
             )
 
     def test_buying_with_premium_creates_premium_transaction(self):
-        PremiumCurrencyService.add(
+        PremiumCurrencyService.grant(
             user=self.user, amount=100, reason=PremiumCurrencyTransaction.Reason.ADMIN_GRANT
         )
         offer = self._offer(price_money_copper=None, price_premium_currency=10)
