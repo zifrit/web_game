@@ -113,6 +113,24 @@ Bad candidates:
 - Details that are easy to derive from the code
 - Aging lists of all models, endpoints, or tasks
 
+## Agent Skills
+
+This project may use selected skills from `mattpocock/skills`.
+
+Use skills only when they match the task. Do not invoke skills for every request.
+
+Recommended usage:
+
+- `diagnose`: for unclear bugs, regressions, flaky behavior, Celery/API/DB issues.
+- `tdd`: for behavior changes where tests can define the expected result.
+- `zoom-out`: when local code needs to be understood in the broader system context.
+- `grill-me`: when the user proposes a raw idea and requirements are unclear.
+- `grill-with-docs`: before larger changes that must respect existing docs, memory, ADRs, or architecture.
+- `handoff`: when summarizing work for another session, another agent, or a future continuation.
+
+Do not use these skills as a replacement for reading the actual source code.
+The repository code remains the source of truth.
+
 ### Rule of Thumb
 
 Use `docs/project-memory/` to understand intent.
