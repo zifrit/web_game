@@ -20,6 +20,12 @@ from .dungeons import (
 from .ingredients import HeroIngredientSerializer
 from .inventory import InventorySerializer, UserItemDetailSerializer, UserItemSummarySerializer
 from .leaderboard import LeaderboardItemSerializer
+from .shop import (
+    BuyShopOfferRequestSerializer,
+    ShopOfferDetailSerializer,
+    ShopOfferListSerializer,
+    ShopPurchaseSerializer,
+)
 
 __all__ = [
     "CharacterClassSerializer",
@@ -46,6 +52,10 @@ __all__ = [
     "LeaderboardItemSerializer",
     "LoginSerializer",
     "RegisterSerializer",
+    "BuyShopOfferRequestSerializer",
+    "ShopOfferDetailSerializer",
+    "ShopOfferListSerializer",
+    "ShopPurchaseSerializer",
     "TotpCodeSerializer",
     "TotpDisableSerializer",
     "TotpLoginSerializer",

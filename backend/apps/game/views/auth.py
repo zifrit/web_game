@@ -106,13 +106,15 @@ class MeView(APIView):
     def get(self, request):
         """Возвращает профиль, баланс и признак наличия созданного героя."""
 
-        user = User.objects.select_related("avatar_media", "character", "two_factor").get(pk=request.user.pk)
+        user = User.objects.select_related("avatar_media", "character", "two_factor", "premium_balance").get(pk=request.user.pk)
         self.check_object_permissions(request, user)
+        premium_balance = getattr(user, "premium_balance", None)
         return Response(
             {
                 "id": user.id,
                 "email": user.email,
                 "money_copper": user.money_copper,
+                "premium_currency": premium_balance.amount if premium_balance else 0,
                 "has_character": hasattr(user, "character"),
                 "avatar": media_payload(user.avatar_media, {"request": request}),
                 "two_factor": {

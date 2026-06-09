@@ -44,6 +44,12 @@ from .inventory import (
     InventoryView,
 )
 from .leaderboard import LeaderboardView
+from .shop import (
+    BuyShopOfferView,
+    ShopOfferDetailView,
+    ShopOfferListView,
+    ShopPurchasesView,
+)
 
 __all__ = [
     "CharacterClassListView",
@@ -84,6 +90,10 @@ __all__ = [
     "PotionListView",
     "PotionUseView",
     "RegisterView",
+    "BuyShopOfferView",
+    "ShopOfferDetailView",
+    "ShopOfferListView",
+    "ShopPurchasesView",
     "TotpLoginView",
     "TwoFactorConfirmView",
     "TwoFactorDisableView",
