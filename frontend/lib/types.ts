@@ -15,6 +15,7 @@ export type User = {
   id: number;
   email: string;
   money_copper?: number;
+  premium_currency?: number;
   has_character: boolean;
   avatar?: MediaAssetUrls | null;
   two_factor?: TwoFactorStatus;
@@ -486,4 +487,92 @@ export type Leaderboard = {
     level?: number;
     power?: number;
   } | null;
+};
+
+export type ShopRewardKind = "ingredient" | "potion" | "item";
+export type ShopDeliveryMode = "single" | "chest";
+export type PaymentCurrency = "money_copper" | "premium_currency";
+
+export type ShopPrices = {
+  money_copper?: number;
+  premium_currency?: number;
+};
+
+export type ShopOffer = {
+  id: number;
+  reward_kind: ShopRewardKind;
+  delivery_mode: ShopDeliveryMode;
+  name: string;
+  description: string;
+  quantity: number;
+  prices: ShopPrices;
+  media?: MediaAssetUrls | null;
+};
+
+export type ShopPossibleReward = {
+  type: ShopRewardKind;
+  template_id: number;
+  name: string;
+  rarity_key?: string;
+  chance: number;
+  chance_percent: number;
+  media?: MediaAssetUrls | null;
+};
+
+export type ShopOfferDetail = ShopOffer & {
+  possible_rewards: ShopPossibleReward[];
+};
+
+export type ShopPurchaseResult = {
+  ingredients?: Array<{ template_id: number; quantity: number }>;
+  potions?: Array<{ template_id: number; quantity: number }>;
+  items?: Array<{ user_item_id: number; template_id: number; rarity_key: string }>;
+};
+
+export type ShopPurchase = {
+  id: number;
+  offer_id: number;
+  offer_name?: string;
+  purchase_count: number;
+  payment_currency: PaymentCurrency;
+  unit_price: number;
+  total_price: number;
+  reward_kind: ShopRewardKind;
+  delivery_mode: ShopDeliveryMode;
+  quantity: number;
+  result: ShopPurchaseResult;
+  created_at?: string;
+};
+
+export type BuyShopOfferResponse = {
+  purchase: ShopPurchase;
+  balances: { money_copper: number; premium_currency: number };
+};
+
+export type ExchangeOffer = {
+  id: number;
+  premium_cost: number;
+  money_copper_reward: number;
+  is_active?: boolean;
+};
+
+export type ExchangeTransaction = {
+  id: number;
+  premium_spent: number;
+  money_copper_received: number;
+  created_at?: string;
+};
+
+export type ExchangeResponse = {
+  transaction: ExchangeTransaction;
+  balances: { premium_currency: number; money_copper: number };
+};
+
+export type PremiumTransaction = {
+  id: number;
+  amount: number;
+  reason: string;
+  balance_after: number;
+  metadata: Record<string, unknown>;
+  created_at?: string;
 };

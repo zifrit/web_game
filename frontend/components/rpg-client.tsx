@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Backpack, BookOpen, Compass, LogOut, Settings2, Swords, Trophy } from "lucide-react";
+import { Backpack, BookOpen, Compass, Gem, LogOut, Plus, Settings2, ShoppingBag, Swords, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AuthScreen } from "@/components/screens/auth-screen";
 import { CharacterScreen } from "@/components/screens/character-screen";
@@ -11,6 +11,8 @@ import { GuidebookScreen } from "@/components/screens/guide-screen";
 import { InventoryScreen } from "@/components/screens/inventory-screen";
 import { LeaderboardScreen } from "@/components/screens/leaderboard-screen";
 import { SettingsScreen } from "@/components/screens/settings-screen";
+import { ShopScreen } from "@/components/screens/shop-screen";
+import { ExchangeModal } from "@/components/exchange-modal";
 import { LoadingLine, Skeleton } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useI18n, useSession } from "@/components/providers";
@@ -18,9 +20,9 @@ import { formatNumber, splitCopper, type TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
 import type { MediaAssetUrls } from "@/lib/types";
 
-type Tab = "character" | "dungeons" | "inventory" | "leaderboard" | "settings" | "guide";
+type Tab = "character" | "dungeons" | "shop" | "inventory" | "leaderboard" | "settings" | "guide";
 
-const VALID_TABS: Tab[] = ["character", "dungeons", "inventory", "leaderboard", "settings", "guide"];
+const VALID_TABS: Tab[] = ["character", "dungeons", "shop", "inventory", "leaderboard", "settings", "guide"];
 
 function getInitialTab(): Tab {
   if (typeof window === "undefined") return "character";
@@ -29,9 +31,10 @@ function getInitialTab(): Tab {
 }
 
 /* ── nav structure ── */
-const ADVENTURE_NAV: Array<{ key: Tab; labelKey: "nav.character" | "nav.dungeons" }> = [
+const ADVENTURE_NAV: Array<{ key: Tab; labelKey: "nav.character" | "nav.dungeons" | "nav.shop" }> = [
   { key: "character", labelKey: "nav.character" },
   { key: "dungeons",  labelKey: "nav.dungeons"  },
+  { key: "shop",      labelKey: "nav.shop"      },
 ];
 
 const HERO_NAV: Array<{ key: Tab; labelKey: "nav.inventory" | "nav.leaderboard" | "nav.settings" | "nav.guide" }> = [
@@ -42,17 +45,19 @@ const HERO_NAV: Array<{ key: Tab; labelKey: "nav.inventory" | "nav.leaderboard" 
 ];
 
 const NAV_ICONS: Record<Tab, React.ReactNode> = {
-  character:   <Swords    size={15} strokeWidth={1.7} />,
-  dungeons:    <Compass   size={15} strokeWidth={1.7} />,
-  inventory:   <Backpack  size={15} strokeWidth={1.7} />,
-  leaderboard: <Trophy    size={15} strokeWidth={1.7} />,
-  guide:       <BookOpen  size={15} strokeWidth={1.7} />,
-  settings:    <Settings2 size={15} strokeWidth={1.7} />,
+  character:   <Swords      size={15} strokeWidth={1.7} />,
+  dungeons:    <Compass     size={15} strokeWidth={1.7} />,
+  shop:        <ShoppingBag size={15} strokeWidth={1.7} />,
+  inventory:   <Backpack    size={15} strokeWidth={1.7} />,
+  leaderboard: <Trophy      size={15} strokeWidth={1.7} />,
+  guide:       <BookOpen    size={15} strokeWidth={1.7} />,
+  settings:    <Settings2   size={15} strokeWidth={1.7} />,
 };
 
 const PAGE_META: Record<Tab, { sectionKey: TranslationKey; titleKey: TranslationKey }> = {
   character:   { sectionKey: "page.character.section",    titleKey: "page.character.title" },
   dungeons:    { sectionKey: "page.dungeons.section",     titleKey: "page.dungeons.title"  },
+  shop:        { sectionKey: "page.shop.section",         titleKey: "page.shop.title" },
   inventory:   { sectionKey: "page.inventory.section",    titleKey: "page.inventory.title" },
   leaderboard: { sectionKey: "page.leaderboard.section",  titleKey: "page.leaderboard.title" },
   settings:    { sectionKey: "page.settings.section",     titleKey: "page.settings.title" },
@@ -271,12 +276,14 @@ function MobileNav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
 }
 
 /* ─── Topbar ─── */
-function Topbar({ meta, title, level, rank, gold }: {
+function Topbar({ meta, title, level, rank, gold, premium, onOpenExchange }: {
   meta: { section: string };
   title: string;
   level?: number;
   rank?: string;
   gold?: number;
+  premium?: number;
+  onOpenExchange?: () => void;
 }) {
   const { locale, t } = useI18n();
   const money = splitCopper(gold);
@@ -328,6 +335,32 @@ function Topbar({ meta, title, level, rank, gold }: {
               <span style={{ color: "#CBD5E1" }}>{money.silver}{moneyLabels.silver}</span>
               <span style={{ color: "#CD7C45" }}>{money.copper}{moneyLabels.copper}</span>
             </span>
+            {onOpenExchange && (
+              <button
+                onClick={onOpenExchange}
+                title={t("exchange.title")}
+                aria-label={t("exchange.title")}
+                style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  width: 24, height: 24, marginLeft: 2, borderRadius: 7, cursor: "pointer",
+                  background: "rgba(96,165,250,0.14)", border: "1px solid rgba(96,165,250,0.35)",
+                  color: "#93C5FD",
+                }}
+              >
+                <Plus size={14} strokeWidth={2.2} />
+              </button>
+            )}
+          </div>
+        )}
+        {premium !== undefined && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 7,
+            padding: "10px 15px", borderRadius: 12,
+            background: "#1A2235", border: "1px solid #3B2A55",
+            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", fontSize: 14, fontWeight: 700,
+            color: "#C084FC",
+          }}>
+            <Gem size={14} /> {formatNumber(premium, locale)}
           </div>
         )}
       </div>
@@ -346,6 +379,7 @@ export function RpgClient() {
     setTabState(next);
     localStorage.setItem("activeTab", next);
   };
+  const [exchangeOpen, setExchangeOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const meQuery = useQuery({
@@ -388,6 +422,7 @@ export function RpgClient() {
 
   const charLevel = characterQuery.data?.level;
   const gold = activeUser.money_copper ?? 0;
+  const premium = activeUser.premium_currency ?? 0;
   const pageMeta = PAGE_META[tab];
   const meta = { section: t(pageMeta.sectionKey) };
   const pageTitle = tab === "character" && characterQuery.data
@@ -428,6 +463,8 @@ export function RpgClient() {
           level={charLevel}
           rank={characterQuery.data?.rank}
           gold={gold}
+          premium={premium}
+          onOpenExchange={() => setExchangeOpen(true)}
         />
 
         {/* Mobile nav */}
@@ -445,6 +482,7 @@ export function RpgClient() {
               />
             )}
             {tab === "dungeons"    && <DungeonsScreen />}
+            {tab === "shop"        && <ShopScreen />}
             {tab === "inventory"   && <InventoryScreen />}
             {tab === "leaderboard" && <LeaderboardScreen />}
             {tab === "settings"    && <SettingsScreen />}
@@ -452,6 +490,8 @@ export function RpgClient() {
           </div>
         </div>
       </div>
+
+      {exchangeOpen && <ExchangeModal onClose={() => setExchangeOpen(false)} />}
     </div>
   );
 }

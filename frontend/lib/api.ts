@@ -10,6 +10,7 @@ export type ApiUser = {
   id: number;
   email: string;
   money_copper?: number;
+  premium_currency?: number;
   has_character: boolean;
   avatar?: AppTypes.MediaAssetUrls | null;
   two_factor?: AppTypes.TwoFactorStatus;
@@ -450,6 +451,39 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ avatar_media_id: avatarMediaId }),
     });
+  },
+  shopOffers() {
+    return apiFetch<AppTypes.ShopOffer[]>("/shop/offers");
+  },
+  shopOffer(id: number) {
+    return apiFetch<AppTypes.ShopOfferDetail>(`/shop/offers/${id}`);
+  },
+  buyShopOffer(id: number, payload: { purchase_count: number; payment_currency: AppTypes.PaymentCurrency }) {
+    return apiFetch<AppTypes.BuyShopOfferResponse>(`/shop/offers/${id}/buy`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  shopPurchases() {
+    return apiFetch<{ results: AppTypes.ShopPurchase[] }>("/shop/purchases");
+  },
+  billingExchangeOffers() {
+    return apiFetch<AppTypes.ExchangeOffer[]>("/billing/exchange-offers");
+  },
+  billingExchangeOffer(id: number) {
+    return apiFetch<AppTypes.ExchangeOffer>(`/billing/exchange-offers/${id}`);
+  },
+  exchangeCurrency(id: number) {
+    return apiFetch<AppTypes.ExchangeResponse>(`/billing/exchange-offers/${id}/exchange`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  },
+  billingExchangeTransactions() {
+    return apiFetch<{ results: AppTypes.ExchangeTransaction[] }>("/billing/exchange-transactions");
+  },
+  billingPremiumTransactions() {
+    return apiFetch<{ results: AppTypes.PremiumTransaction[] }>("/billing/premium-transactions");
   },
   twoFactorStatus() {
     return apiFetch<AppTypes.TwoFactorStatus>("/auth/two-factor");
