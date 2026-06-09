@@ -1,6 +1,6 @@
 # Backend Inventory
 
-Updated from code inspection on 2026-05-31.
+Updated from code inspection on 2026-06-08.
 
 ## Entrypoints
 
@@ -30,6 +30,11 @@ Updated from code inspection on 2026-05-31.
   `EquipmentSlotConfig`, `GameConfig`.
 - `items.py` - `ItemTemplate` with `rarity_key`, `UserItem`,
   `RepairTransaction`.
+- `ingredients.py` - `IngredientTemplate`, per-hero `HeroIngredientStorage`,
+  and `DungeonIngredientDrop` with independent per-location drop rolls.
+- `consumables.py` - `PotionTemplate` and per-hero `HeroPotionStorage`.
+- `crafting.py` - `CraftRecipe` and `CraftRecipeIngredient` for recipe-driven
+  potion crafting.
 - `dungeons.py` - `DungeonLocation` with `has_mini_game` (gates availability;
   no FK to a config anymore),
   `DungeonLocationItemTemplate` with per-location item `chance` weights,
@@ -57,7 +62,12 @@ and domain modules:
 - `mini_game_store.py` - `MiniGameStore` (Redis state + per-run lock)
 - `mini_game_faces.py` - loads seed SVG faces from `apps/game/data/memory_faces/`
 - `inventory.py` - `InventoryService`
+- `ingredients.py` - `IngredientService` and `IngredientDropService`
+- `consumables.py` - `PotionService`
+- `crafting.py` - `CraftService`
 - `ranks.py` - F/E/D/C/B/A/S/EX rank ranges and helpers
+- `reference_cache.py` - shared reference/leaderboard cache helpers and cache
+  version bumping.
 - `seed_data.py` - ranked item template seed helpers
 
 The `apps.game.services` facade exports:
@@ -69,7 +79,11 @@ The `apps.game.services` facade exports:
 - `DungeonRunService`
 - `DungeonMiniGameService`
 - `InventoryService`
+- `IngredientDropService`
+- `IngredientService`
 - `ClaimResult`
+- `CraftService`
+- `PotionService`
 - `item_allowed_for_character`
 
 Inventory economy notes:
@@ -84,6 +98,19 @@ Inventory economy notes:
   item repair endpoints delegate to the bulk service with one id.
 - Destroy physically deletes `UserItem` rows and does not create a deletion log.
 
+Consumables and crafting notes:
+
+- Ingredient rewards are stored in `HeroIngredientStorage`; they are not
+  `UserItem` rows and do not consume inventory capacity.
+- `IngredientDropService.roll_drops` rolls each configured
+  `DungeonIngredientDrop` independently.
+- `PotionService.use_potion` locks the character and potion storage, heals by
+  `GameFormulaService.potion_heal`, and returns current/max HP plus remaining
+  potion count.
+- `CraftService.craft_potions` locks the hero and ingredient storages, validates
+  active recipe, hero level and counts, then decrements ingredients and
+  increments `HeroPotionStorage`.
+
 ## Serializers and views
 
 Serializer domains:
@@ -92,6 +119,9 @@ Serializer domains:
 - `characters.py`
 - `dungeons.py`
 - `inventory.py`
+- `ingredients.py`
+- `consumables.py`
+- `crafting.py`
 - `leaderboard.py`
 - `common.py`
 
@@ -115,6 +145,9 @@ View domains:
 - `characters.py`
 - `dungeons.py`
 - `inventory.py`
+- `ingredients.py`
+- `consumables.py`
+- `crafting.py`
 - `leaderboard.py`
 
 `serializers/__init__.py` and `views/__init__.py` re-export public classes.
@@ -129,6 +162,8 @@ query through `request.user`, so superuser bypass does not add impersonation.
 - `backend/apps/game/management/commands/seed_game.py` seeds MVP data.
 - `backend/apps/game/management/commands/seed_item_templates.py` idempotently
   creates 176 ranked F-EX item templates; `seed_game` calls the same helper.
+- `seed_game.py` also seeds active ingredients, healing potions, dungeon
+  ingredient drops, and small/medium/large healing recipes.
 - `backend/apps/game/management/commands/generate_game_images.py` generates
   local webp image variants from CSV prompts through Polza.ai; it has dry-run,
   limit, max-images and retry behavior.

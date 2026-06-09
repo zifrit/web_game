@@ -2,15 +2,16 @@
 
 ## Domain boundaries
 
-- Нет активного `accounts` app. Auth endpoints живут в `apps.game`.
-- Все публичные API endpoints монтируются под `/api/`.
-- `backend/apps/game/urls.py` остается единым routes-файлом, пока явно не
-  попросят split.
-- Не схлопывать `models/`, `serializers/`, `views/` обратно в одиночные `.py`.
+- There is no active `accounts` app. Auth endpoints live in `apps.game`.
+- All public API endpoints are mounted under `/api/`.
+- `backend/apps/game/urls.py` remains the single routes file unless a split is
+  explicitly requested.
+- Do not collapse `models/`, `serializers/`, or `views/` back into single
+  `.py` files.
 
 ## Services first
 
-Игровые формулы и mutating economy/game operations держать в services:
+Keep game formulas and mutating economy/game operations in services:
 
 - `GameConfigService`
 - `GameBalanceService`
@@ -19,28 +20,34 @@
 - `DungeonRunService`
 - `DungeonMiniGameService`
 - `InventoryService`
+- `IngredientService`
+- `PotionService`
+- `CraftService`
 
-Views и serializers должны оставаться тонкими. Claim, repair, equip, unequip и
-start dungeon run требуют явных transactional boundaries там, где меняют
-экономику или состояние героя.
+Views and serializers should stay thin. Claim, repair, equip, unequip, and
+start dungeon run require explicit transactional boundaries where they change
+economy or hero state. Ingredient rewards, potion use, and potion crafting
+should also go through services instead of being calculated in views.
 
 ## Dungeon and claim rules
 
-- У героя может быть только один активный `IN_PROGRESS` run.
-- Completion гибридный: Celery Beat завершает due runs периодически, а
-  `GET /api/dungeon-runs/current` и claim flow завершают due runs on demand.
-- Claim должен быть idempotent.
-- Мини-игра ускорения доступна для активного run, если у локации
-  `has_mini_game=true`; сложность (`config_id`) выбирает игрок при старте и она
-  фиксируется на run (одна попытка на run).
-- Live-состояние партии (доска, счётчики) живёт в Redis; в БД пишется один
-  финальный снимок. Подсчёт server-authoritative, ходы идемпотентны.
-- Успех сокращает время run на `reward_duration_reduction_percent` от полной
-  длительности данжа, с потолком `max_reduction_seconds` и клампом не раньше
-  старта; правка `ends_at` — под `select_for_update(run)` и только при
-  `IN_PROGRESS`.
-- При потере Redis-ключа активной партии она закрывается как `SUCCESS` с
-  `system_error=true` и полным ускорением.
+- A hero can have only one active `IN_PROGRESS` run.
+- Completion is hybrid: Celery Beat periodically completes due runs, while
+  `GET /api/dungeon-runs/current` and the claim flow complete due runs on
+  demand.
+- Claim must be idempotent.
+- The acceleration mini-game is available for an active run when the location
+  has `has_mini_game=true`; the player chooses difficulty (`config_id`) at
+  start, and it is fixed on the run (one attempt per run).
+- Live attempt state (board, counters) lives in Redis; a single final snapshot
+  is written to the database. Scoring is server-authoritative and moves are
+  idempotent.
+- Success reduces run time by `reward_duration_reduction_percent` of the full
+  dungeon duration, capped by `max_reduction_seconds` and clamped no earlier
+  than the start time; edits to `ends_at` happen under `select_for_update(run)`
+  and only while `IN_PROGRESS`.
+- If the Redis key for an active attempt is lost, the attempt closes as
+  `SUCCESS` with `system_error=true` and full acceleration.
 
 ## Inventory and durability
 
@@ -55,35 +62,53 @@ start dungeon run требуют явных transactional boundaries там, г�
 - Ranked item templates are command-seeded, not data-migrated:
   `seed_item_templates` creates 176 active templates via
   `apps.game.services.seed_data`, and `seed_game` calls the same helper.
-- Inventory capacity в MVP unlimited.
-- `slots_limit` и `free_slots` равны `null`, когда capacity unlimited.
-- 24 visible pack cells - только page/window size, не лимит вместимости.
-- Broken equipped items остаются equipped, не дают stats, блокируют start new
-  dungeon runs и не могут быть equipped again до ремонта.
-- Ремонт и уничтожение предметов считаются в `InventoryService` через массовые
-  методы; одиночные сценарии передают один id в ту же bulk-логику.
-- Формула ремонта:
+- Inventory capacity is unlimited in the MVP.
+- `slots_limit` and `free_slots` are `null` when capacity is unlimited.
+- 24 visible pack cells are only the page/window size, not a capacity limit.
+- Broken equipped items remain equipped, provide no stats, block starting new
+  dungeon runs, and cannot be equipped again until repaired.
+- Repair and destroy are calculated in `InventoryService` through bulk methods;
+  single-item scenarios pass one id into the same bulk logic.
+- Repair formula:
   `rarity.economy_multiplier * ((durability_max - durability_current) * 2.5)`,
-  банковское округление до целого.
-- Формула уничтожения:
-  `rarity.economy_multiplier * (durability_current * 2)`, банковское
-  округление до целого. Уничтожение физически удаляет `UserItem`.
+  banker's rounding to integer.
+- Destroy formula:
+  `rarity.economy_multiplier * (durability_current * 2)`, banker's rounding to
+  integer. Destroy physically deletes `UserItem`.
+
+## Consumables and crafting
+
+- Ingredients are a separate hero storage, not inventory items. Dungeon
+  ingredient drops are independent per-location rolls from
+  `DungeonIngredientDrop`.
+- Potions are a separate hero storage. `PotionService.use_potion` locks the
+  character and potion storage, heals against backend `max_hp`, decrements the
+  stack, and rejects use at full HP.
+- Potion crafting is recipe-driven. `CraftRecipe.difficulty` maps to small,
+  medium, or large recipe tabs; each recipe points to one `PotionTemplate` and
+  has `CraftRecipeIngredient` slots.
+- `CraftService.craft_potions` is transactional: it locks the hero and matching
+  ingredient storages, checks level and ingredient counts, decrements
+  ingredients, then increments `HeroPotionStorage`.
+- Current seed data creates small, medium and large healing recipes; large
+  healing requires hero level 5. Do not treat this as generic item/equipment
+  crafting.
 
 ## Media assets
 
-- `MediaAsset` хранит `original`, `large`, `medium`, `small`; старые `icon` и
-  `thumbnail` удалены из активной модели.
-- Публичный media payload возвращает только `large_url`, `medium_url`,
-  `small_url`; `original_url` остается внутренним/админским URL.
-- Краткие предметы inventory/equipment возвращают `media`, а не `icon_url`.
-- `CharacterClass` хранит раздельные портреты `male_media`/`female_media`;
-  публичный `/api/character-classes` временно сохраняет `media` как alias
-  мужского портрета для совместимости. При создании героя `gender` обязателен,
-  а `Character.avatar_media` ставится из медиа выбранного класса и пола с
-  fallback на доступный портрет класса.
-- `asset_type=icons` используется для picker аватара пользователя:
-  `GET /api/media/icons` возвращает только ICONS-ассеты, а
-  `PATCH /api/auth/me/avatar` принимает `avatar_media_id` и отклоняет не-icons.
-- Генератор ассетов не пишет в БД: он читает CSV prompts, вызывает Polza.ai,
-  сохраняет `original.webp`, `512x512.webp`, `256x256.webp`, `128x128.webp`
-  в локальный output.
+- `MediaAsset` stores `original`, `large`, `medium`, and `small`; legacy `icon`
+  and `thumbnail` fields were removed from the active model.
+- Public media payloads return only `large_url`, `medium_url`, and `small_url`;
+  `original_url` remains an internal/admin URL.
+- Short inventory/equipment items return `media`, not `icon_url`.
+- `CharacterClass` stores separate `male_media`/`female_media` portraits; public
+  `/api/character-classes` temporarily keeps `media` as a male-portrait
+  compatibility alias. Hero creation requires `gender`, and
+  `Character.avatar_media` is set from the selected class and gender media with
+  fallback to the available class portrait.
+- `asset_type=icons` is used for the user avatar picker: `GET /api/media/icons`
+  returns only ICONS assets, and `PATCH /api/auth/me/avatar` accepts
+  `avatar_media_id` while rejecting non-icon assets.
+- The asset generator does not write to the database: it reads CSV prompts,
+  calls Polza.ai, and saves `original.webp`, `512x512.webp`, `256x256.webp`,
+  and `128x128.webp` to local output.

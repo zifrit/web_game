@@ -1,6 +1,6 @@
 # API Routes Inventory
 
-Updated from code inspection on 2026-05-30.
+Updated from code inspection on 2026-06-08.
 
 Source: `backend/config/urls.py`, `backend/apps/game/urls.py`.
 
@@ -34,15 +34,16 @@ Dungeons:
 
 - `GET /api/dungeons`
 - `GET /api/dungeons/<id>`
+- `GET /api/dungeons/<id>/loot`
 - `POST /api/dungeon-runs`
 - `GET /api/dungeon-runs/current`
 - `POST /api/dungeon-runs/<id>/claim`
-- `POST /api/dungeon-runs/<id>/mini-game/start` (body `config_id` — выбранная сложность)
+- `POST /api/dungeon-runs/<id>/mini-game/start` (body `config_id` - selected difficulty)
 - `POST /api/dungeon-mini-games/<id>/reveal`
 - `POST /api/dungeon-mini-games/<id>/move`
 - `GET /api/dungeon-mini-games/history`
-- `GET /api/mini-game/configs` (каталог сложностей с процентом ускорения)
-- `GET /api/mini-game/card-faces` (каталог SVG-лиц, ETag/версия)
+- `GET /api/mini-game/configs` (difficulty catalog with acceleration percent)
+- `GET /api/mini-game/card-faces` (SVG face catalog, ETag/version)
 - `GET /api/dungeon-runs/history`
 
 Inventory:
@@ -57,6 +58,14 @@ Inventory:
 - `POST /api/inventory/items/<item_id>/repair`
 - `POST /api/inventory/items/<item_id>/equip`
 - `POST /api/inventory/items/<item_id>/unequip`
+
+Consumables and crafting:
+
+- `GET /api/ingredients`
+- `GET /api/potions`
+- `POST /api/potions/use`
+- `GET /api/craft/recipes`
+- `POST /api/craft/potions`
 
 Leaderboard:
 

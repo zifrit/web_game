@@ -2,23 +2,24 @@
 
 ## API and state
 
-- Все API вызовы держать через `frontend/lib/api.ts`.
-- API base выбирается через `NEXT_PUBLIC_API_BASE_URL` или fallback на текущий
-  host с портом `8000`.
-- Tokens хранятся в `localStorage` ключом `rpg_tokens`.
-- Активная вкладка shell хранится в `localStorage` ключом `activeTab`.
-- Locale хранится через helpers в `frontend/lib/i18n.ts`; API получает
+- Keep all API calls in `frontend/lib/api.ts`.
+- API base is selected through `NEXT_PUBLIC_API_BASE_URL`, or falls back to the
+  current host with port `8000`.
+- Tokens are stored in `localStorage` under the `rpg_tokens` key.
+- The active shell tab is stored in `localStorage` under the `activeTab` key.
+- Locale is stored through helpers in `frontend/lib/i18n.ts`; API requests send
   `Accept-Language`.
-- После claim/repair/auth changes инвалидировать relevant TanStack Query data.
-- После drag-and-drop equip/unequip на Character screen патчить relevant
-  TanStack Query cache из server response без полной перезагрузки
-  `character`, `inventory` и `me`; если мини-инвентарь просел ниже 24 видимых
-  pack-предметов и есть следующие страницы, дозагрузить только недостающие
-  предметы.
+- After claim/repair/auth changes, invalidate relevant TanStack Query data.
+- After potion use, invalidate `potions` and `character`; after crafting,
+  invalidate `ingredients`, `potions`, and `character`.
+- After drag-and-drop equip/unequip on the Character screen, patch relevant
+  TanStack Query cache from the server response without fully refetching
+  `character`, `inventory`, and `me`; if the mini-inventory drops below 24
+  visible pack items and more pages exist, load only the missing items.
 
 ## Screens
 
-Главный shell `frontend/components/rpg-client.tsx` выбирает игровые экраны:
+The main shell `frontend/components/rpg-client.tsx` chooses game screens:
 
 - auth
 - create character
@@ -28,48 +29,54 @@
 - leaderboard
 - settings
 
-`frontend/components/screens/settings-screen.tsx` существует как экран и должен
-считаться частью текущего frontend-состояния. Он управляет языком и avatar
-picker через `api.iconAssets()` / `api.updateAvatar()`.
+`frontend/components/screens/settings-screen.tsx` exists as a screen and should
+be treated as part of the current frontend state. It manages language and the
+avatar picker through `api.iconAssets()` / `api.updateAvatar()`.
 
-Create-character screen требует выбор пола (`male`/`female`) и переключает
-картинки классов между `male_media` и `female_media`. Портрет героя должен
-использовать `Character.avatar`, а нижний профильный аватар в sidebar -
-`User.avatar`, чтобы не подменять фото профиля картинкой героя.
+The create-character screen requires gender selection (`male`/`female`) and
+switches class images between `male_media` and `female_media`. The hero portrait
+should use `Character.avatar`, while the lower profile avatar in the sidebar
+should use `User.avatar` so the profile image is not replaced by hero art.
 
 ## UI intent
 
-- Интерфейс должен быть actual game UI, не marketing/landing page.
-- Клиент может форматировать display values, но не должен считать критичные
-  игровые формулы, rewards, economy или server-authoritative results.
-- Memory-pairs mini-game: «Ускорить» открывает модалку выбора сложности
-  (проценты из `GET /mini-game/configs`), выбор шлёт `config_id` в start;
-  доступность, таймер, подсчёт и ускорение run — server-authoritative.
-- Доска приходит по `code`; SVG-лица резолвятся локально из каталога
-  `GET /mini-game/card-faces` (хук `useCardFaces`; localStorage используется
-  только как мгновенный initialData, а backend остаётся источником истины после
-  изменений в админке). `reveal`/`move` возвращают флаг `finished`; при
-  `finished` показать result-модалку.
-- Result-модалка: зелёная при SUCCESS с фактическим `duration_reduction_seconds`,
-  красная при таймауте только если игровая модалка ещё открыта. Доска должна
-  оставаться локально стабильной: не заменять весь board после хода, обновлять
-  только выбранные/совпавшие карточки.
-- Inventory должен показывать минимум 24 cells и догружать следующие страницы,
-  если `pagination.has_next` true.
-- Backend возвращает деньги в `money_copper`; frontend разбивает баланс на
-  золото/серебро/медь: `1 gold = 100 silver = 10 000 copper`.
-- Tooltip формулы мощи на Character screen должен соответствовать backend
+- The interface should be an actual game UI, not a marketing/landing page.
+- The client may format display values, but must not calculate critical game
+  formulas, rewards, economy, or server-authoritative results.
+- Memory-pairs mini-game: "Accelerate" opens a difficulty selection modal
+  (percentages from `GET /mini-game/configs`), and the selected value sends
+  `config_id` to start; availability, timer, scoring, and run acceleration are
+  server-authoritative.
+- The board arrives by `code`; SVG faces are resolved locally from the
+  `GET /mini-game/card-faces` catalog (`useCardFaces` hook; localStorage is used
+  only as instant initialData, while the backend remains the source of truth
+  after admin changes). `reveal`/`move` return a `finished` flag; when
+  `finished`, show the result modal.
+- Result modal: green on SUCCESS with actual `duration_reduction_seconds`, red
+  on timeout only if the game modal is still open. The board should remain
+  locally stable: do not replace the entire board after a move; update only
+  selected/matched cards.
+- Inventory should show at least 24 cells and load following pages when
+  `pagination.has_next` is true.
+- Inventory has two sections: equipment and consumables. Consumables combines
+  ingredients and potions into stack cells; only potions are clickable/usable.
+- Craft panel lives in the consumables section. It fetches backend recipes,
+  chooses small/medium/large by `difficulty`, limits batch size by owned
+  ingredients, and sends `{recipe_id, quantity}` to the backend.
+- Backend returns money as `money_copper`; frontend splits balance into
+  gold/silver/copper: `1 gold = 100 silver = 10 000 copper`.
+- The power formula tooltip on the Character screen should match backend
   default weights: attack `2`, defense `1.7`, health `0.25`, crit `1`,
   evasion `1`.
 
 ## Media sizing
 
-- Frontend media contract содержит только `large_url`, `medium_url`,
-  `small_url`; не использовать `icon_url`, `thumbnail_url`, `original_url`.
-- `large` используется для dungeon artwork на вкладке dungeons, портрета героя
-  и детальной карточки предмета.
-- `medium` используется для предметов в equipment slots, списка inventory и
-  карточек классов при создании персонажа, выбирая поле медиа по выбранному
-  полу героя.
-- `small` используется для мини-инвентаря героя, quick dungeon rows, sidebar
-  avatar и leaderboard avatar.
+- Frontend media contract contains only `large_url`, `medium_url`, and
+  `small_url`; do not use `icon_url`, `thumbnail_url`, or `original_url`.
+- `large` is used for dungeon artwork on the dungeons tab, hero portrait, and
+  item detail card.
+- `medium` is used for equipment slot items, the inventory item list, and
+  create-character class cards, choosing the media field for the selected hero
+  gender.
+- `small` is used for hero mini-inventory, quick dungeon rows, sidebar avatar,
+  and leaderboard avatar.
