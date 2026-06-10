@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Backpack, BookOpen, Compass, Gem, LogOut, Plus, Settings2, ShoppingBag, Swords, Trophy } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { AuthScreen } from "@/components/screens/auth-screen";
 import { CharacterScreen } from "@/components/screens/character-screen";
 import { CreateCharacterScreen } from "@/components/screens/create-character-screen";
@@ -290,6 +290,13 @@ function Topbar({ meta, title, level, rank, gold, premium, onOpenExchange }: {
   const moneyLabels = locale === "ru"
     ? { gold: "з", silver: "с", copper: "м" }
     : { gold: "g", silver: "s", copper: "c" };
+  // Shared pill chrome; width is per-pill (level + premium hug content, money is wider).
+  const pillStyle: CSSProperties = {
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+    height: 38, padding: "0 16px", boxSizing: "border-box",
+    borderRadius: 11, whiteSpace: "nowrap", overflow: "hidden",
+    fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+  };
   return (
     <header style={{
       display: "flex", alignItems: "flex-end", justifyContent: "space-between",
@@ -312,22 +319,30 @@ function Topbar({ meta, title, level, rank, gold, premium, onOpenExchange }: {
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         {level !== undefined && (
           <div style={{
-            display: "flex", alignItems: "center", gap: 8,
-            padding: "8px 14px", borderRadius: 10,
+            ...pillStyle,
             background: "#1A2235", border: "1px solid #2E3B5A",
-            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", fontSize: 12,
+            fontSize: 12,
           }}>
             <span style={{ color: "#64748B", letterSpacing: "0.12em", textTransform: "uppercase", fontSize: 10 }}>{t("common.levelShort")}</span>
             <span style={{ color: "#F1F5F9", fontWeight: 600 }}>{level}</span>
             {rank && <span style={{ color: "#94A3B8", fontWeight: 700 }}>{rank}</span>}
           </div>
         )}
+        {premium !== undefined && (
+          <div style={{
+            ...pillStyle,
+            background: "#1A2235", border: "1px solid #3B2A55",
+            fontSize: 14, fontWeight: 700,
+            color: "#C084FC",
+          }}>
+            <Gem size={14} /> {formatNumber(premium, locale)}
+          </div>
+        )}
         {gold !== undefined && (
           <div style={{
-            display: "flex", alignItems: "center", gap: 8,
-            padding: "10px 17px", borderRadius: 12,
+            ...pillStyle,
             background: "#1A2235", border: "1px solid #2E3B5A",
-            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", fontSize: 14,
+            fontSize: 14, minWidth: 200,
           }}>
             <span style={{ color: "#64748B", letterSpacing: "0.12em", textTransform: "uppercase", fontSize: 12 }}>{t("common.money")}</span>
             <span style={{ display: "inline-flex", alignItems: "baseline", gap: 7, fontWeight: 700 }}>
@@ -350,17 +365,6 @@ function Topbar({ meta, title, level, rank, gold, premium, onOpenExchange }: {
                 <Plus size={14} strokeWidth={2.2} />
               </button>
             )}
-          </div>
-        )}
-        {premium !== undefined && (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 7,
-            padding: "10px 15px", borderRadius: 12,
-            background: "#1A2235", border: "1px solid #3B2A55",
-            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", fontSize: 14, fontWeight: 700,
-            color: "#C084FC",
-          }}>
-            <Gem size={14} /> {formatNumber(premium, locale)}
           </div>
         )}
       </div>

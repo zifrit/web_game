@@ -964,12 +964,15 @@ export function CharacterScreen({
           <div className="combat-stats-divider" aria-hidden="true" />
           <div className="stat-list stat-list--combat" style={{ gridTemplateColumns: "1fr 1fr" }}>
             <div className="sl-row">
-              <span className="lbl">{t("common.attack")}</span>
-              <span className="val">{stats.attack ?? 0}</span>
+              <span className="lbl">{t("common.power")}</span>
+              <span className="val power-value" style={{ color: "var(--primary-bright)" }}>
+                {cp}
+                <PowerHelp stats={stats} power={cp} />
+              </span>
             </div>
             <div className="sl-row">
-              <span className="lbl">{t("common.intellect")}</span>
-              <span className="val">{stats.intellect ?? 0}</span>
+              <span className="lbl">{t("common.attack")}</span>
+              <span className="val">{stats.attack ?? 0}</span>
             </div>
             <div className="sl-row">
               <span className="lbl">{t("common.defense")}</span>
@@ -984,15 +987,8 @@ export function CharacterScreen({
               <span className="val">{stats.evasion ?? 0}%</span>
             </div>
             <div className="sl-row">
-              <span className="lbl">{t("common.hp")}</span>
-              <span className="val">{hpCur} / {hpMax}</span>
-            </div>
-            <div className="sl-row sl-row--power">
-              <span className="lbl">{t("common.power")}</span>
-              <span className="val power-value" style={{ color: "var(--primary-bright)" }}>
-                {cp}
-                <PowerHelp stats={stats} power={cp} />
-              </span>
+              <span className="lbl">{t("common.intellect")}</span>
+              <span className="val">{stats.intellect ?? 0}</span>
             </div>
           </div>
         </div>

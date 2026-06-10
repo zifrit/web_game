@@ -1419,6 +1419,28 @@ button, input, select, textarea { font: inherit; }
 .stat-list .val { font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, monospace); font-size: 13px; color: var(--bone); font-weight: 600; font-variant-numeric: tabular-nums; }
 .power-value { display: inline-flex; align-items: center; gap: 6px; position: relative; }
 
+/* ── Filter chips (inventory equipment rarity + consumables kind) ── */
+.filter-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.filter-chip {
+  --chip-color: var(--primary-bright);
+  min-width: 30px; height: 26px; padding: 0 9px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 7px; cursor: pointer;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+  color: var(--text-mute);
+  background: rgba(148,163,184,0.06);
+  border: 1px solid var(--line-soft);
+  transition: color .15s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.filter-chip:hover { color: var(--chip-color); border-color: var(--chip-color); }
+.filter-chip.active {
+  color: var(--chip-color);
+  border-color: var(--chip-color);
+  background: color-mix(in srgb, var(--chip-color) 16%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--chip-color) 30%, transparent);
+}
+
 /* ── Combat stats: decorative divider under the title ── */
 .combat-stats-divider {
   position: relative;
@@ -1439,17 +1461,6 @@ button, input, select, textarea { font: inherit; }
 .combat-stats-divider::before { left: 0; }
 .combat-stats-divider::after { right: 0; }
 
-/* ── Combat stats: Power on its own centered full-width row ── */
-.stat-list--combat .sl-row--power {
-  grid-column: 1 / -1;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 8px;
-  padding-top: 10px;
-  border-top: 1px dashed rgba(46,59,90,0.7);
-  border-bottom: 0;
-}
-.stat-list--combat .sl-row--power .val { font-size: 15px; }
 .power-help { display: inline-flex; position: relative; }
 .power-help-btn {
   width: 18px; height: 18px; display: grid; place-items: center;

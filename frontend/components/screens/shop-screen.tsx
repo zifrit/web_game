@@ -43,7 +43,7 @@ function ShopCard({ offer, onOpen }: { offer: ShopOffer; onOpen: (offer: ShopOff
   const imageUrl = bestMediaUrl(offer.media, ["medium_url", "large_url", "small_url"]);
 
   return (
-    <div className="card" style={{ display: "flex", flexDirection: "column", padding: 16, gap: 4 }}>
+    <div className="card" style={{ display: "flex", flexDirection: "column", height: "100%", padding: 16, gap: 4 }}>
       <div style={{
         width: "100%", aspectRatio: "1 / 1", borderRadius: 10, overflow: "hidden",
         background: "#202B44", border: "1px solid #2E3B5A", position: "relative", marginBottom: 8,
@@ -53,35 +53,38 @@ function ShopCard({ offer, onOpen }: { offer: ShopOffer; onOpen: (offer: ShopOff
         )}
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-        <span className="mono" style={{
-          fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase",
-          padding: "2px 7px", borderRadius: 4, color: "#94A3B8",
-          background: "rgba(148,163,184,0.10)", border: "1px solid rgba(148,163,184,0.22)",
-        }}>
-          {t(`shop.rewardKind.${offer.reward_kind}` as TranslationKey)}
-        </span>
-        <span className="mono" style={{
-          fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase",
-          padding: "2px 7px", borderRadius: 4, color: "#60A5FA",
-          background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.22)",
-        }}>
-          {t(`shop.deliveryMode.${offer.delivery_mode}` as TranslationKey)}
-          {offer.delivery_mode === "chest" ? ` ×${offer.quantity}` : ""}
-        </span>
+      {/* Content grows so the button below stays bottom-aligned across the row */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minHeight: 0 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          <span className="mono" style={{
+            fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase",
+            padding: "2px 7px", borderRadius: 4, color: "#94A3B8",
+            background: "rgba(148,163,184,0.10)", border: "1px solid rgba(148,163,184,0.22)",
+          }}>
+            {t(`shop.rewardKind.${offer.reward_kind}` as TranslationKey)}
+          </span>
+          <span className="mono" style={{
+            fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase",
+            padding: "2px 7px", borderRadius: 4, color: "#60A5FA",
+            background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.22)",
+          }}>
+            {t(`shop.deliveryMode.${offer.delivery_mode}` as TranslationKey)}
+            {offer.delivery_mode === "chest" ? ` ×${offer.quantity}` : ""}
+          </span>
+        </div>
+
+        <h3 style={{
+          fontFamily: "var(--font-cinzel, 'Cinzel', serif)", fontSize: 16, fontWeight: 600,
+          margin: "8px 0 0", color: "var(--bone)",
+        }}>{offer.name}</h3>
+        {offer.description && (
+          <p style={{ fontSize: 12, color: "var(--text-mute)", margin: "4px 0 0", lineHeight: 1.4 }}>
+            {offer.description}
+          </p>
+        )}
+
+        <PriceTags offer={offer} />
       </div>
-
-      <h3 style={{
-        fontFamily: "var(--font-cinzel, 'Cinzel', serif)", fontSize: 16, fontWeight: 600,
-        margin: "8px 0 0", color: "var(--bone)",
-      }}>{offer.name}</h3>
-      {offer.description && (
-        <p style={{ fontSize: 12, color: "var(--text-mute)", margin: "4px 0 0", lineHeight: 1.4 }}>
-          {offer.description}
-        </p>
-      )}
-
-      <PriceTags offer={offer} />
 
       <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => onOpen(offer)}>
         {t("shop.details")}
@@ -114,8 +117,11 @@ export function ShopScreen() {
     <>
       <div style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+        // Up to 5 cards per row (capped via max-width); drops to 4/3/2 when narrower.
+        gridTemplateColumns: "repeat(auto-fill, minmax(242px, 1fr))",
         gap: 16,
+        maxWidth: 1274, // 5 × 242 + 4 × 16 gap
+        marginInline: "auto",
       }}>
         {offers.map((offer) => (
           <ShopCard key={offer.id} offer={offer} onOpen={setSelected} />

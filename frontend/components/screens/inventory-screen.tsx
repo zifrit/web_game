@@ -2,13 +2,13 @@
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { Check, FlaskConical, Leaf, Minus, Plus, ShieldCheck, Wrench } from "lucide-react";
-import { useEffect, useMemo, useState, type UIEvent } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type UIEvent } from "react";
 import { useI18n } from "@/components/providers";
 import { ErrorNotice, InventoryScreenSkeleton, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import type { TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
-import { rarityColor as rc, rarityGlow as rg } from "@/lib/rarity";
+import { RARITY_COLOR, rarityColor as rc, rarityGlow as rg } from "@/lib/rarity";
 import type { Character, CraftRecipe, DestroyPreview, Ingredient, Inventory, InventoryCard, InventoryMutationResponse, ItemDetail, Potion, RepairPreview } from "@/lib/types";
 
 /** Делит общее количество на визуальные стаки по `size` (например 6 → [5, 1]). */
@@ -24,6 +24,39 @@ function splitToStacks(count: number, size = 5): number[] {
 }
 
 const INVENTORY_PAGE_SIZE = 24;
+
+/** Rarity ranks low→high; used as the equipment filter "icons". */
+const RARITY_RANKS = ["f", "e", "d", "c", "b", "a", "s", "ex"] as const;
+
+type FilterOption = { value: string | null; label: string; color?: string };
+
+/** Compact chip row used for the equipment (rarity) and consumables filters. */
+function FilterChips({ options, active, onSelect }: {
+  options: FilterOption[];
+  active: string | null;
+  onSelect: (value: string | null) => void;
+}) {
+  return (
+    <div className="filter-chips" role="group">
+      {options.map((opt) => {
+        const isActive = active === opt.value;
+        return (
+          <button
+            key={opt.value ?? "all"}
+            type="button"
+            className={`filter-chip${isActive ? " active" : ""}`}
+            aria-pressed={isActive}
+            title={opt.label}
+            onClick={() => onSelect(opt.value)}
+            style={opt.color ? ({ "--chip-color": opt.color } as CSSProperties) : undefined}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 /* ── Pack grid cell ── */
 function PackCell({
@@ -500,6 +533,7 @@ function EquipmentSection() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedBulkIds, setSelectedBulkIds] = useState<number[]>([]);
   const [bulkAction, setBulkAction] = useState<"repair" | "destroy" | null>(null);
+  const [rarityFilter, setRarityFilter] = useState<string | null>(null);
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const invQ = useInfiniteQuery({
@@ -523,10 +557,17 @@ function EquipmentSection() {
   const itemsCount   = inv?.items_count ?? items.length;
   const slotsLimit   = inv?.slots_limit ?? null;
   const freeSlots    = inv?.free_slots ?? (slotsLimit === null ? null : Math.max(slotsLimit - itemsCount, 0));
+  const filteredItems = rarityFilter
+    ? items.filter((i) => (i.rarity ?? "").toLowerCase() === rarityFilter)
+    : items;
   const packCells    = Array.from(
-    { length: Math.max(INVENTORY_PAGE_SIZE, items.length) },
-    (_, i) => items[i],
+    { length: Math.max(INVENTORY_PAGE_SIZE, filteredItems.length) },
+    (_, i) => filteredItems[i],
   );
+  const rarityOptions: FilterOption[] = [
+    { value: null, label: t("inventory.filterAll") },
+    ...RARITY_RANKS.map((rank) => ({ value: rank, label: rank.toUpperCase(), color: RARITY_COLOR[rank] })),
+  ];
   const selectedBulkSet = new Set(selectedBulkIds);
 
   const repairPreviewQ = useQuery({
@@ -680,8 +721,15 @@ function EquipmentSection() {
           {/* ── Pack grid ── */}
           <div className="card">
             <div className="card-h">
-              <div className="card-title">{t("nav.inventory")}</div>
-              <div className="card-sub">{t("inventory.stored")}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", minWidth: 0 }}>
+                <div>
+                  <div className="card-title">{t("nav.inventory")}</div>
+                  <div className="card-sub">{t("inventory.stored")}</div>
+                </div>
+                <div style={{ marginLeft: "auto" }}>
+                  <FilterChips options={rarityOptions} active={rarityFilter} onSelect={setRarityFilter} />
+                </div>
+              </div>
             </div>
             <div className="card-body">
               <div
@@ -978,6 +1026,7 @@ function CraftPanel({ ownedByIngredientId }: { ownedByIngredientId: Map<number, 
 function ConsumablesSection() {
   const { t } = useI18n();
   const queryClient = useQueryClient();
+  const [consumableFilter, setConsumableFilter] = useState<string | null>(null);
   const ingredientsQ = useQuery({ queryKey: ["ingredients"], queryFn: () => api.ingredients() });
   const potionsQ = useQuery({ queryKey: ["potions"], queryFn: () => api.potions() });
 
@@ -998,6 +1047,12 @@ function ConsumablesSection() {
       splitToStacks(pot.count).map((stack) => ({ kind: "potion" as const, data: pot, stack })),
     ),
   ];
+  const filteredCells = consumableFilter ? cells.filter((cell) => cell.kind === consumableFilter) : cells;
+  const consumableOptions: FilterOption[] = [
+    { value: null, label: t("inventory.filterAll") },
+    { value: "ingredient", label: t("inventory.filterIngredients") },
+    { value: "potion", label: t("inventory.filterPotions") },
+  ];
 
   const useM = useMutation({
     mutationFn: (potionId: number) => api.usePotion({ potion_id: potionId, quantity: 1 }),
@@ -1013,8 +1068,15 @@ function ConsumablesSection() {
     <div className="inventory-main-layout">
       <div className="card">
         <div className="card-h">
-          <div className="card-title">{t("inventory.consumables")}</div>
-          <div className="card-sub">{t("inventory.consumablesSub")}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", minWidth: 0 }}>
+            <div>
+              <div className="card-title">{t("inventory.consumables")}</div>
+              <div className="card-sub">{t("inventory.consumablesSub")}</div>
+            </div>
+            <div style={{ marginLeft: "auto" }}>
+              <FilterChips options={consumableOptions} active={consumableFilter} onSelect={setConsumableFilter} />
+            </div>
+          </div>
         </div>
         <div className="card-body">
           {isLoading ? (
@@ -1029,7 +1091,7 @@ function ConsumablesSection() {
             </div>
           ) : (
             <div className="consumables-grid">
-              {cells.map((cell, i) => (
+              {filteredCells.map((cell, i) => (
                 <ConsumableGridCell
                   key={`${cell.kind}-${cell.data.id}-${i}`}
                   cell={cell}

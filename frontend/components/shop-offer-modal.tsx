@@ -7,14 +7,30 @@ import { api, ApiError } from "@/lib/api";
 import { useI18n } from "@/components/providers";
 import { LoadingLine } from "@/components/ui";
 import { formatCopperCompact, type TranslationKey } from "@/lib/i18n";
-import type { BuyShopOfferResponse, PaymentCurrency, ShopPurchaseResult, User } from "@/lib/types";
+import { rarityColor } from "@/lib/rarity";
+import type { BuyShopOfferResponse, PaymentCurrency, ShopOfferDetail, ShopPurchaseResult, User } from "@/lib/types";
 
-function ResultRewards({ result }: { result: ShopPurchaseResult }) {
+/** Shows the concrete rewards a purchase produced, resolving names from the offer's drop table. */
+function ResultRewards({ result, offer }: { result: ShopPurchaseResult; offer: ShopOfferDetail }) {
   const { t } = useI18n();
-  const lines: string[] = [];
-  result.ingredients?.forEach((entry) => lines.push(`#${entry.template_id} ×${entry.quantity}`));
-  result.potions?.forEach((entry) => lines.push(`#${entry.template_id} ×${entry.quantity}`));
-  if (result.items?.length) lines.push(`${t("shop.rewardKind.item")} ×${result.items.length}`);
+
+  // Drop table is the source of names; purchase samples from it, so the join is complete.
+  const infoByKey = new Map<string, { name: string; rarity_key?: string }>();
+  offer.possible_rewards.forEach((reward) =>
+    infoByKey.set(`${reward.type}:${reward.template_id}`, { name: reward.name, rarity_key: reward.rarity_key }),
+  );
+
+  type Row = { key: string; label: string; qty?: number; color?: string };
+  const rows: Row[] = [];
+  result.ingredients?.forEach((entry, idx) =>
+    rows.push({ key: `ing-${idx}`, label: infoByKey.get(`ingredient:${entry.template_id}`)?.name ?? `#${entry.template_id}`, qty: entry.quantity }),
+  );
+  result.potions?.forEach((entry, idx) =>
+    rows.push({ key: `pot-${idx}`, label: infoByKey.get(`potion:${entry.template_id}`)?.name ?? `#${entry.template_id}`, qty: entry.quantity }),
+  );
+  result.items?.forEach((entry, idx) =>
+    rows.push({ key: `item-${idx}`, label: infoByKey.get(`item:${entry.template_id}`)?.name ?? `#${entry.template_id}`, color: rarityColor(entry.rarity_key) }),
+  );
 
   return (
     <div style={{
@@ -25,7 +41,11 @@ function ResultRewards({ result }: { result: ShopPurchaseResult }) {
         {t("shop.youReceived")}
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", fontSize: 13, color: "var(--bone)" }}>
-        {lines.map((line, idx) => <span key={idx}>{line}</span>)}
+        {rows.map((row) => (
+          <span key={row.key} style={row.color ? { color: row.color } : undefined}>
+            {row.label}{row.qty !== undefined ? ` ×${row.qty}` : ""}
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -118,36 +138,36 @@ export function ShopOfferModal({ offerId, onClose }: { offerId: number; onClose:
                 <p style={{ fontSize: 13, color: "var(--text-dim)", margin: "0 0 14px", lineHeight: 1.5 }}>{offer.description}</p>
               )}
 
-              {/* Possible rewards */}
-              <div className="mono" style={{ fontSize: 9, letterSpacing: "0.22em", color: "var(--text-mute)", marginBottom: 10, textTransform: "uppercase" }}>
-                {t("shop.possibleRewards")}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
-                {offer.possible_rewards.map((reward, idx) => (
-                  <div key={idx} style={{
-                    display: "flex", justifyContent: "space-between", alignItems: "center",
-                    padding: "10px 12px", borderRadius: 8,
-                    background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
-                  }}>
-                    <span style={{ fontSize: 13, color: "var(--bone)" }}>
-                      {reward.name}
-                      {reward.rarity_key && (
-                        <span className="mono" style={{ marginLeft: 8, fontSize: 9, textTransform: "uppercase", color: "var(--text-mute)" }}>
-                          {reward.rarity_key}
-                        </span>
-                      )}
-                    </span>
-                    <span className="mono" style={{ fontSize: 12, fontWeight: 600, color: "var(--success)" }}>
-                      {reward.chance_percent}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-
               {result ? (
-                <ResultRewards result={result} />
+                <ResultRewards result={result} offer={offer} />
               ) : (
                 <>
+                  {/* Possible rewards (only before purchase — hidden once a result exists) */}
+                  <div className="mono" style={{ fontSize: 9, letterSpacing: "0.22em", color: "var(--text-mute)", marginBottom: 10, textTransform: "uppercase" }}>
+                    {t("shop.possibleRewards")}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
+                    {offer.possible_rewards.map((reward, idx) => (
+                      <div key={idx} style={{
+                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                        padding: "10px 12px", borderRadius: 8,
+                        background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
+                      }}>
+                        <span style={{ fontSize: 13, color: "var(--bone)" }}>
+                          {reward.name}
+                          {reward.rarity_key && (
+                            <span className="mono" style={{ marginLeft: 8, fontSize: 9, textTransform: "uppercase", color: "var(--text-mute)" }}>
+                              {reward.rarity_key}
+                            </span>
+                          )}
+                        </span>
+                        <span className="mono" style={{ fontSize: 12, fontWeight: 600, color: "var(--success)" }}>
+                          {reward.chance_percent}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
                   {/* Purchase count */}
                   <label className="mono" style={{ display: "block", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--text-mute)", marginBottom: 6 }}>
                     {t("shop.purchaseCount")}
