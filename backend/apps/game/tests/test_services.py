@@ -11,6 +11,7 @@ from rest_framework.serializers import ValidationError as DRFValidationError
 
 from apps.game.models import CharacterClass, CraftRecipe, DungeonIngredientDrop, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonMiniGameConfig, DungeonRun, HeroIngredientStorage, HeroPotionStorage, IngredientTemplate, ItemTemplate, PotionTemplate, RarityConfig, User, UserItem
 from apps.game.services import CraftService, DungeonMiniGameService, DungeonRunService, GameBalanceService, GameFormulaService, IngredientDropService, IngredientService, InventoryService, LootGenerationService, PotionService
+from apps.game.services import INGREDIENT_STORAGE, POTION_STORAGE
 from apps.game.services.ranks import RANKS, rank_for_level
 
 
@@ -944,6 +945,58 @@ class CraftTests(TestCase):
         self.assertEqual(self._count("forest_herb"), 50 - 3 * 2)
 
 
+class HeroStorageTests(TestCase):
+    """Проверки шва складов героя (deposit/withdraw, самоблокировка, инвариант)."""
+
+    def setUp(self):
+        SeedCommand().handle()
+        self.user = User.objects.create_user("storage@example.com", "strongpass123")
+        self.character = GameBalanceService.create_character(
+            self.user, "Keeper", CharacterClass.objects.get(key="warrior")
+        )
+        self.herb = IngredientTemplate.objects.get(code="forest_herb")
+        self.potion = PotionTemplate.objects.get(code="medium_healing_potion")
+
+    def test_deposit_creates_row_and_increments(self):
+        self.assertEqual(INGREDIENT_STORAGE.get_count(self.character, self.herb.id), 0)
+        INGREDIENT_STORAGE.deposit(self.character, self.herb.id, 2)
+        INGREDIENT_STORAGE.deposit(self.character, self.herb.id, 3)
+        self.assertEqual(INGREDIENT_STORAGE.get_count(self.character, self.herb.id), 5)
+        self.assertEqual(
+            HeroIngredientStorage.objects.filter(
+                character=self.character, ingredient=self.herb
+            ).count(),
+            1,
+        )
+
+    def test_withdraw_decrements_and_returns_row(self):
+        INGREDIENT_STORAGE.deposit(self.character, self.herb.id, 5)
+        storage = INGREDIENT_STORAGE.withdraw(
+            self.character, self.herb.id, 2, insufficient_message="not_enough_ingredients"
+        )
+        self.assertEqual(storage.count, 3)
+        self.assertEqual(INGREDIENT_STORAGE.get_count(self.character, self.herb.id), 3)
+
+    def test_withdraw_insufficient_raises_localized(self):
+        INGREDIENT_STORAGE.deposit(self.character, self.herb.id, 1)
+        with self.assertRaises(DRFValidationError):
+            INGREDIENT_STORAGE.withdraw(
+                self.character, self.herb.id, 5, insufficient_message="not_enough_ingredients"
+            )
+        # Инвариант: неудачное списание не трогает count.
+        self.assertEqual(INGREDIENT_STORAGE.get_count(self.character, self.herb.id), 1)
+
+    def test_withdraw_missing_row_uses_missing_message(self):
+        with self.assertRaises(DRFValidationError):
+            POTION_STORAGE.withdraw(
+                self.character,
+                self.potion.id,
+                1,
+                insufficient_message="not_enough_potions",
+                missing_message="potion_not_owned",
+            )
+
+
 class IngredientTests(TestCase):
     """Проверки Этапа 4: дроп ингредиентов, склад героя и ответ claim."""
 
@@ -1116,10 +1169,40 @@ class ResourceLocationTests(TestCase):
         self.assertEqual(run.success_chance, 100)
         run.ends_at = timezone.now() - timezone.timedelta(seconds=1)
         run.save(update_fields=["ends_at", "updated_at"])
-        DungeonRunService.finalize_due_run(run)
+        DungeonRunService.finalize_due_run(run.id)
         run.refresh_from_db()
         self.assertIs(run.is_success, True)
         self.assertEqual(run.status, DungeonRun.SUCCESS_WAITING_CLAIM)
+
+    def test_finalize_due_run_is_idempotent(self):
+        # Гонка: повторный самоблокирующийся расчёт уже завершённого забега не
+        # должен пересчитывать исход (статус, успех, награды зафиксированы).
+        run = DungeonRunService.start_run(self.user, self.dungeon.id)
+        run.ends_at = timezone.now() - timezone.timedelta(seconds=1)
+        run.save(update_fields=["ends_at", "updated_at"])
+
+        DungeonRunService.finalize_due_run(run.id)
+        run.refresh_from_db()
+        settled = {
+            "status": run.status,
+            "is_success": run.is_success,
+            "money": run.money_reward_copper,
+            "experience": run.experience_reward,
+            "items": run.items_reward,
+        }
+        self.assertIn(
+            run.status,
+            (DungeonRun.SUCCESS_WAITING_CLAIM, DungeonRun.FAILED_WAITING_CLAIM),
+        )
+
+        # Второй вызов видит забег уже в *_WAITING_CLAIM и ничего не меняет.
+        DungeonRunService.finalize_due_run(run.id)
+        run.refresh_from_db()
+        self.assertEqual(run.status, settled["status"])
+        self.assertEqual(run.is_success, settled["is_success"])
+        self.assertEqual(run.money_reward_copper, settled["money"])
+        self.assertEqual(run.experience_reward, settled["experience"])
+        self.assertEqual(run.items_reward, settled["items"])
 
     def test_claim_grants_only_ingredients(self):
         before_hp = self.character.current_hp

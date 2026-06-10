@@ -35,3 +35,25 @@ The append-only, immutable record of every wallet movement
 `balance_after`, optional idempotency key. Admin-readonly, never edited or
 deleted.
 _Avoid_: history, audit log, journal.
+
+## Language — Hero storage
+
+**Hero storage**:
+A deep module that owns one item kind's count for a hero (ingredients, potions):
+it self-locks the storage row and enforces the non-negative invariant. Borrows
+the wallet's discipline but is *not* a currency — there is **no ledger**, and
+movements are not audited. One generic `HeroStorage(model, fk_field)` in
+`apps.game.services.storages` backs two instances: `INGREDIENT_STORAGE`
+(`HeroIngredientStorage`) and `POTION_STORAGE` (`HeroPotionStorage`). Callers
+never touch the `count` field directly.
+_Avoid_: inventory (that is the equipment pack), bag, stash.
+
+**deposit / withdraw**:
+The two verbs every hero storage exposes. `deposit` adds count (get-or-creates
+the row); `withdraw` removes it, enforces the non-negative invariant, and
+returns the storage row with the new count. Deliberately distinct from the
+wallet's **grant / charge** — storages are not currencies, so the verbs differ.
+`withdraw` takes an `insufficient_message` and optional `missing_message` i18n
+key so callers keep context-specific errors (`not_enough_potions`,
+`potion_not_owned`, `not_enough_ingredients`).
+_Avoid_: grant/charge (reserved for wallets), add/spend, increment/decrement.

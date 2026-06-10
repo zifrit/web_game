@@ -23,10 +23,11 @@ from apps.game.models import (
 
 from .config import GameConfigService
 from .formulas import GameFormulaService
-from .ingredients import IngredientDropService, IngredientService
+from .ingredients import IngredientDropService
 from .loot import LootGenerationService
 from .mini_game_store import MiniGameStore
 from .money import MoneyService
+from .storages import INGREDIENT_STORAGE
 
 
 class ClaimResult(BaseModel):
@@ -114,12 +115,35 @@ class DungeonRunService:
         )
 
     @classmethod
-    def finalize_due_run(cls, run: DungeonRun, now=None) -> DungeonRun:
-        """Завершает забег, если его таймер истёк, и фиксирует результат."""
+    def finalize_due_run(cls, run_id: int, now=None) -> DungeonRun:
+        """Самоблокирующийся расчёт забега: берёт его под select_for_update в
+        своей транзакции, перечитывает статус под локом и фиксирует исход.
+
+        Идемпотентен и безопасен при гонке: одновременные вызовы (Celery beat,
+        GET текущего забега) сериализуются на блокировке, и второй видит забег
+        уже в *_WAITING_CLAIM и ничего не пересчитывает. Возвращает забег.
+        """
+
+        with transaction.atomic():
+            run = (
+                DungeonRun.objects.select_for_update()
+                .select_related("location", "character", "character__character_class")
+                .get(pk=run_id)
+            )
+            cls._finalize_locked(run, now=now)
+        return run
+
+    @classmethod
+    def _finalize_locked(cls, run: DungeonRun, now=None) -> bool:
+        """Фиксирует исход забега, если таймер истёк. Требует, чтобы строка
+        забега уже была заблокирована вызывающим (select_for_update).
+
+        Возвращает True, если забег реально переведён в *_WAITING_CLAIM, иначе
+        False (таймер не истёк или забег уже не IN_PROGRESS)."""
 
         now = now or timezone.now()
         if run.status != DungeonRunStatus.IN_PROGRESS or run.ends_at > now:
-            return run
+            return False
 
         location = run.location
         if location.location_type == LocationType.RESOURCE:
@@ -170,7 +194,7 @@ class DungeonRunService:
                 "updated_at",
             ]
         )
-        return run
+        return True
 
     @classmethod
     @transaction.atomic
@@ -184,7 +208,7 @@ class DungeonRunService:
         )
         if run.character.user_id != user.id:
             raise serializers.ValidationError(message("run_not_owned", locale))
-        cls.finalize_due_run(run)
+        cls._finalize_locked(run)
 
         existing_claim = getattr(run, "claim", None)
         if existing_claim:
@@ -261,7 +285,7 @@ class DungeonRunService:
             created_items.append(item)
 
         for drop in run.ingredients_reward or []:
-            IngredientService.add_to_storage(character, drop["ingredient_id"], drop["quantity"])
+            INGREDIENT_STORAGE.deposit(character, drop["ingredient_id"], drop["quantity"])
 
         durability_total, durability_changes = cls._apply_durability_loss(character, run.durability_loss or 0)
         GameFormulaService.refresh_power_cache(character)
@@ -333,8 +357,6 @@ class DungeonRunService:
                     .select_related("location", "character", "character__character_class")
                     .get(pk=run_id)
                 )
-                before = run.status
-                cls.finalize_due_run(run)
-                if before != run.status:
+                if cls._finalize_locked(run):
                     completed += 1
         return completed

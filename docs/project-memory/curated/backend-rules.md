@@ -65,7 +65,15 @@ should also go through services instead of being calculated in views.
 - A hero can have only one active `IN_PROGRESS` run.
 - Completion is hybrid: Celery Beat periodically completes due runs, while
   `GET /api/dungeon-runs/current` and the claim flow complete due runs on
-  demand.
+  demand. All on-demand completion goes through one self-locking seam:
+  `DungeonRunService.finalize_due_run(run_id)` opens its own transaction,
+  takes `select_for_update` on the run, re-checks the IN_PROGRESS/due guard
+  under the lock, rolls the outcome, and returns the run. Callers never
+  finalize an unlocked run — the GET path and Celery loop both go through it.
+  `_finalize_locked(run)` is the inner worker for callers that already hold the
+  lock (claim, batch); it returns whether the run actually transitioned. This
+  closes the race where the unlocked GET path could roll a divergent outcome
+  against the beat task.
 - Claim must be idempotent.
 - The acceleration mini-game is available for an active run when the location
   has `has_mini_game=true`; the player chooses difficulty (`config_id`) at
@@ -109,6 +117,16 @@ should also go through services instead of being calculated in views.
 
 ## Consumables and crafting
 
+- Hero storage counts (ingredients, potions) are mutated through exactly one
+  deep seam: `apps.game.services.storages`. One generic `HeroStorage(model,
+  fk_field)` backs `INGREDIENT_STORAGE` and `POTION_STORAGE`; both expose
+  `deposit` (add, get-or-creates the row) and `withdraw` (remove, self-locks,
+  enforces non-negative, returns the row with the new count). No caller touches
+  the `count` field directly. Verbs are `deposit`/`withdraw` — deliberately
+  distinct from the wallet's `grant`/`charge`, since storages are not currencies
+  and have no ledger. `craft_potions` withdraws ingredients in deterministic
+  `ingredient_id` order (deadlock-safe) and deposits potions; `use_potion`
+  withdraws potions; dungeon claim deposits ingredient drops.
 - Ingredients are a separate hero storage, not inventory items. Dungeon
   ingredient drops are independent per-location rolls from
   `DungeonIngredientDrop`.

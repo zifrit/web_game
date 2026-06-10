@@ -7,6 +7,7 @@ from apps.game.i18n import DEFAULT_LOCALE, message
 from apps.game.models import Character, HeroPotionStorage
 
 from .formulas import GameFormulaService
+from .storages import POTION_STORAGE
 
 
 class PotionService:
@@ -37,17 +38,14 @@ class PotionService:
         if character.current_hp >= max_hp:
             raise serializers.ValidationError(message("hp_already_full", locale))
 
-        try:
-            storage = (
-                HeroPotionStorage.objects.select_for_update()
-                .select_related("potion")
-                .get(character=character, potion_id=potion_id)
-            )
-        except HeroPotionStorage.DoesNotExist as exc:
-            raise serializers.ValidationError(message("potion_not_owned", locale)) from exc
-
-        if storage.count < quantity:
-            raise serializers.ValidationError(message("not_enough_potions", locale))
+        storage = POTION_STORAGE.withdraw(
+            character,
+            potion_id,
+            quantity,
+            insufficient_message="not_enough_potions",
+            missing_message="potion_not_owned",
+            locale=locale,
+        )
 
         heal_per = GameFormulaService.potion_heal(max_hp, storage.potion.heal_percent)
         total_heal = heal_per * quantity
@@ -56,9 +54,6 @@ class PotionService:
 
         character.current_hp = new_hp
         character.save(update_fields=["current_hp", "updated_at"])
-
-        storage.count -= quantity
-        storage.save(update_fields=["count", "updated_at"])
 
         return {
             "potion_id": potion_id,

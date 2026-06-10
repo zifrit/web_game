@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import random
 
-from django.db import transaction
 from rest_framework import serializers
 
 from apps.game.i18n import DEFAULT_LOCALE, message
@@ -25,21 +24,6 @@ class IngredientService:
             return user.character
         except Character.DoesNotExist as exc:
             raise serializers.ValidationError(message("no_character", locale)) from exc
-
-    @classmethod
-    @transaction.atomic
-    def add_to_storage(cls, character: Character, ingredient_id: int, quantity: int) -> HeroIngredientStorage:
-        """Транзакционно добавляет ингредиенты на склад героя, инкрементируя count."""
-
-        quantity = max(int(quantity), 0)
-        storage, _ = (
-            HeroIngredientStorage.objects.select_for_update()
-            .get_or_create(character=character, ingredient_id=ingredient_id)
-        )
-        if quantity:
-            storage.count += quantity
-            storage.save(update_fields=["count", "updated_at"])
-        return storage
 
     @classmethod
     def list_ingredients(cls, user, locale=DEFAULT_LOCALE):

@@ -164,7 +164,7 @@ class DungeonRunCurrentView(APIView):
         if not run:
             return Response({"current_run": None})
         if run.status == DungeonRunStatus.IN_PROGRESS:
-            DungeonRunService.finalize_due_run(run)
+            run = DungeonRunService.finalize_due_run(run.id)
         return Response(DungeonRunSerializer(run, context={"request": request}).data)
 
 

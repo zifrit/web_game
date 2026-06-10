@@ -120,7 +120,7 @@ class MiniGameFlowTests(TestCase):
         run, attempt = self._start()
         run.ends_at = timezone.now() - timezone.timedelta(seconds=1)
         run.save(update_fields=["ends_at", "updated_at"])
-        DungeonRunService.finalize_due_run(run)
+        DungeonRunService.finalize_due_run(run.id)
         attempt.refresh_from_db()
         self.assertEqual(attempt.status, DungeonMiniGameAttempt.FAILED)
         self.assertIsNone(MiniGameStore.load(run.id))

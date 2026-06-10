@@ -4,12 +4,9 @@ from django.db import transaction
 from rest_framework import serializers
 
 from apps.game.i18n import DEFAULT_LOCALE, message
-from apps.game.models import (
-    Character,
-    CraftRecipe,
-    HeroIngredientStorage,
-    HeroPotionStorage,
-)
+from apps.game.models import Character, CraftRecipe
+
+from .storages import INGREDIENT_STORAGE, POTION_STORAGE
 
 
 class CraftService:
@@ -44,33 +41,20 @@ class CraftService:
         if character.level < recipe.required_hero_level:
             raise serializers.ValidationError(message("hero_level_too_low", locale))
 
-        recipe_ingredients = list(recipe.ingredients.all())
-        storages = {
-            s.ingredient_id: s
-            for s in HeroIngredientStorage.objects.select_for_update().filter(
-                character=character,
-                ingredient_id__in=[ri.ingredient_id for ri in recipe_ingredients],
+        # Детерминированный порядок захвата блокировок складов (по ingredient_id)
+        # исключает дедлоки между параллельными крафтами. Списание идёт по одному;
+        # нехватка любого ингредиента бросает ошибку и откатывает транзакцию целиком.
+        recipe_ingredients = sorted(recipe.ingredients.all(), key=lambda ri: ri.ingredient_id)
+        for ri in recipe_ingredients:
+            INGREDIENT_STORAGE.withdraw(
+                character,
+                ri.ingredient_id,
+                ri.quantity * quantity,
+                insufficient_message="not_enough_ingredients",
+                locale=locale,
             )
-        }
 
-        for ri in recipe_ingredients:
-            need = ri.quantity * quantity
-            have = storages.get(ri.ingredient_id)
-            if have is None or have.count < need:
-                raise serializers.ValidationError(message("not_enough_ingredients", locale))
-
-        for ri in recipe_ingredients:
-            storage = storages[ri.ingredient_id]
-            storage.count -= ri.quantity * quantity
-            storage.save(update_fields=["count", "updated_at"])
-
-        pot, _ = HeroPotionStorage.objects.select_for_update().get_or_create(
-            character=character,
-            potion=recipe.potion,
-            defaults={"count": 0},
-        )
-        pot.count += quantity
-        pot.save(update_fields=["count", "updated_at"])
+        pot = POTION_STORAGE.deposit(character, recipe.potion_id, quantity)
 
         return {
             "recipe_id": recipe.id,
