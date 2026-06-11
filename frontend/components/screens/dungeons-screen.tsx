@@ -5,6 +5,7 @@ import { Info, LayoutGrid, List, MapPin, Sprout, Swords, Zap } from "lucide-reac
 import { useEffect, useMemo, useState } from "react";
 import { canOpenMiniGame, DungeonMiniGameDifficultyModal, DungeonMiniGameModal, DungeonMiniGameResultModal } from "@/components/dungeon-mini-game-modal";
 import { DungeonLootModal } from "@/components/dungeon-loot-modal";
+import { DungeonResourceModal } from "@/components/dungeon-resource-modal";
 import { useI18n } from "@/components/providers";
 import { DungeonRewardModal } from "@/components/dungeon-reward-modal";
 import { ErrorNotice, LoadingLine } from "@/components/ui";
@@ -237,6 +238,7 @@ export function DungeonsScreen() {
   const [viewMode, setViewMode] = useState<"grid" | "list" | "map">("grid");
   const [category, setCategory] = useState<"dungeon" | "resource">("dungeon");
   const [lootDungeon, setLootDungeon] = useState<Dungeon | null>(null);
+  const [resourceLocation, setResourceLocation] = useState<Dungeon | null>(null);
   const dungeonsQuery = useQuery({ queryKey: ["dungeons"],     queryFn: api.dungeons  });
   const characterQuery = useQuery({ queryKey: ["character"],   queryFn: api.character });
   const currentRun    = useQuery({
@@ -427,49 +429,51 @@ export function DungeonsScreen() {
                     </p>
                   )}
 
-                  <div style={{
-                    display: "flex", flexWrap: "wrap", gap: 14,
-                    fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
-                    fontSize: 13, color: "var(--text-mute)",
-                  }}>
-                    <span>⏱ <strong style={{ color: "var(--bone)", fontWeight: 500 }}>{durLabel}</strong></span>
-                    <span>XP <strong style={{ color: "var(--bone)", fontWeight: 500 }}>{dungeon.rewards_preview?.experience?.max ?? "?"}</strong></span>
-                    <span>◈ <strong style={{ color: "var(--bone)", fontWeight: 500 }}>{dungeon.rewards_preview?.money_copper?.max ?? "?"}</strong></span>
-                    <span>{t("common.loot")} <strong style={{ color: "var(--success)", fontWeight: 500 }}>{dungeon.item_drop_chance}%</strong></span>
-                    {dungeon.daily_limit > 0 && (
-                      <span style={{ color: localExhausted ? "var(--warning)" : "var(--text-mute)" }}>
-                        {t("dungeons.dailyRuns", { used: dungeon.daily_limit - (localRemaining ?? 0), limit: dungeon.daily_limit })}
-                      </span>
-                    )}
-                    {dungeon.limit_category.limit_count > 0 && (
-                      <span style={{ color: categoryExhausted ? "var(--warning)" : "var(--text-mute)" }}>
-                        {t("dungeons.categoryRuns", {
-                          name: dungeon.limit_category.name,
-                          used: dungeon.limit_category.used,
-                          limit: dungeon.limit_category.limit_count,
-                        })}
-                      </span>
-                    )}
-                  </div>
+                  <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 24 }}>
+                    <div style={{
+                      display: "flex", flexWrap: "wrap", gap: 14,
+                      fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                      fontSize: 13, color: "var(--text-mute)",
+                    }}>
+                      <span>⏱ <strong style={{ color: "var(--bone)", fontWeight: 500 }}>{durLabel}</strong></span>
+                      <span>XP <strong style={{ color: "var(--bone)", fontWeight: 500 }}>{dungeon.rewards_preview?.experience?.max ?? "?"}</strong></span>
+                      <span>◈ <strong style={{ color: "var(--bone)", fontWeight: 500 }}>{dungeon.rewards_preview?.money_copper?.max ?? "?"}</strong></span>
+                      <span>{t("common.loot")} <strong style={{ color: "var(--success)", fontWeight: 500 }}>{dungeon.item_drop_chance}%</strong></span>
+                      {dungeon.daily_limit > 0 && (
+                        <span style={{ color: localExhausted ? "var(--warning)" : "var(--text-mute)" }}>
+                          {t("dungeons.dailyRuns", { used: dungeon.daily_limit - (localRemaining ?? 0), limit: dungeon.daily_limit })}
+                        </span>
+                      )}
+                      {dungeon.limit_category.limit_count > 0 && (
+                        <span style={{ color: categoryExhausted ? "var(--warning)" : "var(--text-mute)" }}>
+                          {t("dungeons.categoryRuns", {
+                            name: dungeon.limit_category.name,
+                            used: dungeon.limit_category.used,
+                            limit: dungeon.limit_category.limit_count,
+                          })}
+                        </span>
+                      )}
+                    </div>
 
-                  {/* CTA buttons */}
-                  <div style={{ marginTop: "auto", paddingTop: 4, display: "flex", gap: 8 }}>
-                    <button
-                      disabled={disabled}
-                      onClick={() => !disabled && startMutation.mutate(dungeon.id)}
-                      className="btn btn-primary"
-                      style={{ flex: 1, opacity: isActive ? 0.7 : undefined }}
-                    >
-                      {startMutation.isPending ? t("dungeons.sending") : isActive ? t("dungeons.inProgressButton") : categoryExhausted ? t("dungeons.categoryLimitReached") : localExhausted ? t("dungeons.dailyLimitReached") : awaitingClaim ? t("dungeons.claimFirst") : isRunning ? t("dungeons.heroBusy") : hpTooLow ? t("dungeons.lowHp") : t("dungeons.sendHero")}
-                    </button>
-                    <button
-                      onClick={() => setLootDungeon(dungeon)}
-                      className="btn btn-secondary"
-                      aria-label="Dungeon info"
-                      style={{ width: 40, padding: 0, flexShrink: 0 }}
-                    >
-                      <Info size={15} />
-                    </button>
+                    {/* CTA buttons */}
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        disabled={disabled}
+                        onClick={() => !disabled && startMutation.mutate(dungeon.id)}
+                        className="btn btn-primary"
+                        style={{ flex: 1, opacity: isActive ? 0.7 : undefined }}
+                      >
+                        {startMutation.isPending ? t("dungeons.sending") : isActive ? t("dungeons.inProgressButton") : categoryExhausted ? t("dungeons.categoryLimitReached") : localExhausted ? t("dungeons.dailyLimitReached") : awaitingClaim ? t("dungeons.claimFirst") : isRunning ? t("dungeons.heroBusy") : hpTooLow ? t("dungeons.lowHp") : t("dungeons.sendHero")}
+                      </button>
+                      <button
+                        onClick={() => setLootDungeon(dungeon)}
+                        className="btn btn-secondary"
+                        aria-label="Dungeon info"
+                        style={{ width: 40, padding: 0, flexShrink: 0 }}
+                      >
+                        <Info size={15} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -717,49 +721,59 @@ export function DungeonsScreen() {
                     </p>
                   )}
 
-                  <div style={{
-                    display: "flex", gap: 14,
-                    fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
-                    fontSize: 13, color: "var(--text-mute)",
-                  }}>
-                    <span>⏱ <strong style={{ color: "var(--bone)", fontWeight: 500 }}>{durLabel}</strong></span>
-                    {location.daily_limit > 0 && (
-                      <span style={{ color: exhausted ? "var(--warning)" : "var(--text-mute)" }}>
-                        {t("dungeons.dailyRuns", { used, limit: location.daily_limit })}
-                      </span>
-                    )}
-                    {location.limit_category.limit_count > 0 && (
-                      <span style={{ color: categoryExhausted ? "var(--warning)" : "var(--text-mute)" }}>
-                        {t("dungeons.categoryRuns", {
-                          name: location.limit_category.name,
-                          used: location.limit_category.used,
-                          limit: location.limit_category.limit_count,
-                        })}
-                      </span>
-                    )}
-                  </div>
+                  <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 24 }}>
+                    <div style={{
+                      display: "flex", flexWrap: "wrap", gap: 14,
+                      fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                      fontSize: 13, color: "var(--text-mute)",
+                    }}>
+                      <span>⏱ <strong style={{ color: "var(--bone)", fontWeight: 500 }}>{durLabel}</strong></span>
+                      {location.daily_limit > 0 && (
+                        <span style={{ color: exhausted ? "var(--warning)" : "var(--text-mute)" }}>
+                          {t("dungeons.dailyRuns", { used, limit: location.daily_limit })}
+                        </span>
+                      )}
+                      {location.limit_category.limit_count > 0 && (
+                        <span style={{ color: categoryExhausted ? "var(--warning)" : "var(--text-mute)" }}>
+                          {t("dungeons.categoryRuns", {
+                            name: location.limit_category.name,
+                            used: location.limit_category.used,
+                            limit: location.limit_category.limit_count,
+                          })}
+                        </span>
+                      )}
+                    </div>
 
-                  <div style={{ marginTop: "auto", paddingTop: 4 }}>
-                    <button
-                      disabled={disabled}
-                      onClick={() => !disabled && startMutation.mutate(location.id)}
-                      className="btn btn-primary"
-                      style={{ width: "100%", opacity: isActive ? 0.7 : undefined }}
-                    >
-                      {startMutation.isPending
-                        ? t("dungeons.sending")
-                        : isActive
-                          ? t("dungeons.inProgressButton")
-                          : categoryExhausted
-                            ? t("dungeons.categoryLimitReached")
-                            : exhausted
-                              ? t("dungeons.dailyLimitReached")
-                              : awaitingClaim
-                                ? t("dungeons.claimFirst")
-                                : isRunning
-                                  ? t("dungeons.heroBusy")
-                                  : t("dungeons.gather")}
-                    </button>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        disabled={disabled}
+                        onClick={() => !disabled && startMutation.mutate(location.id)}
+                        className="btn btn-primary"
+                        style={{ flex: 1, opacity: isActive ? 0.7 : undefined }}
+                      >
+                        {startMutation.isPending
+                          ? t("dungeons.sending")
+                          : isActive
+                            ? t("dungeons.inProgressButton")
+                            : categoryExhausted
+                              ? t("dungeons.categoryLimitReached")
+                              : exhausted
+                                ? t("dungeons.dailyLimitReached")
+                                : awaitingClaim
+                                  ? t("dungeons.claimFirst")
+                                  : isRunning
+                                    ? t("dungeons.heroBusy")
+                                    : t("dungeons.gather")}
+                      </button>
+                      <button
+                        onClick={() => setResourceLocation(location)}
+                        className="btn btn-secondary"
+                        aria-label={locale === "ru" ? "Информация о локации" : "Location info"}
+                        style={{ width: 40, padding: 0, flexShrink: 0 }}
+                      >
+                        <Info size={15} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -893,6 +907,15 @@ export function DungeonsScreen() {
                                 ? t("dungeons.heroBusy")
                                 : t("dungeons.gather")}
                   </button>
+                  <button
+                    onClick={() => setResourceLocation(location)}
+                    className="btn btn-secondary"
+                    aria-label={locale === "ru" ? "Информация о локации" : "Location info"}
+                    style={{ width: "100%", height: 32, fontSize: 12, gap: 6 }}
+                  >
+                    <Info size={13} />
+                    {locale === "ru" ? "Обзор" : "Overview"}
+                  </button>
                 </div>
               </div>
             );
@@ -910,6 +933,12 @@ export function DungeonsScreen() {
         <DungeonLootModal
           dungeon={lootDungeon}
           onClose={() => setLootDungeon(null)}
+        />
+      )}
+      {resourceLocation && (
+        <DungeonResourceModal
+          location={resourceLocation}
+          onClose={() => setResourceLocation(null)}
         />
       )}
     </div>

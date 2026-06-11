@@ -195,6 +195,18 @@ export type DungeonLootItem = {
   chance: number;
 };
 
+export type DungeonResourceDrop = {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+  category: "basic" | "regional" | "rare";
+  media?: MediaAssetUrls | null;
+  chance_percent: number;
+  min_quantity: number;
+  max_quantity: number;
+};
+
 export type DungeonRunStatus =
   | "IN_PROGRESS"
   | "SUCCESS_WAITING_CLAIM"

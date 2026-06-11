@@ -344,6 +344,9 @@ export const api = {
   dungeonLoot(dungeonId: number) {
     return apiFetch<AppTypes.DungeonLootItem[]>(`/dungeons/${dungeonId}/loot`);
   },
+  dungeonResources(dungeonId: number) {
+    return apiFetch<AppTypes.DungeonResourceDrop[]>(`/dungeons/${dungeonId}/resources`);
+  },
   startRun(location_id: number) {
     return apiFetch<AppTypes.DungeonRun>("/dungeon-runs", {
       method: "POST",

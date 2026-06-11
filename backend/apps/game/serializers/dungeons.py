@@ -2,7 +2,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.game.i18n import DEFAULT_LOCALE, translate
-from apps.game.models import DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonRun, DungeonRunStatus, IngredientTemplate, LocationType
+from apps.game.models import DungeonIngredientDrop, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonRun, DungeonRunStatus, IngredientTemplate, LocationType
 from apps.game.services import DungeonMiniGameService, DungeonRunService, GameFormulaService
 
 from .common import localized_item_name, localized_name, media_payload, serializer_locale
@@ -383,3 +383,44 @@ class DungeonLootItemSerializer(serializers.ModelSerializer):
         """Возвращает словарь возможных характеристик с диапазонами."""
 
         return obj.item_template.possible_stats or {}
+
+
+class DungeonResourceDropSerializer(serializers.ModelSerializer):
+    """Сериализатор одной записи дроп-таблицы ингредиентов ресурсной локации."""
+
+    id = serializers.IntegerField(source="ingredient_id")
+    code = serializers.CharField(source="ingredient.code")
+    name = serializers.SerializerMethodField()
+    description = serializers.SerializerMethodField()
+    category = serializers.CharField(source="ingredient.category")
+    media = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DungeonIngredientDrop
+        fields = [
+            "id",
+            "code",
+            "name",
+            "description",
+            "category",
+            "media",
+            "chance_percent",
+            "min_quantity",
+            "max_quantity",
+        ]
+
+    def get_name(self, obj):
+        """Возвращает локализованное название ингредиента."""
+
+        return localized_name(obj.ingredient, serializer_locale(self.context))
+
+    def get_description(self, obj):
+        """Возвращает локализованное описание ингредиента."""
+
+        locale = serializer_locale(self.context)
+        return translate(obj.ingredient.description_i18n, locale, obj.ingredient.description)
+
+    def get_media(self, obj):
+        """Возвращает набор URL иконки ингредиента."""
+
+        return media_payload(obj.ingredient.media, self.context)

@@ -9,6 +9,7 @@ from apps.game.i18n import request_locale
 from apps.game.models import (
     Character,
     CharacterClass,
+    DungeonIngredientDrop,
     DungeonLocation,
     DungeonLocationItemTemplate,
     DungeonMiniGameAttempt,
@@ -20,6 +21,7 @@ from apps.game.models import (
 from apps.game.serializers import (
     ClaimResponseSerializer,
     DungeonLootItemSerializer,
+    DungeonResourceDropSerializer,
     localized_name,
     DungeonMiniGameAttemptHistorySerializer,
     DungeonMiniGameAttemptResponseSerializer,
@@ -136,6 +138,29 @@ class DungeonLocationLootView(APIView):
             ).data
 
         return Response(cached_response("dungeon_loot", build, parts=(request_host_part(request), pk, locale)))
+
+
+class DungeonLocationResourcesView(APIView):
+    """API-ручка таблицы ингредиентов ресурсной локации."""
+
+    def get(self, request, pk):
+        """Возвращает дроп-таблицу ингредиентов локации (кэшируется)."""
+
+        get_object_or_404(DungeonLocation, pk=pk, is_active=True)
+        locale = request_locale(request)
+
+        def build():
+            drops = (
+                DungeonIngredientDrop.objects
+                .filter(location_id=pk, ingredient__is_active=True)
+                .select_related("ingredient", "ingredient__media")
+                .order_by("-chance_percent", "ingredient__sort_order")
+            )
+            return DungeonResourceDropSerializer(
+                drops, many=True, context={"request": request},
+            ).data
+
+        return Response(cached_response("dungeon_resources", build, parts=(request_host_part(request), pk, locale)))
 
 
 class DungeonRunStartView(APIView):
