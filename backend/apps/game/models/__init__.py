@@ -4,6 +4,7 @@ from .config import EquipmentSlotConfig, GameConfig, RarityConfig
 from .consumables import HeroPotionStorage, PotionTemplate
 from .crafting import CraftRecipe, CraftRecipeIngredient
 from .dungeons import (
+    DungeonLimitCategory,
     DungeonLocation,
     DungeonLocationItemTemplate,
     DungeonMiniGameAttempt,
@@ -46,6 +47,7 @@ __all__ = [
     "DungeonRunStatus",
     "LocationType",
     "DungeonIngredientDrop",
+    "DungeonLimitCategory",
     "EquipmentSlotConfig",
     "GameConfig",
     "HeroIngredientStorage",

@@ -48,6 +48,41 @@ class LocationType(models.TextChoices):
     RESOURCE = "resource", "Ресурсная локация"
 
 
+class DungeonLimitCategory(TimestampedModel):
+    """Балансировочная группа локаций с общим лимитом стартов."""
+
+    class PeriodUnit(models.TextChoices):
+        HOUR = "hour", "Час"
+        DAY = "day", "День"
+        WEEK = "week", "Неделя"
+        MONTH = "month", "Месяц"
+
+    code = models.SlugField("Код", max_length=64, unique=True)
+    name = models.CharField("Название", max_length=120)
+    name_i18n = models.JSONField("Переводы названия", default=dict, blank=True)
+    limit_count = models.PositiveIntegerField("Лимит стартов (0 = без лимита)", default=0)
+    limit_period_count = models.PositiveIntegerField(
+        "Количество единиц периода",
+        default=1,
+        validators=[MinValueValidator(1)],
+    )
+    limit_period_unit = models.CharField(
+        "Единица периода",
+        max_length=16,
+        choices=PeriodUnit.choices,
+        default=PeriodUnit.DAY,
+    )
+    sort_order = models.PositiveIntegerField("Порядок сортировки", default=0)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+        verbose_name = "Категория лимита локаций"
+        verbose_name_plural = "Категории лимитов локаций"
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class DungeonLocation(TimestampedModel):
     """Локация подземелья с длительностью, требованиями и наградами."""
 
@@ -72,6 +107,12 @@ class DungeonLocation(TimestampedModel):
         choices=LocationType.choices,
         default=LocationType.DUNGEON,
         db_index=True,
+    )
+    limit_category = models.ForeignKey(
+        DungeonLimitCategory,
+        verbose_name="Категория лимита",
+        related_name="locations",
+        on_delete=models.PROTECT,
     )
     daily_limit = models.PositiveIntegerField("Дневной лимит заходов (0 = без лимита)", default=0)
     is_active = models.BooleanField("Активна", default=True)

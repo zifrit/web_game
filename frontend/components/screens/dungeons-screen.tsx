@@ -364,7 +364,10 @@ export function DungeonsScreen() {
           {combatDungeons.map((dungeon) => {
             const tier       = getTier(dungeon.required_power);
             const isActive   = currentRun.data?.location?.id === dungeon.id && isRunning;
-            const disabled   = hasRun || startMutation.isPending || hpTooLow;
+            const localRemaining = dungeon.daily_remaining;
+            const localExhausted = localRemaining !== null && localRemaining <= 0;
+            const categoryExhausted = dungeon.limit_category.is_exhausted;
+            const disabled   = hasRun || startMutation.isPending || hpTooLow || localExhausted || categoryExhausted;
             const dungeonImage = bestMediaUrl(dungeon.media, ["large_url", "medium_url", "small_url"]);
 
             const durLabel = formatDuration(dungeon.duration_seconds, locale);
@@ -425,7 +428,7 @@ export function DungeonsScreen() {
                   )}
 
                   <div style={{
-                    display: "flex", gap: 14,
+                    display: "flex", flexWrap: "wrap", gap: 14,
                     fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
                     fontSize: 13, color: "var(--text-mute)",
                   }}>
@@ -433,6 +436,20 @@ export function DungeonsScreen() {
                     <span>XP <strong style={{ color: "var(--bone)", fontWeight: 500 }}>{dungeon.rewards_preview?.experience?.max ?? "?"}</strong></span>
                     <span>◈ <strong style={{ color: "var(--bone)", fontWeight: 500 }}>{dungeon.rewards_preview?.money_copper?.max ?? "?"}</strong></span>
                     <span>{t("common.loot")} <strong style={{ color: "var(--success)", fontWeight: 500 }}>{dungeon.item_drop_chance}%</strong></span>
+                    {dungeon.daily_limit > 0 && (
+                      <span style={{ color: localExhausted ? "var(--warning)" : "var(--text-mute)" }}>
+                        {t("dungeons.dailyRuns", { used: dungeon.daily_limit - (localRemaining ?? 0), limit: dungeon.daily_limit })}
+                      </span>
+                    )}
+                    {dungeon.limit_category.limit_count > 0 && (
+                      <span style={{ color: categoryExhausted ? "var(--warning)" : "var(--text-mute)" }}>
+                        {t("dungeons.categoryRuns", {
+                          name: dungeon.limit_category.name,
+                          used: dungeon.limit_category.used,
+                          limit: dungeon.limit_category.limit_count,
+                        })}
+                      </span>
+                    )}
                   </div>
 
                   {/* CTA buttons */}
@@ -443,7 +460,7 @@ export function DungeonsScreen() {
                       className="btn btn-primary"
                       style={{ flex: 1, opacity: isActive ? 0.7 : undefined }}
                     >
-                      {startMutation.isPending ? t("dungeons.sending") : isActive ? t("dungeons.inProgressButton") : awaitingClaim ? t("dungeons.claimFirst") : isRunning ? t("dungeons.heroBusy") : hpTooLow ? t("dungeons.lowHp") : t("dungeons.sendHero")}
+                      {startMutation.isPending ? t("dungeons.sending") : isActive ? t("dungeons.inProgressButton") : categoryExhausted ? t("dungeons.categoryLimitReached") : localExhausted ? t("dungeons.dailyLimitReached") : awaitingClaim ? t("dungeons.claimFirst") : isRunning ? t("dungeons.heroBusy") : hpTooLow ? t("dungeons.lowHp") : t("dungeons.sendHero")}
                     </button>
                     <button
                       onClick={() => setLootDungeon(dungeon)}
@@ -467,7 +484,10 @@ export function DungeonsScreen() {
           {combatDungeons.map((dungeon) => {
             const tier         = getTier(dungeon.required_power);
             const isActive     = currentRun.data?.location?.id === dungeon.id && isRunning;
-            const disabled     = hasRun || startMutation.isPending || hpTooLow;
+            const localRemaining = dungeon.daily_remaining;
+            const localExhausted = localRemaining !== null && localRemaining <= 0;
+            const categoryExhausted = dungeon.limit_category.is_exhausted;
+            const disabled     = hasRun || startMutation.isPending || hpTooLow || localExhausted || categoryExhausted;
             const dungeonImage = bestMediaUrl(dungeon.media, ["small_url", "medium_url", "large_url"]);
             const durLabel     = formatDuration(dungeon.duration_seconds, locale);
 
@@ -540,6 +560,20 @@ export function DungeonsScreen() {
                     <span>XP&thinsp;<strong style={{ color: "var(--bone)", fontWeight: 500 }}>{dungeon.rewards_preview?.experience?.max ?? "?"}</strong></span>
                     <span>◈&thinsp;<strong style={{ color: "var(--bone)", fontWeight: 500 }}>{dungeon.rewards_preview?.money_copper?.max ?? "?"}</strong></span>
                     <span>{t("common.loot")}&thinsp;<strong style={{ color: "var(--success)", fontWeight: 500 }}>{dungeon.item_drop_chance}%</strong></span>
+                    {dungeon.daily_limit > 0 && (
+                      <span style={{ color: localExhausted ? "var(--warning)" : "var(--text-mute)" }}>
+                        {t("dungeons.dailyRuns", { used: dungeon.daily_limit - (localRemaining ?? 0), limit: dungeon.daily_limit })}
+                      </span>
+                    )}
+                    {dungeon.limit_category.limit_count > 0 && (
+                      <span style={{ color: categoryExhausted ? "var(--warning)" : "var(--text-mute)" }}>
+                        {t("dungeons.categoryRuns", {
+                          name: dungeon.limit_category.name,
+                          used: dungeon.limit_category.used,
+                          limit: dungeon.limit_category.limit_count,
+                        })}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -566,13 +600,17 @@ export function DungeonsScreen() {
                       ? t("dungeons.sending")
                       : isActive
                         ? t("dungeons.inProgressButton")
-                        : awaitingClaim
-                          ? t("dungeons.claimFirst")
-                          : isRunning
-                            ? t("dungeons.heroBusy")
-                            : hpTooLow
-                              ? t("dungeons.lowHp")
-                              : t("dungeons.sendHero")}
+                        : categoryExhausted
+                          ? t("dungeons.categoryLimitReached")
+                          : localExhausted
+                            ? t("dungeons.dailyLimitReached")
+                            : awaitingClaim
+                              ? t("dungeons.claimFirst")
+                              : isRunning
+                                ? t("dungeons.heroBusy")
+                                : hpTooLow
+                                  ? t("dungeons.lowHp")
+                                  : t("dungeons.sendHero")}
                   </button>
                   <button
                     onClick={() => setLootDungeon(dungeon)}
@@ -626,9 +664,10 @@ export function DungeonsScreen() {
           {resourceLocations.map((location) => {
             const remaining   = location.daily_remaining ?? location.daily_limit;
             const used        = location.daily_limit - remaining;
-            const exhausted   = remaining <= 0;
+            const exhausted   = location.daily_remaining !== null && remaining <= 0;
+            const categoryExhausted = location.limit_category.is_exhausted;
             const isActive    = currentRun.data?.location?.id === location.id && isRunning;
-            const disabled    = hasRun || startMutation.isPending || exhausted;
+            const disabled    = hasRun || startMutation.isPending || exhausted || categoryExhausted;
             const locationImage = bestMediaUrl(location.media, ["large_url", "medium_url", "small_url"]);
             const durLabel    = formatDuration(location.duration_seconds, locale);
 
@@ -684,9 +723,20 @@ export function DungeonsScreen() {
                     fontSize: 13, color: "var(--text-mute)",
                   }}>
                     <span>⏱ <strong style={{ color: "var(--bone)", fontWeight: 500 }}>{durLabel}</strong></span>
-                    <span style={{ color: exhausted ? "var(--warning)" : "var(--text-mute)" }}>
-                      {t("dungeons.dailyRuns", { used, limit: location.daily_limit })}
-                    </span>
+                    {location.daily_limit > 0 && (
+                      <span style={{ color: exhausted ? "var(--warning)" : "var(--text-mute)" }}>
+                        {t("dungeons.dailyRuns", { used, limit: location.daily_limit })}
+                      </span>
+                    )}
+                    {location.limit_category.limit_count > 0 && (
+                      <span style={{ color: categoryExhausted ? "var(--warning)" : "var(--text-mute)" }}>
+                        {t("dungeons.categoryRuns", {
+                          name: location.limit_category.name,
+                          used: location.limit_category.used,
+                          limit: location.limit_category.limit_count,
+                        })}
+                      </span>
+                    )}
                   </div>
 
                   <div style={{ marginTop: "auto", paddingTop: 4 }}>
@@ -700,13 +750,15 @@ export function DungeonsScreen() {
                         ? t("dungeons.sending")
                         : isActive
                           ? t("dungeons.inProgressButton")
-                          : exhausted
-                            ? t("dungeons.dailyLimitReached")
-                            : awaitingClaim
-                              ? t("dungeons.claimFirst")
-                              : isRunning
-                                ? t("dungeons.heroBusy")
-                                : t("dungeons.gather")}
+                          : categoryExhausted
+                            ? t("dungeons.categoryLimitReached")
+                            : exhausted
+                              ? t("dungeons.dailyLimitReached")
+                              : awaitingClaim
+                                ? t("dungeons.claimFirst")
+                                : isRunning
+                                  ? t("dungeons.heroBusy")
+                                  : t("dungeons.gather")}
                     </button>
                   </div>
                 </div>
@@ -722,9 +774,10 @@ export function DungeonsScreen() {
           {resourceLocations.map((location) => {
             const remaining     = location.daily_remaining ?? location.daily_limit;
             const used          = location.daily_limit - remaining;
-            const exhausted     = remaining <= 0;
+            const exhausted     = location.daily_remaining !== null && remaining <= 0;
+            const categoryExhausted = location.limit_category.is_exhausted;
             const isActive      = currentRun.data?.location?.id === location.id && isRunning;
-            const disabled      = hasRun || startMutation.isPending || exhausted;
+            const disabled      = hasRun || startMutation.isPending || exhausted || categoryExhausted;
             const locationImage = bestMediaUrl(location.media, ["small_url", "medium_url", "large_url"]);
             const durLabel      = formatDuration(location.duration_seconds, locale);
 
@@ -790,9 +843,20 @@ export function DungeonsScreen() {
                     fontSize: 12, color: "var(--text-mute)",
                   }}>
                     <span>⏱&thinsp;<strong style={{ color: "var(--bone)", fontWeight: 500 }}>{durLabel}</strong></span>
-                    <span style={{ color: exhausted ? "var(--warning)" : "var(--text-mute)" }}>
-                      {t("dungeons.dailyRuns", { used, limit: location.daily_limit })}
-                    </span>
+                    {location.daily_limit > 0 && (
+                      <span style={{ color: exhausted ? "var(--warning)" : "var(--text-mute)" }}>
+                        {t("dungeons.dailyRuns", { used, limit: location.daily_limit })}
+                      </span>
+                    )}
+                    {location.limit_category.limit_count > 0 && (
+                      <span style={{ color: categoryExhausted ? "var(--warning)" : "var(--text-mute)" }}>
+                        {t("dungeons.categoryRuns", {
+                          name: location.limit_category.name,
+                          used: location.limit_category.used,
+                          limit: location.limit_category.limit_count,
+                        })}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -819,13 +883,15 @@ export function DungeonsScreen() {
                       ? t("dungeons.sending")
                       : isActive
                         ? t("dungeons.inProgressButton")
-                        : exhausted
-                          ? t("dungeons.dailyLimitReached")
-                          : awaitingClaim
-                            ? t("dungeons.claimFirst")
-                            : isRunning
-                              ? t("dungeons.heroBusy")
-                              : t("dungeons.gather")}
+                        : categoryExhausted
+                          ? t("dungeons.categoryLimitReached")
+                          : exhausted
+                            ? t("dungeons.dailyLimitReached")
+                            : awaitingClaim
+                              ? t("dungeons.claimFirst")
+                              : isRunning
+                                ? t("dungeons.heroBusy")
+                                : t("dungeons.gather")}
                   </button>
                 </div>
               </div>

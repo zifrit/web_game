@@ -5,6 +5,7 @@ from apps.game.models import (
     CraftRecipe,
     CraftRecipeIngredient,
     DungeonIngredientDrop,
+    DungeonLimitCategory,
     DungeonLocation,
     DungeonLocationItemTemplate,
     DungeonMiniGameConfig,
@@ -109,6 +110,28 @@ class Command(BaseCommand):
         templates_by_rank = {}
         for template in item_templates:
             templates_by_rank.setdefault(template.rarity_key, []).append(template)
+        dungeon_limit_category, _ = DungeonLimitCategory.objects.update_or_create(
+            code="dungeons",
+            defaults={
+                "name": "Данжи",
+                "name_i18n": {"en": "Dungeons", "ru": "Данжи"},
+                "limit_count": 0,
+                "limit_period_count": 1,
+                "limit_period_unit": DungeonLimitCategory.PeriodUnit.DAY,
+                "sort_order": 0,
+            },
+        )
+        resource_limit_category, _ = DungeonLimitCategory.objects.update_or_create(
+            code="resources",
+            defaults={
+                "name": "Ресурсы",
+                "name_i18n": {"en": "Resources", "ru": "Ресурсы"},
+                "limit_count": 0,
+                "limit_period_count": 1,
+                "limit_period_unit": DungeonLimitCategory.PeriodUnit.DAY,
+                "sort_order": 10,
+            },
+        )
 
         card_face_codes = []
         for face in load_seed_card_faces():
@@ -170,6 +193,7 @@ class Command(BaseCommand):
                     "item_drop_chance": drop,
                     "has_mini_game": has_mini_game,
                     "location_type": LocationType.DUNGEON,
+                    "limit_category": dungeon_limit_category,
                     "daily_limit": 0,
                     "is_active": True,
                     "sort_order": index,
@@ -207,6 +231,7 @@ class Command(BaseCommand):
                 "item_drop_chance": 0,
                 "has_mini_game": False,
                 "location_type": LocationType.RESOURCE,
+                "limit_category": resource_limit_category,
                 "daily_limit": 3,
                 "is_active": True,
                 "sort_order": 100,

@@ -159,6 +159,10 @@ MESSAGES = {
         "en": "Daily limit for this location has been reached.",
         "ru": "Дневной лимит этой локации исчерпан.",
     },
+    "category_limit_reached": {
+        "en": "Dungeon category limit has been reached.",
+        "ru": "Лимит категории локаций исчерпан.",
+    },
     "recipe_not_found": {
         "en": "Crafting recipe not found.",
         "ru": "Рецепт крафта не найден.",

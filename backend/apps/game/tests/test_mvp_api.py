@@ -8,7 +8,7 @@ import pyotp
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.game.models import CharacterClass, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonMiniGameConfig, DungeonRun, DungeonRunClaim, DungeonRunStatus, ItemTemplate, MediaAsset, MiniGameCardFace, UserItem, UserTwoFactor
+from apps.game.models import CharacterClass, DungeonLimitCategory, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonMiniGameConfig, DungeonRun, DungeonRunClaim, DungeonRunStatus, ItemTemplate, MediaAsset, MiniGameCardFace, UserItem, UserTwoFactor
 from apps.game.permissions import IsSuperuserOrOwner
 from apps.game.two_factor import TOTP_INTERVAL_SECONDS, current_timecode
 
@@ -710,6 +710,7 @@ class DungeonLootApiTests(APITestCase):
     def test_inactive_dungeon_returns_404(self):
         inactive = DungeonLocation.objects.create(
             name="Hidden Vault",
+            limit_category=DungeonLimitCategory.objects.get(code="dungeons"),
             duration_seconds=60,
             required_power=1,
             experience_min=1, experience_max=2,
@@ -871,6 +872,7 @@ class DungeonLootApiTests(APITestCase):
         self._auth("empty_tester@example.com")
         empty_location = DungeonLocation.objects.create(
             name="Empty Dungeon",
+            limit_category=DungeonLimitCategory.objects.get(code="dungeons"),
             duration_seconds=60,
             required_power=1,
             experience_min=1, experience_max=2,

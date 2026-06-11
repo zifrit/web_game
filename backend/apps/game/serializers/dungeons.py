@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from apps.game.i18n import DEFAULT_LOCALE, translate
 from apps.game.models import DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonRun, DungeonRunStatus, IngredientTemplate, LocationType
-from apps.game.services import DungeonMiniGameService, GameFormulaService
+from apps.game.services import DungeonMiniGameService, DungeonRunService, GameFormulaService
 
 from .common import localized_item_name, localized_name, media_payload, serializer_locale
 
@@ -17,6 +17,7 @@ class DungeonLocationSerializer(serializers.ModelSerializer):
     media = serializers.SerializerMethodField()
     rewards_preview = serializers.SerializerMethodField()
     daily_remaining = serializers.SerializerMethodField()
+    limit_category = serializers.SerializerMethodField()
 
     class Meta:
         model = DungeonLocation
@@ -32,17 +33,37 @@ class DungeonLocationSerializer(serializers.ModelSerializer):
             "location_type",
             "daily_limit",
             "daily_remaining",
+            "limit_category",
             "media",
             "rewards_preview",
         ]
 
     def get_daily_remaining(self, obj):
-        """Для ресурсной локации возвращает остаток заходов на сегодня."""
+        """Возвращает остаток дневных заходов конкретной локации."""
 
-        if obj.location_type != LocationType.RESOURCE or obj.daily_limit == 0:
+        if obj.daily_limit == 0:
             return None
         used = self.context.get("daily_used_map", {}).get(obj.id, 0)
         return max(0, obj.daily_limit - used)
+
+    def get_limit_category(self, obj):
+        """Возвращает общий лимит категории этой локации."""
+
+        category = obj.limit_category
+        state = self.context.get("category_limit_state_map", {}).get(category.id)
+        if state is None:
+            state = DungeonRunService.category_limit_state(self.context.get("character"), category)
+        return {
+            "id": category.id,
+            "code": category.code,
+            "name": localized_name(category, serializer_locale(self.context)),
+            "limit_count": category.limit_count,
+            "period_count": category.limit_period_count,
+            "period_unit": category.limit_period_unit,
+            "used": state["used"],
+            "remaining": state["remaining"],
+            "is_exhausted": state["is_exhausted"],
+        }
 
     def get_success_chance(self, obj):
         """Считает шанс успеха текущего героя в этой локации."""

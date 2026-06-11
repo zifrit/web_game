@@ -9,7 +9,7 @@ from rest_framework.test import APIClient
 from apps.game.management.commands.seed_game import Command as SeedCommand
 from rest_framework.serializers import ValidationError as DRFValidationError
 
-from apps.game.models import CharacterClass, CraftRecipe, DungeonIngredientDrop, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonMiniGameConfig, DungeonRun, HeroIngredientStorage, HeroPotionStorage, IngredientTemplate, ItemTemplate, PotionTemplate, RarityConfig, User, UserItem
+from apps.game.models import CharacterClass, CraftRecipe, DungeonIngredientDrop, DungeonLimitCategory, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonMiniGameConfig, DungeonRun, HeroIngredientStorage, HeroPotionStorage, IngredientTemplate, ItemTemplate, PotionTemplate, RarityConfig, User, UserItem
 from apps.game.services import CraftService, DungeonMiniGameService, DungeonRunService, GameBalanceService, GameFormulaService, IngredientDropService, IngredientService, InventoryService, LootGenerationService, PotionService
 from apps.game.services import INGREDIENT_STORAGE, POTION_STORAGE
 from apps.game.services.ranks import RANKS, rank_for_level
@@ -1291,3 +1291,99 @@ class ResourceLocationTests(TestCase):
         self.assertEqual(resource["success_chance"], 100)
         self.assertEqual(resource["daily_limit"], 3)
         self.assertEqual(resource["daily_remaining"], 3)
+
+
+class DungeonLimitCategoryTests(TestCase):
+    """Проверки общего лимита категории поверх лимита конкретной локации."""
+
+    def setUp(self):
+        SeedCommand().handle()
+        self.user = User.objects.create_user("limit-category@example.com", "strongpass123")
+        self.character = GameBalanceService.create_character(
+            self.user, "Limiter", CharacterClass.objects.get(key="warrior")
+        )
+        self.old_forest = DungeonLocation.objects.get(name="Старый лес")
+        self.trail = DungeonLocation.objects.get(name="Заброшенная тропа")
+        self.resource = DungeonLocation.objects.get(name="Лес трав")
+        self.category = self.old_forest.limit_category
+
+    def _claimed_run(self, location, *, started_at=None):
+        started_at = started_at or timezone.now()
+        return DungeonRun.objects.create(
+            character=self.character,
+            location=location,
+            status=DungeonRun.CLAIMED,
+            started_at=started_at,
+            ends_at=started_at,
+            success_chance=100,
+        )
+
+    def test_location_daily_limit_blocks_combat_dungeons(self):
+        self.old_forest.daily_limit = 1
+        self.old_forest.save(update_fields=["daily_limit", "updated_at"])
+        self._claimed_run(self.old_forest)
+
+        with self.assertRaisesMessage(Exception, "Daily limit"):
+            DungeonRunService.start_run(self.user, self.old_forest.id)
+
+    def test_category_limit_blocks_other_locations_in_same_category(self):
+        self.category.limit_count = 1
+        self.category.limit_period_count = 1
+        self.category.limit_period_unit = DungeonLimitCategory.PeriodUnit.DAY
+        self.category.save(update_fields=["limit_count", "limit_period_count", "limit_period_unit", "updated_at"])
+        self._claimed_run(self.old_forest)
+
+        with self.assertRaisesMessage(Exception, "category limit"):
+            DungeonRunService.start_run(self.user, self.trail.id)
+
+        run = DungeonRunService.start_run(self.user, self.resource.id)
+        self.assertEqual(run.location_id, self.resource.id)
+
+    def test_category_limit_uses_sliding_window(self):
+        self.category.limit_count = 1
+        self.category.limit_period_count = 2
+        self.category.limit_period_unit = DungeonLimitCategory.PeriodUnit.HOUR
+        self.category.save(update_fields=["limit_count", "limit_period_count", "limit_period_unit", "updated_at"])
+        self._claimed_run(self.old_forest, started_at=timezone.now() - timezone.timedelta(hours=3))
+
+        run = DungeonRunService.start_run(self.user, self.trail.id)
+
+        self.assertEqual(run.location_id, self.trail.id)
+
+    def test_unlimited_category_does_not_block(self):
+        self.category.limit_count = 0
+        self.category.limit_period_count = 1
+        self.category.limit_period_unit = DungeonLimitCategory.PeriodUnit.DAY
+        self.category.save(update_fields=["limit_count", "limit_period_count", "limit_period_unit", "updated_at"])
+        self._claimed_run(self.old_forest)
+
+        run = DungeonRunService.start_run(self.user, self.trail.id)
+
+        self.assertEqual(run.location_id, self.trail.id)
+
+    def test_api_includes_category_limit_state(self):
+        self.category.limit_count = 2
+        self.category.limit_period_count = 1
+        self.category.limit_period_unit = DungeonLimitCategory.PeriodUnit.DAY
+        self.category.save(update_fields=["limit_count", "limit_period_count", "limit_period_unit", "updated_at"])
+        self._claimed_run(self.old_forest)
+        client = APIClient()
+        login = client.post(
+            "/api/auth/login",
+            {"email": "limit-category@example.com", "password": "strongpass123"},
+            format="json",
+        )
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access_token']}")
+
+        response = client.get("/api/dungeons")
+
+        self.assertEqual(response.status_code, 200)
+        old_forest = next(loc for loc in response.data if loc["id"] == self.old_forest.id)
+        self.assertEqual(old_forest["daily_remaining"], None)
+        self.assertEqual(old_forest["limit_category"]["id"], self.category.id)
+        self.assertEqual(old_forest["limit_category"]["limit_count"], 2)
+        self.assertEqual(old_forest["limit_category"]["period_count"], 1)
+        self.assertEqual(old_forest["limit_category"]["period_unit"], "day")
+        self.assertEqual(old_forest["limit_category"]["used"], 1)
+        self.assertEqual(old_forest["limit_category"]["remaining"], 1)
+        self.assertFalse(old_forest["limit_category"]["is_exhausted"])

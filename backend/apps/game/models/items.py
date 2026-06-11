@@ -54,7 +54,7 @@ class ItemTemplate(TimestampedModel):
     def __str__(self) -> str:
         """Возвращает название шаблона предмета."""
 
-        return self.name
+        return f"{self.name} {self.rarity_key}"
 
 
 class UserItem(TimestampedModel):

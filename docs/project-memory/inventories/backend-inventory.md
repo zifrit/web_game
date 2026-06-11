@@ -35,8 +35,9 @@ Updated from code inspection on 2026-06-08.
 - `consumables.py` - `PotionTemplate` and per-hero `HeroPotionStorage`.
 - `crafting.py` - `CraftRecipe` and `CraftRecipeIngredient` for recipe-driven
   potion crafting.
-- `dungeons.py` - `DungeonLocation` with `has_mini_game` (gates availability;
-  no FK to a config anymore),
+- `dungeons.py` - `DungeonLimitCategory` for shared run limits,
+  `DungeonLocation` with `has_mini_game` (gates availability; no FK to a config
+  anymore),
   `DungeonLocationItemTemplate` with per-location item `chance` weights,
   `DungeonMiniGameConfig` (percent reward + `max_reduction_seconds` +
   `card_face_codes`), `MiniGameCardFace` (inline-SVG catalog),

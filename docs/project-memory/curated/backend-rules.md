@@ -70,6 +70,10 @@ should also go through services instead of being calculated in views.
 ## Dungeon and claim rules
 
 - A hero can have only one active `IN_PROGRESS` run.
+- `DungeonLocation.location_type` describes behavior (`dungeon` vs `resource`);
+  `DungeonLocation.limit_category` is a separate balance group for shared run
+  limits across locations. Per-location `daily_limit` and category limits are
+  both spent at run start and count all run statuses by `started_at`.
 - Completion is hybrid: Celery Beat periodically completes due runs, while
   `GET /api/dungeon-runs/current` and the claim flow complete due runs on
   demand. All on-demand completion goes through one self-locking seam:

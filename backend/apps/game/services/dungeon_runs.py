@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar
 import random
 
 from django.db import transaction
@@ -11,6 +12,7 @@ from apps.game.i18n import DEFAULT_LOCALE, message
 from apps.game.models import (
     Character,
     DungeonMiniGameAttemptStatus,
+    DungeonLimitCategory,
     DungeonLocation,
     DungeonRun,
     DungeonRunClaim,
@@ -60,6 +62,54 @@ class DungeonRunService:
         except Character.DoesNotExist as exc:
             raise serializers.ValidationError(message("no_character", locale)) from exc
 
+    @staticmethod
+    def _month_window_start(now, months: int):
+        total_months = now.year * 12 + now.month - 1 - months
+        year = total_months // 12
+        month = total_months % 12 + 1
+        day = min(now.day, calendar.monthrange(year, month)[1])
+        return now.replace(year=year, month=month, day=day)
+
+    @classmethod
+    def category_limit_window_start(cls, category: DungeonLimitCategory, now=None):
+        now = now or timezone.now()
+        period_count = max(1, category.limit_period_count)
+        if category.limit_period_unit == DungeonLimitCategory.PeriodUnit.HOUR:
+            return now - timezone.timedelta(hours=period_count)
+        if category.limit_period_unit == DungeonLimitCategory.PeriodUnit.WEEK:
+            return now - timezone.timedelta(weeks=period_count)
+        if category.limit_period_unit == DungeonLimitCategory.PeriodUnit.MONTH:
+            return cls._month_window_start(now, period_count)
+        return now - timezone.timedelta(days=period_count)
+
+    @staticmethod
+    def location_daily_used(character: Character, location: DungeonLocation) -> int:
+        return DungeonRun.objects.filter(
+            character=character,
+            location=location,
+            started_at__date=timezone.localdate(),
+        ).count()
+
+    @classmethod
+    def category_limit_used(cls, character: Character, category: DungeonLimitCategory, now=None) -> int:
+        if category.limit_count <= 0:
+            return 0
+        return DungeonRun.objects.filter(
+            character=character,
+            location__limit_category=category,
+            started_at__gte=cls.category_limit_window_start(category, now=now),
+        ).count()
+
+    @classmethod
+    def category_limit_state(cls, character: Character | None, category: DungeonLimitCategory, now=None) -> dict:
+        used = cls.category_limit_used(character, category, now=now) if character is not None else 0
+        remaining = None if category.limit_count == 0 else max(0, category.limit_count - used)
+        return {
+            "used": used,
+            "remaining": remaining,
+            "is_exhausted": category.limit_count > 0 and used >= category.limit_count,
+        }
+
     @classmethod
     @transaction.atomic
     def start_run(cls, user, location_id: int, locale=DEFAULT_LOCALE) -> DungeonRun:
@@ -78,22 +128,27 @@ class DungeonRunService:
         ).exists():
             raise serializers.ValidationError(message("unclaimed_run_exists", locale))
         try:
-            location = DungeonLocation.objects.get(pk=location_id, is_active=True)
+            location = DungeonLocation.objects.select_related("limit_category").get(pk=location_id, is_active=True)
         except DungeonLocation.DoesNotExist as exc:
             raise serializers.ValidationError(message("dungeon_not_found", locale)) from exc
+
+        local_limit_exhausted = (
+            location.daily_limit > 0 and cls.location_daily_used(character, location) >= location.daily_limit
+        )
+        category_limit = location.limit_category
+        category_limit_exhausted = (
+            category_limit.limit_count > 0
+            and cls.category_limit_used(character, category_limit) >= category_limit.limit_count
+        )
+        if category_limit_exhausted:
+            raise serializers.ValidationError(message("category_limit_reached", locale))
+        if local_limit_exhausted:
+            raise serializers.ValidationError(message("daily_limit_reached", locale))
 
         if location.location_type == LocationType.RESOURCE:
             # Ресурсная локация: гарантированный успех, доступна при любом HP,
             # не требует силы и не проверяет сломанную экипировку. Действует только
-            # общий гвард «одна активность за раз» (выше) и дневной лимит.
-            if location.daily_limit > 0:
-                used_today = DungeonRun.objects.filter(
-                    character=character,
-                    location=location,
-                    started_at__date=timezone.localdate(),
-                ).count()
-                if used_today >= location.daily_limit:
-                    raise serializers.ValidationError(message("daily_limit_reached", locale))
+            # общий гвард «одна активность за раз» (выше) и лимиты локации/категории.
             success_chance = 100
         else:
             if character.equipped_items.filter(durability_current=0).exists():

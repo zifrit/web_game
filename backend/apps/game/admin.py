@@ -6,6 +6,7 @@ from .models import (
     Character,
     CharacterClass,
     DungeonIngredientDrop,
+    DungeonLimitCategory,
     DungeonLocation,
     DungeonLocationItemTemplate,
     DungeonMiniGameAttempt,
@@ -145,7 +146,8 @@ class CharacterAdmin(admin.ModelAdmin):
 class DungeonLocationItemTemplateInline(admin.TabularInline):
     model = DungeonLocationItemTemplate
     extra = 1
-    fields = ("item_template", "chance")
+    fields = ("item_template", "item_rarity", "chance")
+    readonly_fields = ("item_rarity",)
     autocomplete_fields = ("item_template",)
 
     def get_queryset(self, request):
@@ -173,6 +175,12 @@ class DungeonLocationItemTemplateInline(admin.TabularInline):
             )
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
+    @admin.display(ordering="item_template__rarity_key", description="Ранг")
+    def item_rarity(self, obj):
+        if not obj or not obj.item_template_id:
+            return ""
+        return obj.item_template.rarity_key
+
 
 class DungeonIngredientDropInline(admin.TabularInline):
     model = DungeonIngredientDrop
@@ -184,12 +192,19 @@ class DungeonIngredientDropInline(admin.TabularInline):
         return super().get_queryset(request).select_related("location", "ingredient")
 
 
+@admin.register(DungeonLimitCategory)
+class DungeonLimitCategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "code", "limit_count", "limit_period_count", "limit_period_unit", "sort_order")
+    list_filter = ("limit_period_unit",)
+    search_fields = ("name", "code")
+
+
 @admin.register(DungeonLocation)
 class DungeonLocationAdmin(admin.ModelAdmin):
-    list_display = ("name", "location_type", "duration_seconds", "required_power", "hp_loss_success_percent", "hp_loss_fail_percent", "item_drop_chance", "has_mini_game", "daily_limit", "is_active", "sort_order")
-    list_filter = ("location_type", "has_mini_game", "is_active")
+    list_display = ("name", "location_type", "limit_category", "duration_seconds", "required_power", "hp_loss_success_percent", "hp_loss_fail_percent", "item_drop_chance", "has_mini_game", "daily_limit", "is_active", "sort_order")
+    list_filter = ("location_type", "limit_category", "has_mini_game", "is_active")
     search_fields = ("name", "description")
-    autocomplete_fields = ("media",)
+    autocomplete_fields = ("media", "limit_category")
     inlines = [DungeonLocationItemTemplateInline, DungeonIngredientDropInline]
 
 

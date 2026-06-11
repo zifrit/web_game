@@ -63,3 +63,12 @@ wallet's **grant / charge** — storages are not currencies, so the verbs differ
 key so callers keep context-specific errors (`not_enough_potions`,
 `potion_not_owned`, `not_enough_ingredients`).
 _Avoid_: grant/charge (reserved for wallets), add/spend, increment/decrement.
+
+## Language — Dungeon Limits
+
+**limit_category**:
+A balance category shared by multiple dungeon locations for the purpose of a
+common run limit. It is separate from `location_type`: `location_type` describes
+how a location behaves, while `limit_category` describes which locations spend
+from the same limit pool.
+_Avoid_: dungeon type (ambiguous with behavior), location type.

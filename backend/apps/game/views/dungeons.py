@@ -42,15 +42,14 @@ from apps.game.services import (
 from apps.game.services.reference_cache import reference_version
 
 
-def _resource_daily_used_map(character, location_id=None):
-    """Возвращает {location_id: число сегодняшних заходов} по ресурсным локациям героя."""
+def _location_daily_used_map(character, location_id=None):
+    """Возвращает {location_id: число сегодняшних заходов} по локациям героя."""
 
     if character is None:
         return {}
     rows = (
         DungeonRun.objects.filter(
             character=character,
-            location__location_type="resource",
             started_at__date=timezone.localdate(),
         )
     )
@@ -58,6 +57,16 @@ def _resource_daily_used_map(character, location_id=None):
         rows = rows.filter(location_id=location_id)
     rows = rows.values("location_id").annotate(n=Count("id"))
     return {row["location_id"]: row["n"] for row in rows}
+
+
+def _category_limit_state_map(character, locations):
+    """Возвращает {category_id: состояние общего лимита} для категорий локаций."""
+
+    categories = {location.limit_category_id: location.limit_category for location in locations}
+    return {
+        category_id: DungeonRunService.category_limit_state(character, category)
+        for category_id, category in categories.items()
+    }
 
 
 class DungeonLocationListView(APIView):
@@ -76,9 +85,10 @@ class DungeonLocationListView(APIView):
             hp_penalty = GameFormulaService.hp_success_penalty(character.current_hp, int(stats["max_hp"]))
         except Character.DoesNotExist:
             pass
-        daily_used_map = _resource_daily_used_map(character)
-        locations = DungeonLocation.objects.filter(is_active=True).select_related("media")
-        return Response(DungeonLocationSerializer(locations, many=True, context={"request": request, "character": character, "character_power": character_power, "hp_penalty": hp_penalty, "daily_used_map": daily_used_map}).data)
+        locations = list(DungeonLocation.objects.filter(is_active=True).select_related("media", "limit_category"))
+        daily_used_map = _location_daily_used_map(character)
+        category_limit_state_map = _category_limit_state_map(character, locations)
+        return Response(DungeonLocationSerializer(locations, many=True, context={"request": request, "character": character, "character_power": character_power, "hp_penalty": hp_penalty, "daily_used_map": daily_used_map, "category_limit_state_map": category_limit_state_map}).data)
 
 
 class DungeonLocationDetailView(APIView):
@@ -97,9 +107,10 @@ class DungeonLocationDetailView(APIView):
             hp_penalty = GameFormulaService.hp_success_penalty(character.current_hp, int(stats["max_hp"]))
         except Character.DoesNotExist:
             pass
-        location = get_object_or_404(DungeonLocation.objects.select_related("media"), pk=pk, is_active=True)
-        daily_used_map = _resource_daily_used_map(character, location_id=location.id)
-        return Response(DungeonLocationSerializer(location, context={"request": request, "character": character, "character_power": character_power, "hp_penalty": hp_penalty, "daily_used_map": daily_used_map}).data)
+        location = get_object_or_404(DungeonLocation.objects.select_related("media", "limit_category"), pk=pk, is_active=True)
+        daily_used_map = _location_daily_used_map(character, location_id=location.id)
+        category_limit_state_map = _category_limit_state_map(character, [location])
+        return Response(DungeonLocationSerializer(location, context={"request": request, "character": character, "character_power": character_power, "hp_penalty": hp_penalty, "daily_used_map": daily_used_map, "category_limit_state_map": category_limit_state_map}).data)
 
 
 class DungeonLocationLootView(APIView):

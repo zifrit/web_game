@@ -158,6 +158,17 @@ export type Dungeon = {
   location_type: "dungeon" | "resource";
   daily_limit: number;
   daily_remaining: number | null;
+  limit_category: {
+    id: number;
+    code: string;
+    name: string;
+    limit_count: number;
+    period_count: number;
+    period_unit: "hour" | "day" | "week" | "month";
+    used: number;
+    remaining: number | null;
+    is_exhausted: boolean;
+  };
   media?: MediaAssetUrls | null;
   rewards_preview?: {
     experience?: RangeValue;
