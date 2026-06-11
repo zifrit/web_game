@@ -9,14 +9,18 @@ from .models import (
     CurrencyExchangeOffer,
     CurrencyExchangeTransaction,
     PremiumCurrencyTransaction,
+    PremiumTopUp,
+    PremiumTopUpOffer,
 )
 from .serializers import (
     CurrencyExchangeOfferDetailSerializer,
     CurrencyExchangeOfferSerializer,
     CurrencyExchangeTransactionSerializer,
     PremiumCurrencyTransactionSerializer,
+    PremiumTopUpOfferSerializer,
+    PremiumTopUpSerializer,
 )
-from .services import CurrencyExchangeService
+from .services import CurrencyExchangeService, PremiumTopUpService
 
 
 class ExchangeOfferListView(APIView):
@@ -83,3 +87,41 @@ class PremiumTransactionListView(APIView):
             "-created_at", "-id"
         )[:limit]
         return Response({"results": PremiumCurrencyTransactionSerializer(transactions, many=True).data})
+
+
+class PremiumTopUpOfferListView(APIView):
+    """API-ручка списка активных пакетов пополнения премиум-валюты."""
+
+    def get(self, request):
+        """Возвращает активные пакеты пополнения по порядку сортировки."""
+
+        offers = PremiumTopUpOffer.objects.filter(is_active=True).order_by("sort_order", "id")
+        return Response(PremiumTopUpOfferSerializer(offers, many=True).data)
+
+
+class PremiumTopUpCreateView(APIView):
+    """API-ручка создания pending top-up для выбранного пакета."""
+
+    throttle_scope = "economy"
+
+    def post(self, request, pk):
+        """Создаёт попытку пополнения с idempotency key из заголовка."""
+
+        top_up = PremiumTopUpService.create_pending(
+            user=request.user,
+            offer_id=pk,
+            idempotency_key=request.headers.get("Idempotency-Key"),
+            locale=request_locale(request),
+        )
+        return Response(PremiumTopUpSerializer(top_up).data)
+
+
+class PremiumTopUpListView(APIView):
+    """API-ручка истории попыток пополнения текущего пользователя."""
+
+    def get(self, request):
+        """Возвращает top-up записи только текущего пользователя, новые сверху."""
+
+        limit = min(int(request.query_params.get("limit", 20)), 100)
+        top_ups = PremiumTopUp.objects.filter(user=request.user).order_by("-created_at", "-id")[:limit]
+        return Response({"results": PremiumTopUpSerializer(top_ups, many=True).data})

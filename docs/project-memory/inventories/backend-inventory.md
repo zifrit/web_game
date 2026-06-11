@@ -45,6 +45,15 @@ Updated from code inspection on 2026-06-08.
 
 `models/__init__.py` exports public model classes and `UserManager`.
 
+Billing models live in `backend/apps/billing/models.py`:
+
+- `UserPremiumBalance` stores one premium currency balance per user.
+- `PremiumCurrencyTransaction` is the immutable premium currency ledger.
+- `PremiumTopUpOffer`, `PremiumTopUp`, and `PremiumTopUpEvent` model real-money
+  premium top-up packages, payment lifecycle records, and future webhook events.
+- `CurrencyExchangeOffer` and `CurrencyExchangeTransaction` model premium to
+  copper exchange offers and successful exchanges.
+
 ## Services
 
 `backend/apps/game/services/` contains a compatibility facade in `__init__.py`
@@ -85,6 +94,14 @@ The `apps.game.services` facade exports:
 - `CraftService`
 - `PotionService`
 - `item_allowed_for_character`
+
+Billing services live in `backend/apps/billing/services.py`:
+
+- `PremiumCurrencyService` is the premium wallet and the only writer of
+  `UserPremiumBalance.amount`.
+- `PremiumTopUpService` creates pending top-ups and idempotently marks them
+  succeeded by granting premium currency through the wallet ledger.
+- `CurrencyExchangeService` exchanges premium currency for `money_copper`.
 
 Inventory economy notes:
 
@@ -149,6 +166,10 @@ View domains:
 - `consumables.py`
 - `crafting.py`
 - `leaderboard.py`
+
+`apps.billing` has its own serializers, views, urls, admin, and tests for
+premium balance, top-ups, exchange offers, exchange transactions, and premium
+ledger history. Billing routes are mounted separately at `/api/billing/`.
 
 `serializers/__init__.py` and `views/__init__.py` re-export public classes.
 

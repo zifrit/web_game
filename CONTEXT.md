@@ -23,6 +23,12 @@ The purchased currency, stored on `billing.UserPremiumBalance.amount`. Mutated
 only through `PremiumCurrencyService`.
 _Avoid_: gems, hard currency.
 
+**Premium top-up**:
+An attempt to buy premium currency for real money. It owns the payment
+lifecycle and the offer snapshot; only a succeeded top-up may create a premium
+currency ledger movement.
+_Avoid_: payment, premium purchase, transaction.
+
 **grant / charge**:
 The two verbs every wallet exposes for mutation. `grant` adds currency;
 `charge` removes it and enforces the non-negative invariant. Both write a ledger

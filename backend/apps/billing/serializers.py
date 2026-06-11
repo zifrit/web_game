@@ -33,3 +33,28 @@ class PremiumCurrencyTransactionSerializer(serializers.Serializer):
     balance_after = serializers.IntegerField()
     metadata = serializers.JSONField()
     created_at = serializers.DateTimeField()
+
+
+class PremiumTopUpOfferSerializer(serializers.Serializer):
+    """Сериализатор активного пакета пополнения премиум-валюты."""
+
+    id = serializers.IntegerField()
+    premium_amount = serializers.IntegerField()
+    price_amount_minor = serializers.IntegerField()
+    price_currency = serializers.CharField()
+
+
+class PremiumTopUpSerializer(serializers.Serializer):
+    """Сериализатор попытки пополнения премиум-валюты."""
+
+    id = serializers.IntegerField()
+    offer_id = serializers.IntegerField()
+    premium_amount = serializers.IntegerField()
+    price_amount_minor = serializers.IntegerField()
+    price_currency = serializers.CharField()
+    status = serializers.CharField()
+    provider = serializers.CharField()
+    provider_payment_id = serializers.CharField(allow_null=True)
+    checkout_url = serializers.URLField(allow_null=True)
+    metadata = serializers.JSONField()
+    created_at = serializers.DateTimeField()

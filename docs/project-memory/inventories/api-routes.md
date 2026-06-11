@@ -85,10 +85,13 @@ Shop (system shop, `apps.game`):
 
 Billing (premium currency, `apps.billing`, mounted at `/api/billing/`):
 
+- `GET /api/billing/top-up-offers` — active real-money premium top-up packages
+- `POST /api/billing/top-up-offers/<id>/top-ups` — creates a pending top-up; uses `Idempotency-Key`
+- `GET /api/billing/top-ups` — user-scoped top-up attempts `{results: [...]}`
 - `GET /api/billing/exchange-offers`
 - `GET /api/billing/exchange-offers/<id>`
 - `POST /api/billing/exchange-offers/<id>/exchange` — empty body; premium → `User.money_copper`
 - `GET /api/billing/exchange-transactions` — user-scoped `{results: [...]}`
 - `GET /api/billing/premium-transactions` — user-scoped `{results: [...]}`
 
-Note: `money_copper` lives on `User`, not `Character` (spec said Character; code is source of truth). Premium balance/ledger live in `apps.billing`; all premium mutations go through `PremiumCurrencyService`.
+Note: `money_copper` lives on `User`, not `Character` (spec said Character; code is source of truth). Premium balance/ledger live in `apps.billing`; all premium mutations go through `PremiumCurrencyService`. Premium top-ups track payment lifecycle separately from the premium ledger.

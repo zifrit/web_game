@@ -54,6 +54,13 @@ touches a balance field directly.
   instead of branching on currency. Shop has no direct `billing.services`
   import; the premium adapter imports billing lazily (billing depends on game,
   not the reverse).
+- Premium top-ups are payment lifecycle records, not wallet ledger rows. A
+  top-up stores the offer snapshot, provider identifiers, status, and future
+  refund metadata; only `PremiumTopUpService.mark_succeeded` grants premium
+  currency through `PremiumCurrencyService` and links the resulting ledger row.
+  The v1 top-up API creates `pending` records without a provider checkout URL;
+  no public webhook endpoint exists until a concrete provider/signature adapter
+  is added.
 
 Views and serializers should stay thin. Claim, repair, equip, unequip, and
 start dungeon run require explicit transactional boundaries where they change

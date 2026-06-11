@@ -5,6 +5,9 @@ from .views import (
     ExchangeOfferDetailView,
     ExchangeOfferListView,
     ExchangeTransactionListView,
+    PremiumTopUpCreateView,
+    PremiumTopUpListView,
+    PremiumTopUpOfferListView,
     PremiumTransactionListView,
 )
 
@@ -14,4 +17,7 @@ urlpatterns = [
     path("exchange-offers/<int:pk>/exchange", ExchangeCurrencyView.as_view(), name="billing_exchange"),
     path("exchange-transactions", ExchangeTransactionListView.as_view(), name="billing_exchange_transactions"),
     path("premium-transactions", PremiumTransactionListView.as_view(), name="billing_premium_transactions"),
+    path("top-up-offers", PremiumTopUpOfferListView.as_view(), name="billing_top_up_offers"),
+    path("top-up-offers/<int:pk>/top-ups", PremiumTopUpCreateView.as_view(), name="billing_top_up_create"),
+    path("top-ups", PremiumTopUpListView.as_view(), name="billing_top_ups"),
 ]

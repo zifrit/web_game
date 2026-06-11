@@ -10,6 +10,9 @@ from .models import (
     CurrencyExchangeOffer,
     CurrencyExchangeTransaction,
     PremiumCurrencyTransaction,
+    PremiumTopUp,
+    PremiumTopUpEvent,
+    PremiumTopUpOffer,
     UserPremiumBalance,
 )
 
@@ -104,6 +107,126 @@ class PremiumCurrencyService:
             .first()
             or 0
         )
+
+
+class PremiumTopUpService:
+    """Сервис жизненного цикла пополнения премиум-валюты."""
+
+    @classmethod
+    @transaction.atomic
+    def create_pending(
+        cls,
+        *,
+        user,
+        offer_id: int,
+        idempotency_key: str | None = None,
+        metadata=None,
+        locale=DEFAULT_LOCALE,
+    ) -> PremiumTopUp:
+        """Создаёт pending top-up со снимком активного пакета пополнения."""
+
+        if idempotency_key:
+            existing = PremiumTopUp.objects.filter(
+                user=user,
+                idempotency_key=idempotency_key,
+            ).first()
+            if existing:
+                return existing
+
+        try:
+            offer = PremiumTopUpOffer.objects.get(id=offer_id, is_active=True)
+        except PremiumTopUpOffer.DoesNotExist as exc:
+            raise serializers.ValidationError(message("shop_offer_not_found", locale)) from exc
+
+        return PremiumTopUp.objects.create(
+            user=user,
+            offer=offer,
+            premium_amount=offer.premium_amount,
+            price_amount_minor=offer.price_amount_minor,
+            price_currency=offer.price_currency,
+            status=PremiumTopUp.Status.PENDING,
+            checkout_url=None,
+            idempotency_key=idempotency_key,
+            metadata=metadata or {},
+        )
+
+    @classmethod
+    @transaction.atomic
+    def mark_succeeded(
+        cls,
+        *,
+        top_up_id: int,
+        provider: str = "",
+        provider_payment_id: str | None = None,
+        metadata=None,
+    ) -> PremiumTopUp:
+        """Подтверждает успешную оплату и начисляет премиум-валюту ровно один раз."""
+
+        top_up = PremiumTopUp.objects.select_for_update().select_related(
+            "user",
+            "premium_transaction",
+        ).get(id=top_up_id)
+
+        if top_up.status == PremiumTopUp.Status.SUCCEEDED:
+            return top_up
+
+        if top_up.status not in (PremiumTopUp.Status.CREATED, PremiumTopUp.Status.PENDING):
+            raise serializers.ValidationError("Top-up cannot be marked as succeeded from its current status.")
+
+        provider = provider or top_up.provider
+        provider_payment_id = provider_payment_id or top_up.provider_payment_id
+        grant_transaction = PremiumCurrencyService.grant(
+            user=top_up.user,
+            amount=top_up.premium_amount,
+            reason=PremiumCurrencyTransaction.Reason.PAYMENT,
+            idempotency_key=f"premium-top-up:{top_up.id}:payment",
+            metadata={
+                "premium_top_up_id": top_up.id,
+                "provider": provider,
+                "provider_payment_id": provider_payment_id,
+                **(metadata or {}),
+            },
+        )
+
+        top_up.status = PremiumTopUp.Status.SUCCEEDED
+        top_up.provider = provider or ""
+        top_up.provider_payment_id = provider_payment_id
+        top_up.premium_transaction = grant_transaction
+        top_up.metadata = {**(top_up.metadata or {}), **(metadata or {})}
+        top_up.save(
+            update_fields=[
+                "status",
+                "provider",
+                "provider_payment_id",
+                "premium_transaction",
+                "metadata",
+                "updated_at",
+            ]
+        )
+        return top_up
+
+    @classmethod
+    def record_event(
+        cls,
+        *,
+        provider: str,
+        provider_event_id: str,
+        event_type: str,
+        payload=None,
+        top_up: PremiumTopUp | None = None,
+    ) -> PremiumTopUpEvent:
+        """Сохраняет входящее событие провайдера для будущего webhook-flow."""
+
+        event, _ = PremiumTopUpEvent.objects.get_or_create(
+            provider=provider,
+            provider_event_id=provider_event_id,
+            defaults={
+                "top_up": top_up,
+                "event_type": event_type,
+                "payload": payload or {},
+            },
+        )
+        return event
 
 
 class CurrencyExchangeService:

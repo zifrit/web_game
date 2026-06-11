@@ -1,7 +1,7 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from apps.billing.models import CurrencyExchangeOffer, PremiumCurrencyTransaction
+from apps.billing.models import CurrencyExchangeOffer, PremiumCurrencyTransaction, PremiumTopUpOffer
 from apps.billing.services import PremiumCurrencyService
 from apps.game.management.commands.seed_game import Command as SeedCommand
 from apps.game.models import CharacterClass, User
@@ -20,6 +20,17 @@ class BillingApiTests(TestCase):
         self.offer = CurrencyExchangeOffer.objects.create(premium_cost=50, money_copper_reward=60_000)
         self.inactive_offer = CurrencyExchangeOffer.objects.create(
             premium_cost=999, money_copper_reward=10_000, is_active=False
+        )
+        self.top_up_offer = PremiumTopUpOffer.objects.create(
+            premium_amount=120,
+            price_amount_minor=19900,
+            sort_order=1,
+        )
+        self.inactive_top_up_offer = PremiumTopUpOffer.objects.create(
+            premium_amount=999,
+            price_amount_minor=99900,
+            is_active=False,
+            sort_order=2,
         )
 
     def test_exchange_offers_returns_active_only(self):
@@ -80,6 +91,56 @@ class BillingApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["results"]), 1)
         self.assertEqual(response.data["results"][0]["amount"], 100)
+
+    def test_top_up_offers_returns_active_only(self):
+        response = self.client.get("/api/billing/top-up-offers")
+
+        self.assertEqual(response.status_code, 200)
+        ids = [offer["id"] for offer in response.data]
+        self.assertIn(self.top_up_offer.id, ids)
+        self.assertNotIn(self.inactive_top_up_offer.id, ids)
+        self.assertEqual(response.data[0]["price_currency"], "RUB")
+
+    def test_create_top_up_returns_pending_snapshot(self):
+        response = self.client.post(
+            f"/api/billing/top-up-offers/{self.top_up_offer.id}/top-ups",
+            {},
+            format="json",
+            HTTP_IDEMPOTENCY_KEY="click-1",
+        )
+        repeat = self.client.post(
+            f"/api/billing/top-up-offers/{self.top_up_offer.id}/top-ups",
+            {},
+            format="json",
+            HTTP_IDEMPOTENCY_KEY="click-1",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(repeat.status_code, 200)
+        self.assertEqual(response.data["id"], repeat.data["id"])
+        self.assertEqual(response.data["status"], "pending")
+        self.assertEqual(response.data["premium_amount"], 120)
+        self.assertEqual(response.data["price_amount_minor"], 19900)
+        self.assertEqual(response.data["price_currency"], "RUB")
+        self.assertIsNone(response.data["checkout_url"])
+
+    def test_top_ups_are_user_scoped(self):
+        self.client.post(
+            f"/api/billing/top-up-offers/{self.top_up_offer.id}/top-ups",
+            {},
+            format="json",
+            HTTP_IDEMPOTENCY_KEY="click-1",
+        )
+
+        response = self.client.get("/api/billing/top-ups")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["results"]), 1)
+
+        other = User.objects.create_user("other-top-up@example.com", "strongpass123")
+        other_client = APIClient()
+        other_client.force_authenticate(user=other)
+        other_response = other_client.get("/api/billing/top-ups")
+        self.assertEqual(other_response.data["results"], [])
 
     def test_unauthenticated_cannot_access(self):
         anon = APIClient()

@@ -4,6 +4,9 @@ from .models import (
     CurrencyExchangeOffer,
     CurrencyExchangeTransaction,
     PremiumCurrencyTransaction,
+    PremiumTopUp,
+    PremiumTopUpEvent,
+    PremiumTopUpOffer,
     UserPremiumBalance,
 )
 
@@ -45,6 +48,103 @@ class PremiumCurrencyTransactionAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None) -> bool:
         """Запрещает удаление: премиум-леджер неизменяем."""
+
+        return False
+
+
+@admin.register(PremiumTopUpOffer)
+class PremiumTopUpOfferAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "premium_amount",
+        "price_amount_minor",
+        "price_currency",
+        "is_active",
+        "sort_order",
+    )
+    list_filter = ("is_active", "price_currency")
+
+
+@admin.register(PremiumTopUp)
+class PremiumTopUpAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "user",
+        "offer",
+        "premium_amount",
+        "price_amount_minor",
+        "price_currency",
+        "status",
+        "provider",
+        "created_at",
+    )
+    list_filter = ("status", "provider", "price_currency")
+    search_fields = ("id", "user__email", "idempotency_key", "provider_payment_id")
+    list_select_related = ("user", "offer", "premium_transaction", "refund_transaction")
+    readonly_fields = (
+        "user",
+        "offer",
+        "premium_amount",
+        "price_amount_minor",
+        "price_currency",
+        "status",
+        "provider",
+        "provider_payment_id",
+        "checkout_url",
+        "idempotency_key",
+        "metadata",
+        "premium_transaction",
+        "refund_transaction",
+        "provider_refund_id",
+        "refunded_at",
+        "created_at",
+        "updated_at",
+    )
+
+    def has_add_permission(self, request) -> bool:
+        """Запрещает ручное создание: top-up создаётся сервисом."""
+
+        return False
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        """Запрещает удаление записей top-up."""
+
+        return False
+
+
+@admin.register(PremiumTopUpEvent)
+class PremiumTopUpEventAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "provider",
+        "provider_event_id",
+        "event_type",
+        "processing_status",
+        "processed_at",
+        "created_at",
+    )
+    list_filter = ("provider", "event_type", "processing_status")
+    search_fields = ("id", "provider", "provider_event_id")
+    list_select_related = ("top_up",)
+    readonly_fields = (
+        "top_up",
+        "provider",
+        "provider_event_id",
+        "event_type",
+        "payload",
+        "processing_status",
+        "processed_at",
+        "created_at",
+        "updated_at",
+    )
+
+    def has_add_permission(self, request) -> bool:
+        """Запрещает ручное добавление: события приходят от провайдера."""
+
+        return False
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        """Запрещает удаление webhook-событий."""
 
         return False
 
