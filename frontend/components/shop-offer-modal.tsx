@@ -8,6 +8,7 @@ import { useI18n } from "@/components/providers";
 import { LoadingLine } from "@/components/ui";
 import { formatCopperCompact, type TranslationKey } from "@/lib/i18n";
 import { rarityColor } from "@/lib/rarity";
+import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 import type { BuyShopOfferResponse, PaymentCurrency, ShopOfferDetail, ShopPurchaseResult, User } from "@/lib/types";
 
 /** Shows the concrete rewards a purchase produced, resolving names from the offer's drop table. */
@@ -52,6 +53,8 @@ function ResultRewards({ result, offer }: { result: ShopPurchaseResult; offer: S
 }
 
 export function ShopOfferModal({ offerId, onClose }: { offerId: number; onClose: () => void }) {
+  useModalScrollLock();
+
   const { locale, t } = useI18n();
   const queryClient = useQueryClient();
   const [purchaseCount, setPurchaseCount] = useState(1);

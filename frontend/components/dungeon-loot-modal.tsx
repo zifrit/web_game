@@ -10,6 +10,7 @@ import { LoadingLine } from "@/components/ui";
 import { formatCopperCompact, formatDuration, formatStatName } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n";
 import { RARITY_BG, RARITY_BORDER, RARITY_COLOR } from "@/lib/rarity";
+import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 
 function getRarityStyle(rarity: string | null) {
   const key = (rarity ?? "f").toLowerCase();
@@ -18,6 +19,10 @@ function getRarityStyle(rarity: string | null) {
     bg: RARITY_BG[key] ?? RARITY_BG.f,
     border: RARITY_BORDER[key] ?? RARITY_BORDER.f,
   };
+}
+
+function formatPercent(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
 function StatCard({
@@ -60,6 +65,8 @@ export function DungeonLootModal({
   dungeon: Dungeon;
   onClose: () => void;
 }) {
+  useModalScrollLock();
+
   const { locale, t } = useI18n();
   const lootQuery = useQuery({
     queryKey: ["dungeon-loot", dungeon.id],
@@ -93,7 +100,7 @@ export function DungeonLootModal({
           display: "flex", justifyContent: "space-between", alignItems: "flex-start",
           background: "linear-gradient(135deg, rgba(59,130,246,0.08), rgba(15,23,42,0))",
         }}>
-          <div>
+          <div style={{ flex: 1, minWidth: 0, paddingRight: 16 }}>
             <h2 style={{
               fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
               fontSize: 19, fontWeight: 600, margin: 0,
@@ -105,8 +112,19 @@ export function DungeonLootModal({
               fontSize: 9, letterSpacing: "0.22em", color: "var(--primary-bright)",
               marginTop: 5, textTransform: "uppercase",
             }}>
-              {locale === "ru" ? "Обзор данжа" : "Dungeon Overview"}
+              {t("dungeons.overview")}
             </div>
+            {dungeon.description && (
+              <p style={{
+                margin: "10px 0 0",
+                color: "var(--text-dim)",
+                fontSize: 13,
+                lineHeight: 1.5,
+                maxWidth: 520,
+              }}>
+                {dungeon.description}
+              </p>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -156,6 +174,14 @@ export function DungeonLootModal({
           {/* Лут */}
           <StatCard label={locale === "ru" ? "Лут" : "Loot"} color="var(--success)">
             <span style={{ whiteSpace: "nowrap" }}>{dungeon.item_drop_chance}%</span>
+          </StatCard>
+
+          <StatCard label={t("dungeons.hpLossSuccess")} color="#f87171">
+            <span style={{ whiteSpace: "nowrap" }}>{formatPercent(dungeon.hp_loss_success_percent)}%</span>
+          </StatCard>
+
+          <StatCard label={t("dungeons.hpLossFail")} color="#ef4444">
+            <span style={{ whiteSpace: "nowrap" }}>{formatPercent(dungeon.hp_loss_fail_percent)}%</span>
           </StatCard>
         </div>
 

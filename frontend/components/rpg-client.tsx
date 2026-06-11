@@ -477,7 +477,7 @@ export function RpgClient() {
         </div>
 
         {/* Page content */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "28px 36px 60px" }}>
+        <div data-app-scroll-root style={{ flex: 1, overflowY: "auto", padding: "28px 36px 60px" }}>
           <div style={{ maxWidth: 1400, width: "100%", margin: "0 auto" }} className="animate-fade-in">
             {tab === "character"   && (
               <CharacterScreen

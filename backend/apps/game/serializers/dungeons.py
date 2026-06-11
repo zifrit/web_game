@@ -28,6 +28,8 @@ class DungeonLocationSerializer(serializers.ModelSerializer):
             "duration_seconds",
             "required_power",
             "success_chance",
+            "hp_loss_success_percent",
+            "hp_loss_fail_percent",
             "item_drop_chance",
             "has_mini_game",
             "location_type",

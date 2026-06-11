@@ -10,6 +10,7 @@ import type { TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
 import { RARITY_COLOR, rarityColor as rc, rarityGlow as rg } from "@/lib/rarity";
 import type { Character, CraftRecipe, DestroyPreview, Ingredient, Inventory, InventoryCard, InventoryMutationResponse, ItemDetail, Potion, RepairPreview } from "@/lib/types";
+import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 
 /** Делит общее количество на визуальные стаки по `size` (например 6 → [5, 1]). */
 function splitToStacks(count: number, size = 5): number[] {
@@ -472,6 +473,8 @@ function BulkActionModal({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  useModalScrollLock();
+
   const { t } = useI18n();
   const isRepair = action === "repair";
   const canConfirm = isRepair ? repairPreview?.can_repair : destroyPreview?.can_destroy;

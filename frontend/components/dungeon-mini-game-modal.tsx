@@ -7,6 +7,7 @@ import { useI18n } from "@/components/providers";
 import { api } from "@/lib/api";
 import { formatDuration, formatTime } from "@/lib/i18n";
 import { useCardFaces } from "@/lib/use-card-faces";
+import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 import type { DungeonMiniGameAttempt, DungeonMiniGameCard, DungeonRun } from "@/lib/types";
 
 function useAttemptSeconds(attempt?: DungeonMiniGameAttempt | null) {
@@ -45,6 +46,8 @@ export function DungeonMiniGameDifficultyModal({
   onClose: () => void;
   pending?: boolean;
 }) {
+  useModalScrollLock();
+
   const { t } = useI18n();
   const configsQuery = useQuery({
     queryKey: ["mini-game-configs"],
@@ -106,6 +109,8 @@ export function DungeonMiniGameModal({
   onClose: () => void;
   onFinished: (attempt: DungeonMiniGameAttempt) => void;
 }) {
+  useModalScrollLock();
+
   const { t } = useI18n();
   const { facesByCode } = useCardFaces();
   const [currentAttempt, setCurrentAttempt] = useState(attempt);
@@ -304,6 +309,8 @@ export function DungeonMiniGameResultModal({
   attempt: DungeonMiniGameAttempt;
   onClose: () => void;
 }) {
+  useModalScrollLock();
+
   const { locale, t } = useI18n();
   const success = attempt.status === "SUCCESS";
   const reductionLabel = formatDuration(attempt.duration_reduction_seconds, locale);

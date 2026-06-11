@@ -153,6 +153,8 @@ export type Dungeon = {
   duration_seconds: number;
   required_power: number;
   success_chance: number;
+  hp_loss_success_percent: number;
+  hp_loss_fail_percent: number;
   item_drop_chance: number;
   has_mini_game: boolean;
   location_type: "dungeon" | "resource";

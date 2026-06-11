@@ -7,8 +7,11 @@ import { api, ApiError } from "@/lib/api";
 import { useI18n } from "@/components/providers";
 import { LoadingLine } from "@/components/ui";
 import { formatCopperCompact } from "@/lib/i18n";
+import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 
 export function ExchangeModal({ onClose }: { onClose: () => void }) {
+  useModalScrollLock();
+
   const { locale, t } = useI18n();
   const queryClient = useQueryClient();
   const [done, setDone] = useState(false);

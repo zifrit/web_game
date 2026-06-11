@@ -1,16 +1,16 @@
 # Graph Report - web_game  (2026-06-11)
 
 ## Corpus Check
-- 222 files · ~170,501 words
+- 223 files · ~170,789 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3858 nodes · 6352 edges · 299 communities (221 shown, 78 thin omitted)
+- 3889 nodes · 6414 edges · 307 communities (228 shown, 79 thin omitted)
 - Extraction: 84% EXTRACTED · 15% INFERRED · 0% AMBIGUOUS · INFERRED: 962 edges (avg confidence: 0.58)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a3a54890`
+- Built from commit: `df8f1e23`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -292,6 +292,14 @@
 - [[_COMMUNITY_Community 296|Community 296]]
 - [[_COMMUNITY_Community 297|Community 297]]
 - [[_COMMUNITY_Community 298|Community 298]]
+- [[_COMMUNITY_Community 299|Community 299]]
+- [[_COMMUNITY_Community 300|Community 300]]
+- [[_COMMUNITY_Community 301|Community 301]]
+- [[_COMMUNITY_Community 302|Community 302]]
+- [[_COMMUNITY_Community 303|Community 303]]
+- [[_COMMUNITY_Community 304|Community 304]]
+- [[_COMMUNITY_Community 305|Community 305]]
+- [[_COMMUNITY_Community 306|Community 306]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `TimestampedModel` - 87 edges
@@ -349,7 +357,7 @@
 - **Media usage contract across screens** — code:bestMediaUrl, code:CreateCharacterScreen, code:CharacterScreen, code:DungeonsScreen, code:InventoryScreen, code:LeaderboardScreen, code:SettingsScreen, concept:MediaAssetContract [EXTRACTED 0.94]
 - **Server-authoritative gameplay boundary** — concept:ServerAuthoritativeRules, concept:CentralizedGameConfig, concept:PowerFormula, concept:SuccessChanceFormula, concept:RepairFlow, code:api-facade, code:types [EXTRACTED 0.89]
 
-## Communities (299 total, 78 thin omitted)
+## Communities (307 total, 79 thin omitted)
 
 ### Community 0 - "Community 0"
 Cohesion: 0.22
@@ -365,51 +373,51 @@ Nodes (46): Auth API Endpoints, Character API Endpoints, Dungeon API Endpoints, 
 
 ### Community 3 - "Community 3"
 Cohesion: 0.07
-Nodes (17): APITestCase, bool, str, BasePermission, IsSuperuserOrOwner, Allows authenticated users to access their own objects, with superuser bypass., DungeonLootApiTests, MvpApiTests (+9 more)
+Nodes (19): APITestCase, bool, str, BasePermission, IsSuperuserOrOwner, Allows authenticated users to access their own objects, with superuser bypass., DungeonLootApiTests, MvpApiTests (+11 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.09
-Nodes (30): useSession(), ADVENTURE_NAV, HERO_NAV, MobileNav(), NAV_ICONS, PAGE_META, Sidebar(), Tab (+22 more)
+Cohesion: 0.07
+Nodes (19): useSession(), CharacterScreenSkeleton(), ErrorNotice(), InventoryScreenSkeleton(), LoadingLine(), rarityBorder, rarityText, Skeleton() (+11 more)
 
 ### Community 5 - "Community 5"
 Cohesion: 0.07
 Nodes (43): Celery App, Django Settings, URL Patterns (root), message (helper), MESSAGES (i18n dict), IsSuperuserOrOwner, Game URL Patterns, Inventory & Equipment System (+35 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.04
-Nodes (52): CraftRecipe, CraftRecipeIngredient, CraftRecipePotion, CraftResponse, CurrentRunResponse, DestroyPreview, DestroyResponse, DungeonLootItem (+44 more)
+Cohesion: 0.05
+Nodes (41): ResultRewards(), BuyShopOfferResponse, CraftRecipeIngredient, CraftRecipePotion, CraftResponse, CurrentRunResponse, DestroyResponse, DungeonLootItem (+33 more)
 
 ### Community 7 - "Community 7"
 Cohesion: 0.06
 Nodes (43): AutocompleteSelect, ShopOffer, str, DjangoUserAdmin, CachedSelectedAutocompleteSelect, CharacterAdmin, CharacterClassAdmin, CraftRecipeAdmin (+35 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.11
-Nodes (12): str, request_locale(), resolve_locale(), translate(), Возвращает зелья героя с положительным количеством., Использует зелье, лечит героя и возвращает обновлённые HP и остаток., Возвращает определения рецептов с зельем и предзаполненными ингредиентами., Списывает ингредиенты, выдаёт зелья и возвращает итог крафта. (+4 more)
+Cohesion: 0.15
+Nodes (11): Character, int, CraftService, Сервис крафта зелий по предзаполненным рецептам (сложность = рецепт)., Сервис крафта зелий по предзаполненным рецептам (сложность = рецепт)., Возвращает героя пользователя или выбрасывает локализованную ошибку., Возвращает героя пользователя или выбрасывает локализованную ошибку., Транзакционно варит батч зелий: списывает ингредиенты, выдаёт зелья. (+3 more)
 
 ### Community 9 - "Community 9"
-Cohesion: 0.08
-Nodes (33): Any, bool, Character, float, int, str, UserItem, message() (+25 more)
+Cohesion: 0.07
+Nodes (37): Any, bool, Character, float, int, str, UserItem, str (+29 more)
 
 ### Community 10 - "Community 10"
-Cohesion: 0.07
-Nodes (30): Any, Character, CharacterClass, str, Character, int, CharacterClass, MediaAsset (+22 more)
+Cohesion: 0.05
+Nodes (48): Any, Character, CharacterClass, str, bool, int, UserItem, CharacterClass (+40 more)
 
 ### Community 11 - "Community 11"
-Cohesion: 0.08
-Nodes (25): AppProviders(), LocaleContext, LocaleContextValue, queryClient, reportError(), SessionContext, SessionContextValue, RpgClient() (+17 more)
+Cohesion: 0.10
+Nodes (22): LocaleContext, LocaleContextValue, queryClient, reportError(), SessionContext, SessionContextValue, emitToast(), ToastBridge (+14 more)
 
 ### Community 12 - "Community 12"
 Cohesion: 0.07
 Nodes (29): dependencies, clsx, @hookform/resolvers, lucide-react, next, react, react-dom, react-hook-form (+21 more)
 
 ### Community 13 - "Community 13"
-Cohesion: 0.10
-Nodes (25): _category_limit_state_map(), DungeonLocationDetailView, DungeonLocationListView, _location_daily_used_map(), API-ручка списка доступных подземелий., Возвращает активные локации с расчётным шансом успеха для героя., API-ручка списка доступных подземелий., Возвращает активные локации с расчётным шансом успеха для героя. (+17 more)
+Cohesion: 0.09
+Nodes (29): _category_limit_state_map(), DungeonLocationDetailView, DungeonLocationListView, DungeonRunStartView, _location_daily_used_map(), API-ручка запуска героя в подземелье., API-ручка списка доступных подземелий., Возвращает активные локации с расчётным шансом успеха для героя. (+21 more)
 
 ### Community 14 - "Community 14"
-Cohesion: 0.07
-Nodes (28): Any, float, int, str, Protocol, _invalidate_game_config_cache(), _invalidate_rarity_config_cache(), Сбрасывает кэш игровых настроек при изменении или удалении записей. (+20 more)
+Cohesion: 0.09
+Nodes (27): Any, float, _invalidate_game_config_cache(), _invalidate_rarity_config_cache(), Сбрасывает кэш игровых настроек при изменении или удалении записей., Сбрасывает кэш конфигурации редкостей при изменении записей., Сбрасывает кэш игровых настроек при изменении или удалении записей., Сбрасывает кэш конфигурации редкостей при изменении записей. (+19 more)
 
 ### Community 15 - "Community 15"
 Cohesion: 0.09
@@ -420,44 +428,44 @@ Cohesion: 0.11
 Nodes (15): bool, Запрещает ручное добавление: начисления только через сервис., Запрещает удаление: медный леджер неизменяем., Запрещает ручное добавление: начисления только через сервис., Запрещает удаление: медный леджер неизменяем., Запрещает ручное добавление: начисления только через сервис., Запрещает удаление: медный леджер неизменяем., Запрещает ручное добавление записей истории покупок. (+7 more)
 
 ### Community 17 - "Community 17"
-Cohesion: 0.05
-Nodes (63): TOTP two-factor authentication, MvpApiTests, TokenRefreshView, IconAssetsView, LoginView, MeView, API-ручка получения краткой информации о текущем пользователе., API-ручка состояния TOTP-защиты текущего пользователя. (+55 more)
+Cohesion: 0.06
+Nodes (35): TOTP two-factor authentication, MvpApiTests, LoginView, MeView, API-ручка получения краткой информации о текущем пользователе., API-ручка состояния TOTP-защиты текущего пользователя., API-ручка запуска настройки TOTP-защиты., API-ручка состояния TOTP-защиты текущего пользователя. (+27 more)
 
 ### Community 18 - "Community 18"
 Cohesion: 0.11
 Nodes (28): Character is the single account hero with class, avatar, progress, base stats, and cached power, CharacterClass defines base stats, growth profile, media, and active ordering, DungeonLocation defines duration, required power, reward ranges, item_drop_chance, media, and active ordering, DungeonLocationItemTemplate links locations to item templates with chance weights and uniqueness, DungeonRun records one timed dungeon attempt, status, success chance, rewards, durability loss, and unique active-run constraint, DungeonRunClaim is a one-to-one idempotency record for claimed dungeon rewards, DungeonRunClaimItem links a claim to awarded UserItem rows, ItemTemplate defines seedable loot template, slot/type, rarity_key, allowed classes, stats, durability, and media (+20 more)
 
 ### Community 19 - "Community 19"
-Cohesion: 0.10
-Nodes (18): Character, int, HeroIngredientStorage, ClaimResult, Результат получения наград за забег, включая уровни до и после., Результат получения наград за забег, включая уровни до и после., Результат получения наград за забег, включая уровни до и после., Результат получения наград за забег, включая уровни до и после. (+10 more)
+Cohesion: 0.18
+Nodes (8): Character, int, HeroIngredientStorage, Возвращает героя пользователя или выбрасывает локализованную ошибку., Возвращает героя пользователя или выбрасывает локализованную ошибку., Возвращает склад ингредиентов героя с положительным количеством., Транзакционно добавляет ингредиенты на склад героя, инкрементируя count., Возвращает склад ингредиентов героя с положительным количеством.
 
 ### Community 20 - "Community 20"
 Cohesion: 0.10
 Nodes (27): AppProviders, Frontend Package Manifest, Home Page, ItemGlyph, LocaleProvider, MobileNav, Next Config, PostCSS Config (+19 more)
 
 ### Community 21 - "Community 21"
-Cohesion: 0.29
-Nodes (4): str, Возвращает название редкости., Возвращает название слота экипировки., Возвращает ключ игровой настройки.
+Cohesion: 0.13
+Nodes (12): str, EquipmentSlotConfig, GameConfig, Meta, RarityConfig, Проверяет корректность диапазонов уровней и количества характеристик., Возвращает название редкости., Справочник слотов экипировки, доступных в игре. (+4 more)
 
 ### Community 22 - "Community 22"
-Cohesion: 0.13
-Nodes (23): SessionProvider(), apiBase(), apiFetch(), ApiUser, AuthPayload, Character, CharacterClass, clearTokens() (+15 more)
+Cohesion: 0.11
+Nodes (24): SessionProvider(), apiBase(), ApiError, apiFetch(), ApiUser, AuthPayload, Character, CharacterClass (+16 more)
 
 ### Community 23 - "Community 23"
-Cohesion: 0.14
-Nodes (18): canOpenMiniGame(), DungeonMiniGameDifficultyModal(), DungeonMiniGameModal(), DungeonMiniGameResultModal(), formatTime(), useAttemptSeconds(), api, formatDuration() (+10 more)
+Cohesion: 0.11
+Nodes (24): canOpenMiniGame(), DungeonMiniGameDifficultyModal(), DungeonMiniGameModal(), DungeonMiniGameResultModal(), formatTime(), useAttemptSeconds(), ExchangeModal(), api (+16 more)
 
 ### Community 24 - "Community 24"
 Cohesion: 0.04
 Nodes (58): bool, DungeonRun, Завершает забег, если его таймер истёк, и фиксирует результат., Самоблокирующийся расчёт забега: берёт его под select_for_update в         своей, Самоблокирующийся расчёт забега: берёт его под select_for_update в         своей, Идемпотентно начисляет награды за готовый забег и помечает его claimed., Идемпотентно начисляет награды за готовый забег и помечает его claimed., Идемпотентно начисляет награды за готовый забег и помечает его claimed. (+50 more)
 
 ### Community 25 - "Community 25"
-Cohesion: 0.25
-Nodes (7): LogoutView, API-ручка выхода пользователя через блокировку refresh-токена., API-ручка получения списка иконок для выбора аватара., API-ручка выхода пользователя через блокировку refresh-токена., API-ручка выхода пользователя через блокировку refresh-токена., Добавляет переданный refresh-токен в blacklist и завершает сессию., Добавляет переданный refresh-токен в blacklist и завершает сессию.
+Cohesion: 0.14
+Nodes (10): LoginSerializer, Сериализатор входа пользователя., Проверяет email и пароль, затем кладёт пользователя в validated_data., Возвращает профиль, баланс и признак наличия созданного героя., Возвращает все медиа-ассеты с типом ICONS., Возвращает все медиа-ассеты с типом ICONS (кэшируется, admin-only данные)., Возвращает все медиа-ассеты с типом ICONS (кэшируется, admin-only данные)., Проверяет учётные данные и возвращает новую пару JWT-токенов. (+2 more)
 
 ### Community 26 - "Community 26"
 Cohesion: 0.05
-Nodes (36): CharacterClass, str, CharacterClassSerializer, class_media_for_gender(), CreateCharacterSerializer, Meta, Сериализатор публичной карточки класса героя., Возвращает медиа класса по полу с fallback для неполных данных. (+28 more)
+Nodes (34): CharacterClass, str, CharacterClassSerializer, class_media_for_gender(), CreateCharacterSerializer, Meta, Сериализатор публичной карточки класса героя., Возвращает медиа класса по полу с fallback для неполных данных. (+26 more)
 
 ### Community 27 - "Community 27"
 Cohesion: 0.13
@@ -481,51 +489,51 @@ Nodes (4): RankedSeedTests, Устанавливает пользователю 
 
 ### Community 32 - "Community 32"
 Cohesion: 0.13
-Nodes (15): Character, EquipmentSlot, Inventory, InventoryMutationResponse, addUniqueItem(), DragState, EQUIPMENT_SLOTS, InvCell() (+7 more)
+Nodes (15): Character, EquipmentSlot, InventoryMutationResponse, Potion, addUniqueItem(), DragState, EQUIPMENT_SLOTS, InvCell() (+7 more)
 
 ### Community 33 - "Community 33"
-Cohesion: 0.07
-Nodes (36): str, UserItem, Формирует ответ авторизации с access/refresh токенами и данными пользователя., Сериализатор второго шага входа по TOTP-коду., Сериализатор подтверждения TOTP-кода., Сериализатор отключения TOTP-защиты., token_response(), TotpCodeSerializer (+28 more)
+Cohesion: 0.09
+Nodes (32): str, UserItem, Формирует ответ авторизации с access/refresh токенами и данными пользователя., Сериализатор регистрации нового пользователя., Создаёт пользователя через менеджер модели., Сериализатор второго шага входа по TOTP-коду., Сериализатор подтверждения TOTP-кода., Сериализатор отключения TOTP-защиты. (+24 more)
 
 ### Community 34 - "Community 34"
-Cohesion: 0.26
-Nodes (8): int, str, MoneyTransaction, Начисляет медь и пишет запись в леджер., Списывает медь, проверяя достаточность баланса., Возвращает актуальный медный баланс из БД (без кэша экземпляра)., Возвращает ранее записанную транзакцию по ключу идемпотентности, если есть., Пишет неизменяемую запись леджера для выполненного движения.
+Cohesion: 0.14
+Nodes (12): Возвращает краткое описание забега героя в подземелье., Возвращает краткое описание попытки мини-игры., Возвращает краткое описание забега героя в подземелье., Возвращает краткое описание забега героя в подземелье., Возвращает краткое описание забега героя в подземелье., Возвращает краткое описание попытки мини-игры., Возвращает краткое описание попытки мини-игры., Возвращает краткое описание попытки мини-игры. (+4 more)
 
 ### Community 35 - "Community 35"
 Cohesion: 0.12
 Nodes (7): Проверки Этапа 5: ресурсная локация «Лес трав»., Стартует ресурсный забег, истекает таймер, завершает и клеймит., Проверки Этапа 5: ресурсная локация «Лес трав»., Стартует ресурсный забег, истекает таймер, завершает и клеймит., Проверки Этапа 5: ресурсная локация «Лес трав»., Стартует ресурсный забег, истекает таймер, завершает и клеймит., ResourceLocationTests
 
 ### Community 36 - "Community 36"
-Cohesion: 0.15
-Nodes (11): bool, int, Возвращает процент текущего HP от максимума (0 при нулевом максимуме)., Возвращает процент текущего HP от максимума (0 при нулевом максимуме)., Возвращает штраф к шансу успеха за низкое HP по порогам из конфига., Возвращает штраф к шансу успеха за низкое HP по порогам из конфига., Проверяет, что HP ниже порога, при котором обычный данж нельзя стартовать., Проверяет, что HP ниже порога, при котором обычный данж нельзя стартовать. (+3 more)
+Cohesion: 0.10
+Nodes (16): CraftRecipe, DestroyPreview, Ingredient, Inventory, InventoryCard, ItemDetail, RepairPreview, ConsumableCell (+8 more)
 
 ### Community 37 - "Community 37"
 Cohesion: 0.11
 Nodes (15): str, media_asset_upload_path(), Безопасно возвращает URL файла из настроенного Django storage., Безопасно возвращает URL файла из настроенного Django storage., Формирует путь файла медиа-ассета внутри настроенного хранилища., Возвращает URL оригинального файла из S3 или локального storage., Возвращает URL оригинального файла из S3 или локального storage., Возвращает URL большой версии файла. (+7 more)
 
 ### Community 39 - "Community 39"
-Cohesion: 0.08
-Nodes (54): APIView, CurrencyExchangeOfferDetailSerializer, CurrencyExchangeOfferSerializer, CurrencyExchangeTransactionSerializer, PremiumCurrencyTransactionSerializer, PremiumTopUpOfferSerializer, PremiumTopUpSerializer, Детальный сериализатор предложения обмена с признаком активности. (+46 more)
+Cohesion: 0.11
+Nodes (46): APIView, CurrencyExchangeOfferDetailSerializer, CurrencyExchangeOfferSerializer, CurrencyExchangeTransactionSerializer, PremiumCurrencyTransactionSerializer, PremiumTopUpOfferSerializer, PremiumTopUpSerializer, Детальный сериализатор предложения обмена с признаком активности. (+38 more)
 
 ### Community 40 - "Community 40"
-Cohesion: 0.18
-Nodes (6): str, Возвращает связку предложения и шаблона зелья., Возвращает связку предложения и шаблона предмета., Возвращает идентификаторы покупки, пользователя и предложения., Возвращает локализованное имя или техническое обозначение предложения., Возвращает связку предложения и шаблона ингредиента.
+Cohesion: 0.10
+Nodes (19): int, str, int, str, MoneyTransaction, Protocol, MoneyService, Единственная точка изменения медного баланса пользователя (money_copper).      С (+11 more)
 
 ### Community 41 - "Community 41"
-Cohesion: 0.16
-Nodes (10): str, BaseUserManager, Создаёт обычного пользователя с нормализованным email и паролем., Создаёт администратора с правами staff и superuser., Возвращает email как человекочитаемое имя аккаунта., Настройки двухфакторной TOTP-защиты игрового аккаунта., Возвращает краткое описание настройки 2FA., Менеджер пользователей с авторизацией по email вместо username. (+2 more)
+Cohesion: 0.20
+Nodes (8): str, BaseUserManager, Создаёт обычного пользователя с нормализованным email и паролем., Создаёт администратора с правами staff и superuser., Возвращает email как человекочитаемое имя аккаунта., Возвращает краткое описание настройки 2FA., Менеджер пользователей с авторизацией по email вместо username., UserManager
 
 ### Community 42 - "Community 42"
 Cohesion: 0.09
-Nodes (36): DungeonRewardModal(), RARITY_COLOR, rarityLabel(), ExchangeModal(), useI18n(), Topbar(), ResultRewards(), ShopOfferModal() (+28 more)
+Nodes (31): AppProviders(), useI18n(), ADVENTURE_NAV, HERO_NAV, MobileNav(), NAV_ICONS, PAGE_META, RpgClient() (+23 more)
 
 ### Community 43 - "Community 43"
-Cohesion: 0.11
-Nodes (8): str, CraftTests, Проверки Этапа 0: max_hp/current_hp, intellect и формула power., Проверки Этапа 0: max_hp/current_hp, intellect и формула power., Проверки Этапа 0: max_hp/current_hp, intellect и формула power., Проверки Этапа 6: крафт зелий по предзаполненным рецептам., Проверки Этапа 6: крафт зелий по предзаполненным рецептам., StatRefactorTests
+Cohesion: 0.23
+Nodes (3): CraftTests, Проверки Этапа 6: крафт зелий по предзаполненным рецептам., Проверки Этапа 6: крафт зелий по предзаполненным рецептам.
 
 ### Community 44 - "Community 44"
-Cohesion: 0.15
-Nodes (11): UserItem, Считает стоимость ремонта недостающей прочности предмета., Считает возврат денег за уничтожение предмета., Считает стоимость ремонта недостающей прочности предмета., Считает возврат денег за уничтожение предмета., Считает стоимость ремонта недостающей прочности предмета., Считает стоимость ремонта недостающей прочности предмета., Считает возврат денег за уничтожение предмета. (+3 more)
+Cohesion: 0.08
+Nodes (15): bool, Запрещает ручное создание: top-up создаётся сервисом., Запрещает удаление записей top-up., Запрещает ручное добавление: события приходят от провайдера., Запрещает удаление webhook-событий., Запрещает ручное добавление: обмен выполняется только через сервис., Запрещает удаление записей обмена., Запрещает удаление балансов: они привязаны к пользователю. (+7 more)
 
 ### Community 45 - "Community 45"
 Cohesion: 0.05
@@ -536,12 +544,12 @@ Cohesion: 0.06
 Nodes (32): hooks, PreToolUse, inventories/backend-inventory.md, inventories/frontend-inventory.md, project-memory/INDEX.md, inventories/runtime-and-config.md, inventories/verification.md, Agent Skills (+24 more)
 
 ### Community 47 - "Community 47"
-Cohesion: 0.18
-Nodes (12): Character, str, Считает прирост характеристик героя от уровней и профиля роста класса., Считает прирост характеристик героя от уровней и профиля роста класса., Считает прирост характеристик героя от уровней и профиля роста класса., Собирает итоговые характеристики героя с уровнем, экипировкой и капами., Считает собственные характеристики героя от класса и уровня без экипировки., Считает собственные характеристики героя от класса и уровня без экипировки. (+4 more)
+Cohesion: 0.07
+Nodes (31): Character, float, str, Считает показатель силы по набору характеристик и весам формулы., Считает показатель силы по набору характеристик и весам формулы., Считает показатель силы по набору характеристик и весам формулы., Пересчитывает силу героя и точечно сохраняет её кэш в БД., Пересчитывает силу героя и точечно сохраняет её кэш в БД. (+23 more)
 
 ### Community 48 - "Community 48"
-Cohesion: 0.10
-Nodes (19): Rank system F-EX, SeedGameCommand, SeedItemTemplatesCommand, DungeonMiniGameConfig, Настройки мини-игры: сложность, таймер и ускорение прохождения., Возвращает человекочитаемую сложность мини-игры., Настройки мини-игры: сложность, таймер и процентное ускорение прохождения., Доступные размеры memory-pairs мини-игры. (+11 more)
+Cohesion: 0.50
+Nodes (4): Rank system F-EX, DEFAULT_RARITIES, RANKS tuple (F/E/D/C/B/A/S/EX), RankedSeedTests
 
 ### Community 49 - "Community 49"
 Cohesion: 0.08
@@ -556,20 +564,20 @@ Cohesion: 0.19
 Nodes (5): DungeonLifecycleTests, Доводит партию до победы честными ходами через reveal/make_move., Доводит партию до победы честными ходами через reveal/make_move., Доводит партию до победы честными ходами через reveal/make_move., Доводит партию до победы честными ходами через reveal/make_move.
 
 ### Community 54 - "Community 54"
-Cohesion: 0.06
-Nodes (34): DungeonRunCurrentView, DungeonRunStartView, API-ручка текущего или ожидающего награды забега., Создаёт новый забег, если у героя нет активного забега и сломанных вещей., API-ручка запуска героя в подземелье., Создаёт новый забег, если у героя нет активного забега и сломанных вещей., API-ручка текущего или ожидающего награды забега., Создаёт новый забег, если у героя нет активного забега и сломанных вещей. (+26 more)
+Cohesion: 0.14
+Nodes (13): DungeonRunCurrentView, API-ручка текущего или ожидающего награды забега., API-ручка запуска героя в подземелье., API-ручка текущего или ожидающего награды забега., Возвращает активный забег и при необходимости завершает его на лету., API-ручка текущего или ожидающего награды забега., Возвращает активный забег и при необходимости завершает его на лету., API-ручка текущего или ожидающего награды забега. (+5 more)
 
 ### Community 55 - "Community 55"
 Cohesion: 0.48
 Nodes (7): Django Backend Service, Celery Worker and Beat Services, Docker Compose Runtime Stack, Next Frontend Service, PostgreSQL Service, Redis Service, Django Manage Entrypoint
 
 ### Community 56 - "Community 56"
-Cohesion: 0.20
-Nodes (8): Считает показатель силы по набору характеристик и весам формулы., Считает показатель силы по набору характеристик и весам формулы., Считает показатель силы по набору характеристик и весам формулы., Пересчитывает силу героя и точечно сохраняет её кэш в БД., Пересчитывает силу героя и точечно сохраняет её кэш в БД., Считает показатель силы по набору характеристик и весам формулы., Считает показатель силы по набору характеристик и весам формулы., Пересчитывает силу героя и точечно сохраняет её кэш в БД.
+Cohesion: 0.17
+Nodes (7): Детальный сериализатор предмета пользователя., Возвращает текущую и максимальную прочность предмета., Возвращает локализованное название предмета., Показывает, экипирован ли предмет текущим героем., Показывает, может ли текущий герой экипировать предмет., Возвращает набор URL медиа для шаблона предмета., UserItemDetailSerializer
 
 ### Community 57 - "Community 57"
-Cohesion: 0.11
-Nodes (5): CharacterScreenSkeleton(), InventoryScreenSkeleton(), rarityBorder, rarityText, Skeleton()
+Cohesion: 0.15
+Nodes (12): DungeonRunStatus, Возвращает связь локации и шаблона предмета., Возвращает связь локации и шаблона предмета., Статусы прохождения подземелья., Возвращает связь локации и шаблона предмета., Статусы прохождения подземелья., Возвращает связь локации и шаблона предмета., Возвращает связь локации и шаблона предмета. (+4 more)
 
 ### Community 58 - "Community 58"
 Cohesion: 0.33
@@ -580,8 +588,8 @@ Cohesion: 0.05
 Nodes (38): API endpoints, Claim награды, Dungeon Run Flow, Важная особенность текущего MVP, Вклад каждой характеристики в power, Где именно считаются preview для UI, Генерация предмета, Главные файлы (+30 more)
 
 ### Community 60 - "Community 60"
-Cohesion: 0.18
-Nodes (10): Возвращает дату получения награды, если она уже была получена., Возвращает дату получения награды, если она уже была получена., Возвращает локализованное название локации из истории., Возвращает дату получения награды, если она уже была получена., Возвращает дату получения награды, если она уже была получена., Возвращает дату получения награды, если она уже была получена., Возвращает локализованное название локации из истории., Возвращает локализованное название локации из истории. (+2 more)
+Cohesion: 0.15
+Nodes (12): Возвращает дату получения награды, если она уже была получена., Возвращает дату получения награды, если она уже была получена., Возвращает локализованное название локации из истории., Возвращает дату получения награды, если она уже была получена., Возвращает дату получения награды, если она уже была получена., Возвращает локализованное название локации из истории., Возвращает дату получения награды, если она уже была получена., Возвращает локализованное название локации из истории. (+4 more)
 
 ### Community 61 - "Community 61"
 Cohesion: 0.40
@@ -589,7 +597,7 @@ Nodes (6): Next.js application icon SVG, Browser Async RPG minimal brand mark, r
 
 ### Community 62 - "Community 62"
 Cohesion: 0.04
-Nodes (46): int, InventoryTests, InventoryItemDetailView, InventoryItemEquipView, InventoryItemRepairPreviewView, InventoryItemRepairView, InventoryItemsDestroyPreviewView, InventoryItemsDestroyView (+38 more)
+Nodes (35): str, int, request_locale(), resolve_locale(), translate(), InventoryTests, Возвращает зелья героя с положительным количеством., Использует зелье, лечит героя и возвращает обновлённые HP и остаток. (+27 more)
 
 ### Community 63 - "Community 63"
 Cohesion: 0.06
@@ -616,8 +624,8 @@ Cohesion: 0.09
 Nodes (21): 02. Backend Models Specification, 10. user_items, 11. dungeon_location_item_templates, 12. rarity_configs, 13. equipment_slot_configs, 14. repair_transactions, 15. game_configs, 16. Важные ограничения и правила (+13 more)
 
 ### Community 69 - "Community 69"
-Cohesion: 0.07
-Nodes (29): DungeonMiniGameHistoryView, DungeonMiniGameMoveView, DungeonRunClaimView, MiniGameConfigCatalogView, API-ручка получения наград за завершённый забег., API-ручка получения наград за завершённый забег., API-ручка получения наград за завершённый забег., API-ручка получения наград за завершённый забег. (+21 more)
+Cohesion: 0.11
+Nodes (17): DungeonRunClaimView, API-ручка получения наград за завершённый забег., Идемпотентно начисляет опыт, деньги, предметы и потерю прочности., API-ручка получения наград за завершённый забег., API-ручка запуска героя в подземелье., API-ручка получения наград за завершённый забег., Идемпотентно начисляет опыт, деньги, предметы и потерю прочности., Возвращает активный забег и при необходимости завершает его на лету. (+9 more)
 
 ### Community 70 - "Community 70"
 Cohesion: 0.10
@@ -651,17 +659,13 @@ Nodes (5): float, HpPenaltyTests, Проверки Этапа 2: штрафы su
 Cohesion: 0.19
 Nodes (7): str, Единое описание вида награды магазина: связи, шаблоны, способ выдачи.      Один, Атрибут *_id шаблона на записи (для группировки прокаток по id)., Возвращает дескриптор вида награды или None для неизвестного вида., reward_descriptor(), RewardKindDescriptor, RewardDescriptorTests
 
-### Community 98 - "Community 98"
-Cohesion: 0.22
-Nodes (6): Сериализатор регистрации нового пользователя., Проверяет уникальность email перед созданием аккаунта., Создаёт пользователя через менеджер модели., RegisterSerializer, Создаёт аккаунт по email и паролю, затем возвращает токены авторизации., Создаёт аккаунт по email и паролю, затем возвращает токены авторизации.
-
 ### Community 103 - "Community 103"
 Cohesion: 0.29
 Nodes (6): str, _derive_cache_url(), Возвращает URL Redis с подменой номера базы данных на 1., Возвращает URL Redis с подменой номера базы данных на 1., Возвращает URL Redis с подменой номера базы данных на 1., Возвращает URL Redis с подменой номера базы данных на 1.
 
 ### Community 136 - "Community 136"
-Cohesion: 0.07
-Nodes (29): Any, int, str, bump_reference_cache(), cached_response(), Кэш ответов для справочных (admin-only) и тяжёлых на чтение ручек.  Инвалидация, Возвращает текущую версию справочного кэша, инициализируя её при первом доступе., Часть ключа кэша, учитывающая схему+хост запроса.      Ответы с абсолютными URL (+21 more)
+Cohesion: 0.08
+Nodes (26): Any, int, str, bump_reference_cache(), cached_response(), Кэш ответов для справочных (admin-only) и тяжёлых на чтение ручек.  Инвалидация, Возвращает текущую версию справочного кэша, инициализируя её при первом доступе., Часть ключа кэша, учитывающая схему+хост запроса.      Ответы с абсолютными URL (+18 more)
 
 ### Community 137 - "Community 137"
 Cohesion: 0.17
@@ -692,8 +696,8 @@ Cohesion: 0.29
 Nodes (8): Initial User Character Dungeon Inventory Models, Initial Game Schema Migration, Unique In Progress Run Constraint, Project Memory Rules, Security Rules, Async RPG Core Loop, MVP Gameplay Constraints, Browser Async RPG MVP Specification
 
 ### Community 144 - "Community 144"
-Cohesion: 0.25
-Nodes (7): CharacterCreateSerializer, Сериализатор создания героя и ответа с базовым прогрессом., Сериализатор создания героя и ответа с базовым прогрессом., Сериализатор создания героя и ответа с базовым прогрессом., Сериализатор создания героя и ответа с базовым прогрессом., Создаёт героя выбранного класса, если у аккаунта ещё нет героя., Создаёт героя выбранного класса, если у аккаунта ещё нет героя.
+Cohesion: 0.16
+Nodes (11): Character, int, PotionService, Сервис использования зелий лечения и просмотра склада зелий героя., Сервис использования зелий лечения и просмотра склада зелий героя., Возвращает героя пользователя или выбрасывает локализованную ошибку., Возвращает героя пользователя или выбрасывает локализованную ошибку., Транзакционно лечит героя зельями, списывает их со склада и возвращает итог. (+3 more)
 
 ### Community 145 - "Community 145"
 Cohesion: 0.25
@@ -704,8 +708,8 @@ Cohesion: 0.25
 Nodes (7): Asset generation, Backend, Docker and smoke, Documentation-only changes, Frontend, Graphify maintenance, Verification Inventory
 
 ### Community 147 - "Community 147"
-Cohesion: 0.05
-Nodes (35): str, MiniGameCardFace, SVG-лицо карточки memory-pairs, управляемое контентом из БД., SVG-лицо карточки memory-pairs, управляемое контентом из БД., Прогоняет SVG через санитайзер перед сохранением., Гарантирует санитизацию даже при сохранении в обход формы., Прогоняет SVG через санитайзер перед сохранением., Гарантирует санитизацию даже при сохранении в обход формы. (+27 more)
+Cohesion: 0.10
+Nodes (19): MiniGameCardFace, SVG-лицо карточки memory-pairs, управляемое контентом из БД., SVG-лицо карточки memory-pairs, управляемое контентом из БД., Прогоняет SVG через санитайзер перед сохранением., Гарантирует санитизацию даже при сохранении в обход формы., Прогоняет SVG через санитайзер перед сохранением., Гарантирует санитизацию даже при сохранении в обход формы., Возвращает кодовое обозначение лица карты. (+11 more)
 
 ### Community 148 - "Community 148"
 Cohesion: 0.22
@@ -728,8 +732,8 @@ Cohesion: 0.33
 Nodes (5): API and state, Frontend Rules, Media sizing, Screens, UI intent
 
 ### Community 153 - "Community 153"
-Cohesion: 0.11
-Nodes (18): Any, str, RarityConfig, DEFAULT_RARITIES, rarity_config(), rarity_config(), RarityConfigCache, Возвращает параметры редкости из БД или встроенного набора по умолчанию. (+10 more)
+Cohesion: 0.16
+Nodes (12): Any, str, RarityConfig, rarity_config(), Возвращает параметры редкости из БД или встроенного набора по умолчанию., Возвращает словарь активных редкостей по ключу, кэшированный в памяти., Возвращает словарь активных редкостей по ключу, кэшированный в памяти., Возвращает активные редкости, отсортированные по sort_order. (+4 more)
 
 ### Community 154 - "Community 154"
 Cohesion: 0.33
@@ -781,19 +785,19 @@ Nodes (3): Anti-Cheat Requirements, Optional but recommended, Required
 
 ### Community 175 - "Community 175"
 Cohesion: 0.05
-Nodes (44): DungeonMiniGameRevealView, DungeonMiniGameStartView, DungeonRunHistoryView, MiniGameCardFaceCatalogView, API-ручка запуска мини-игры ускорения для активного забега., Создаёт новый забег, если у героя нет активного забега и сломанных вещей., API-ручка запуска мини-игры ускорения для активного забега., API-ручка запуска мини-игры ускорения для активного забега. (+36 more)
+Nodes (41): DungeonMiniGameHistoryView, DungeonMiniGameRevealView, DungeonMiniGameStartView, MiniGameCardFaceCatalogView, API-ручка запуска мини-игры ускорения для активного забега., API-ручка запуска мини-игры ускорения для активного забега., API-ручка запуска мини-игры ускорения для активного забега., API-ручка запуска мини-игры ускорения для активного забега. (+33 more)
 
 ### Community 177 - "Community 177"
-Cohesion: 0.40
-Nodes (4): Возвращает совместимый формат ответа после создания героя., Возвращает совместимый формат ответа после создания героя., Возвращает совместимый формат ответа после создания героя., Возвращает совместимый формат ответа после создания героя.
+Cohesion: 0.18
+Nodes (8): Создаёт попытку пополнения с idempotency key из заголовка., Возвращает top-up записи только текущего пользователя, новые сверху., Возвращает обмены только текущего пользователя, новые сверху., Возвращает обмены только текущего пользователя, новые сверху., Возвращает обмены только текущего пользователя, новые сверху., Возвращает записи леджера только текущего пользователя, новые сверху., Возвращает записи леджера только текущего пользователя, новые сверху., Возвращает записи леджера только текущего пользователя, новые сверху.
 
 ### Community 178 - "Community 178"
-Cohesion: 0.15
-Nodes (6): ShopIngredientPurchaseTests, ShopItemPurchaseTests, ShopModelValidationTests, ShopPaymentTests, ShopPotionPurchaseTests, ShopServiceTestBase
+Cohesion: 0.11
+Nodes (17): Any, float, int, ShopOffer, PremiumCurrencyTransaction, Неизменяемая запись леджера движений премиум-валюты пользователя., Неизменяемая запись леджера движений премиум-валюты пользователя., PremiumCurrencyService (+9 more)
 
 ### Community 179 - "Community 179"
-Cohesion: 0.08
-Nodes (27): DungeonLocation, DungeonLocationItemTemplate, Возвращает связь локации и шаблона предмета., Возвращает связь локации и шаблона предмета., Возвращает название локации подземелья., Проверяет диапазоны наград, шанс дропа и наличие активного лута., Связь локации подземелья с шаблоном предмета, который может выпасть., Проверяет диапазоны наград, шанс дропа и наличие активного лута. (+19 more)
+Cohesion: 0.05
+Nodes (39): SeedGameCommand, SeedItemTemplatesCommand, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameConfig, Настройки мини-игры: сложность, таймер и ускорение прохождения., Возвращает название локации подземелья., Проверяет диапазоны наград, шанс дропа и наличие активного лута. (+31 more)
 
 ### Community 180 - "Community 180"
 Cohesion: 0.29
@@ -805,115 +809,115 @@ Nodes (5): backfill_intrinsic_stats(), _level_growth_stats(), Migration, noop(),
 
 ### Community 184 - "Community 184"
 Cohesion: 0.07
-Nodes (27): DungeonMiniGameRevealSerializer, DungeonRunSerializer, Сериализатор активного или завершённого забега в подземелье., Возвращает краткую локализованную карточку локации забега., Возвращает предварительный итог завершённого забега до claim., Возвращает состояние мини-игры ускорения для активного забега., Возвращает состояние мини-игры ускорения для активного забега., Возвращает предварительный итог завершённого забега до claim. (+19 more)
+Nodes (27): DungeonMiniGameRevealSerializer, DungeonRunSerializer, Сериализатор активного или завершённого забега в подземелье., Возвращает краткую локализованную карточку локации забега., Сериализатор активного или завершённого забега в подземелье., Возвращает предварительный итог завершённого забега до claim., Возвращает состояние мини-игры ускорения для активного забега., Возвращает состояние мини-игры ускорения для активного забега. (+19 more)
 
 ### Community 185 - "Community 185"
-Cohesion: 0.22
-Nodes (7): Character, int, str, Model, Транзакционно кладёт предметы на склад героя, инкрементируя count., Транзакционно списывает предметы со склада, проверяя достаточность.          Есл, Возвращает актуальное количество предмета на складе героя (0, если нет).
+Cohesion: 0.18
+Nodes (6): str, Возвращает связку предложения и шаблона зелья., Возвращает связку предложения и шаблона предмета., Возвращает идентификаторы покупки, пользователя и предложения., Возвращает локализованное имя или техническое обозначение предложения., Возвращает связку предложения и шаблона ингредиента.
 
 ### Community 186 - "Community 186"
 Cohesion: 0.18
 Nodes (5): int, PotionTests, Проверки Этапа 3: формула лечения, использование зелий и склад героя., Проверки Этапа 3: формула лечения, использование зелий и склад героя., Проверки Этапа 3: формула лечения, использование зелий и склад героя.
 
 ### Community 187 - "Community 187"
-Cohesion: 0.12
-Nodes (18): int, str, PremiumCurrencyService, Возвращает актуальный баланс премиум-валюты из БД (без кэша связи) или 0., Списывает премиум, начисляет монеты пользователю, пишет запись обмена., Списывает премиум, начисляет монеты пользователю, пишет запись обмена., Создаёт pending top-up со снимком активного пакета пополнения., Подтверждает успешную оплату и начисляет премиум-валюту ровно один раз. (+10 more)
+Cohesion: 0.22
+Nodes (6): Списывает премиум, начисляет монеты пользователю, пишет запись обмена., Списывает премиум, начисляет монеты пользователю, пишет запись обмена., Списывает премиум, начисляет монеты пользователю, пишет запись обмена., Списывает премиум-валюту, проверяя достаточность баланса., Списывает премиум-валюту, проверяя достаточность баланса., Списывает премиум-валюту, проверяя достаточность баланса.
 
 ### Community 188 - "Community 188"
-Cohesion: 0.22
-Nodes (8): Возвращает локализованные имена разрешённых классов или пустой список., Возвращает локализованные имена разрешённых классов или пустой список., Возвращает локализованные имена разрешённых классов или пустой список., Возвращает label сложности мини-игры., Возвращает локализованные имена разрешённых классов или пустой список., Возвращает локализованные имена разрешённых классов или пустой список., Возвращает локализованные имена разрешённых классов или пустой список., Возвращает локализованные имена разрешённых классов или пустой список.
+Cohesion: 0.12
+Nodes (15): Возвращает label сложности мини-игры., Возвращает label сложности мини-игры., Возвращает label сложности мини-игры., Сериализатор строки истории завершённых забегов., Возвращает дату получения награды, если она уже была получена., Возвращает локализованные имена разрешённых классов или пустой список., Возвращает label сложности мини-игры., Возвращает локализованные имена разрешённых классов или пустой список. (+7 more)
 
 ### Community 189 - "Community 189"
 Cohesion: 0.29
 Nodes (10): bool, int, ItemTemplate, BaseModel, RankConfig, RankConfig, _durability_for_rank(), EquipmentKind (+2 more)
 
 ### Community 190 - "Community 190"
-Cohesion: 0.08
-Nodes (26): DungeonMiniGameAttempt, DungeonRun, DungeonRunClaim, Один запуск героя в подземелье с таймером, шансом успеха и наградами., История одной попытки пройти мини-игру ускорения для забега., Идемпотентная запись о получении наград за завершённый забег., Возвращает техническое описание получения награды., Один запуск героя в подземелье с таймером, шансом успеха и наградами. (+18 more)
+Cohesion: 0.25
+Nodes (7): Возвращает техническое описание получения награды., Возвращает техническое описание получения награды., Возвращает техническое описание получения награды., Возвращает техническое описание получения награды., Возвращает техническое описание получения награды., Возвращает техническое описание получения награды., Возвращает техническое описание получения награды.
 
 ### Community 191 - "Community 191"
-Cohesion: 0.06
-Nodes (41): Character, DungeonLocation, int, DungeonLocation, int, Claim Idempotency (OneToOneField prevents duplicate rewards), Dungeon Run Lifecycle, DungeonLimitCategory (+33 more)
+Cohesion: 0.07
+Nodes (35): Character, DungeonLocation, int, int, Claim Idempotency (OneToOneField prevents duplicate rewards), Dungeon Run Lifecycle, DungeonLimitCategory, complete_due_dungeon_runs() (+27 more)
 
 ### Community 192 - "Community 192"
-Cohesion: 0.15
-Nodes (13): DungeonLootItemSerializer, Сериализатор одного предмета из таблицы лута данжа., Сериализатор строки истории завершённых забегов., Сериализатор одного предмета из таблицы лута данжа., Сериализатор одного предмета из таблицы лута данжа., Возвращает локализованное название предмета-шаблона., Возвращает локализованное название предмета-шаблона., Сериализатор одного предмета из таблицы лута данжа. (+5 more)
+Cohesion: 0.13
+Nodes (14): Возвращает локализованное название локации из истории мини-игры., Возвращает локализованное название локации из истории мини-игры., Возвращает дату получения награды, если она уже была получена., Возвращает локализованное название локации из истории мини-игры., Возвращает локализованное название предмета-шаблона., Возвращает локализованное название предмета-шаблона., Возвращает локализованное название локации из истории мини-игры., Сериализатор одного предмета из таблицы лута данжа. (+6 more)
 
 ### Community 193 - "Community 193"
-Cohesion: 0.22
-Nodes (8): Возвращает словарь возможных характеристик с диапазонами., Возвращает словарь возможных характеристик с диапазонами., Сериализатор одного предмета из таблицы лута данжа., Возвращает словарь возможных характеристик с диапазонами., Возвращает словарь возможных характеристик с диапазонами., Возвращает локализованное название предмета-шаблона., Возвращает словарь возможных характеристик с диапазонами., Возвращает словарь возможных характеристик с диапазонами.
+Cohesion: 0.13
+Nodes (15): DungeonLootItemSerializer, Сериализатор одного предмета из таблицы лута данжа., Сериализатор одного предмета из таблицы лута данжа., Сериализатор одного предмета из таблицы лута данжа., Возвращает словарь возможных характеристик с диапазонами., Возвращает словарь возможных характеристик с диапазонами., Сериализатор одного предмета из таблицы лута данжа., Возвращает словарь возможных характеристик с диапазонами. (+7 more)
 
 ### Community 194 - "Community 194"
-Cohesion: 0.29
-Nodes (4): str, Возвращает связь локации и ингредиента., Возвращает название ингредиента., Возвращает связку героя, ингредиента и количества.
+Cohesion: 0.18
+Nodes (7): str, DungeonIngredientDrop, Проверяет, что минимальное количество не превышает максимальное., Возвращает связь локации и ингредиента., Возвращает название ингредиента., Возвращает связку героя, ингредиента и количества., Дроп-таблица ингредиентов локации: независимый бросок шанса за забег.
 
 ### Community 195 - "Community 195"
-Cohesion: 0.21
-Nodes (9): int, str, MiniGameStore, Хранилище live-стейта memory-pairs мини-игры в Redis (django cache, db 1).  Пока, Тонкая обёртка над django cache для стейта и лока партии по `run_id`., Возвращает стейт партии или None, если ключ отсутствует/истёк., Сохраняет стейт с TTL (секунды до истечения попытки + буфер)., Удаляет стейт партии (после финала). (+1 more)
+Cohesion: 0.18
+Nodes (10): IconAssetsView, LogoutView, API-ручка получения списка иконок для выбора аватара., API-ручка выхода пользователя через блокировку refresh-токена., API-ручка получения списка иконок для выбора аватара., API-ручка получения списка иконок для выбора аватара., API-ручка выхода пользователя через блокировку refresh-токена., API-ручка выхода пользователя через блокировку refresh-токена. (+2 more)
 
 ### Community 197 - "Community 197"
-Cohesion: 0.07
-Nodes (22): DungeonLocationSerializer, Возвращает диапазоны возможных наград за успех., Сериализатор локации подземелья для списка и детальной карточки., Считает шанс успеха текущего героя в этой локации., Для ресурсной локации возвращает остаток заходов на сегодня., Возвращает остаток дневных заходов конкретной локации., Возвращает локализованное название подземелья., Считает шанс успеха текущего героя в этой локации. (+14 more)
+Cohesion: 0.08
+Nodes (23): DungeonLocationSerializer, Сериализатор локации подземелья для списка и детальной карточки., Считает шанс успеха текущего героя в этой локации., Для ресурсной локации возвращает остаток заходов на сегодня., Возвращает остаток дневных заходов конкретной локации., Возвращает остаток дневных заходов конкретной локации., Возвращает локализованное название подземелья., Считает шанс успеха текущего героя в этой локации. (+15 more)
 
 ### Community 199 - "Community 199"
 Cohesion: 0.06
-Nodes (29): CharacterMeSerializer, Сериализатор полной карточки текущего героя., Переименовывает class_info в поле class для API-контракта., Возвращает ключ и локализованное название класса героя., Сериализатор полной карточки текущего героя., Сериализатор полной карточки текущего героя., Сериализатор полной карточки текущего героя., Возвращает количество опыта, нужное для следующего уровня. (+21 more)
+Nodes (27): CharacterMeSerializer, Сериализатор полной карточки текущего героя., Переименовывает class_info в поле class для API-контракта., Возвращает ключ и локализованное название класса героя., Сериализатор полной карточки текущего героя., Сериализатор полной карточки текущего героя., Сериализатор полной карточки текущего героя., Возвращает количество опыта, нужное для следующего уровня. (+19 more)
 
 ### Community 200 - "Community 200"
-Cohesion: 0.11
-Nodes (16): str, ShopOffer, str, Определяет локаль сериализатора из контекста или HTTP-запроса., serializer_locale(), Возвращает локализованное название зелья., Возвращает локализованное название предмета с учётом редкости., _localized() (+8 more)
+Cohesion: 0.09
+Nodes (19): str, ShopOffer, str, Проверяет уникальность email перед созданием аккаунта., Возвращает локализованное название класса героя., Возвращает локализованное название класса героя., Возвращает локализованное название класса героя., Определяет локаль сериализатора из контекста или HTTP-запроса. (+11 more)
 
 ### Community 202 - "Community 202"
 Cohesion: 0.22
 Nodes (7): Создаёт героя через сервис баланса с начальными характеристиками класса., Проверяет ключ активного класса героя., Проверяет ключ активного класса героя., Проверяет ключ активного класса героя., Проверяет ключ активного класса героя., Создаёт героя через сервис баланса с начальными характеристиками класса., Создаёт героя через сервис баланса с начальными характеристиками класса.
 
 ### Community 203 - "Community 203"
-Cohesion: 0.15
-Nodes (11): Character, int, CraftService, Сервис крафта зелий по предзаполненным рецептам (сложность = рецепт)., Сервис крафта зелий по предзаполненным рецептам (сложность = рецепт)., Возвращает героя пользователя или выбрасывает локализованную ошибку., Возвращает героя пользователя или выбрасывает локализованную ошибку., Транзакционно варит батч зелий: списывает ингредиенты, выдаёт зелья. (+3 more)
+Cohesion: 0.29
+Nodes (3): get_wallet(), Возвращает кошелёк по ключу валюты; бросает по неизвестному ключу., WalletRegistryTests
 
 ### Community 204 - "Community 204"
-Cohesion: 0.17
-Nodes (11): DungeonLootModal(), formatCopperCompact(), RARITY_BG, RARITY_BORDER, RARITY_COLOR, RARITY_BG, RARITY_BORDER, RARITY_COLOR (+3 more)
+Cohesion: 0.09
+Nodes (28): DungeonLootModal(), formatCopperCompact(), formatPercent(), RARITY_BG, RARITY_BORDER, RARITY_COLOR, DungeonRewardModal(), RARITY_COLOR (+20 more)
 
 ### Community 205 - "Community 205"
-Cohesion: 0.06
-Nodes (52): AbstractBaseUser, bool, str, Character, Единственный герой аккаунта с прогрессом, базовыми статами и экипировкой., Единственный герой аккаунта с прогрессом, статами и экипировкой., Единственный герой аккаунта с прогрессом, статами и экипировкой., DungeonLimitCategory (+44 more)
+Cohesion: 0.05
+Nodes (67): AbstractBaseUser, str, bool, str, Character, Единственный герой аккаунта с прогрессом, базовыми статами и экипировкой., Единственный герой аккаунта с прогрессом, статами и экипировкой., Единственный герой аккаунта с прогрессом, статами и экипировкой. (+59 more)
 
 ### Community 206 - "Community 206"
 Cohesion: 0.25
-Nodes (7): Возвращает локализованное название локации из истории мини-игры., Возвращает локализованное название локации из истории мини-игры., Возвращает дату получения награды, если она уже была получена., Возвращает локализованное название локации из истории мини-игры., Возвращает локализованное название локации из истории., Возвращает локализованное название локации из истории мини-игры., Возвращает локализованное название локации из истории мини-игры.
+Nodes (7): str, Возвращает цену предложения в выбранной валюте или бросает ошибку., Возвращает цену предложения в выбранной валюте или бросает ошибку., Возвращает цену предложения в выбранной валюте или бросает ошибку., Покупает предложение выбранной валютой, выдаёт награды, пишет историю., Покупает предложение выбранной валютой, выдаёт награды, пишет историю., Покупает предложение выбранной валютой, выдаёт награды, пишет историю.
 
 ### Community 208 - "Community 208"
-Cohesion: 0.25
-Nodes (8): DungeonRunHistorySerializer, Сериализатор строки истории завершённых забегов., Сериализатор строки истории завершённых забегов., Сериализатор строки истории завершённых забегов., Сериализатор строки истории завершённых забегов., Сериализатор строки истории завершённых забегов., Сериализатор строки истории завершённых забегов., Сериализатор строки истории завершённых забегов.
+Cohesion: 0.22
+Nodes (9): DungeonRunHistorySerializer, Сериализатор строки истории завершённых забегов., Сериализатор строки истории завершённых забегов., Сериализатор строки истории завершённых забегов., Сериализатор строки истории завершённых забегов., Сериализатор строки истории завершённых забегов., Сериализатор строки истории завершённых забегов., Сериализатор строки истории завершённых забегов. (+1 more)
 
 ### Community 210 - "Community 210"
-Cohesion: 0.11
-Nodes (26): Any, bool, Character, DungeonLocation, float, ItemTemplate, str, UserItem (+18 more)
-
-### Community 211 - "Community 211"
-Cohesion: 0.40
-Nodes (4): Запрещает создание второго героя на одном аккаунте., Запрещает создание второго героя на одном аккаунте., Запрещает создание второго героя на одном аккаунте., Запрещает создание второго героя на одном аккаунте.
+Cohesion: 0.10
+Nodes (30): Any, bool, Character, DungeonLocation, float, ItemTemplate, str, UserItem (+22 more)
 
 ### Community 212 - "Community 212"
 Cohesion: 0.11
 Nodes (12): str, Возвращает премиум и цену пакета., Возвращает сумму списанного премиума и полученных монет., Возвращает пользователя, сумму и статус пополнения., Возвращает связку пользователя и текущего баланса., Возвращает связку пользователя и текущего баланса., Возвращает провайдера, событие и тип события., Возвращает соотношение премиума и медных монет. (+4 more)
 
+### Community 213 - "Community 213"
+Cohesion: 0.25
+Nodes (7): CharacterCreateSerializer, Сериализатор создания героя и ответа с базовым прогрессом., Сериализатор создания героя и ответа с базовым прогрессом., Сериализатор создания героя и ответа с базовым прогрессом., Сериализатор создания героя и ответа с базовым прогрессом., Создаёт героя выбранного класса, если у аккаунта ещё нет героя., Создаёт героя выбранного класса, если у аккаунта ещё нет героя.
+
 ### Community 214 - "Community 214"
-Cohesion: 0.07
-Nodes (50): bool, CurrencyExchangeOfferAdmin, CurrencyExchangeTransactionAdmin, PremiumCurrencyTransactionAdmin, PremiumTopUpAdmin, PremiumTopUpEventAdmin, PremiumTopUpOfferAdmin, Запрещает ручное создание: top-up создаётся сервисом. (+42 more)
+Cohesion: 0.12
+Nodes (37): int, str, CurrencyExchangeOfferAdmin, CurrencyExchangeTransactionAdmin, PremiumCurrencyTransactionAdmin, PremiumTopUpAdmin, PremiumTopUpEventAdmin, PremiumTopUpOfferAdmin (+29 more)
 
 ### Community 215 - "Community 215"
 Cohesion: 0.14
 Nodes (13): Call-graph collapse, Candidate card, Cross-section (good for layered shallowness), Diagram patterns, Hand-built boxes-and-arrows (when Mermaid's layout fights you), Header, HTML Report Format, Mass diagram (good for "interface as wide as implementation") (+5 more)
 
 ### Community 216 - "Community 216"
-Cohesion: 0.07
-Nodes (38): bool, DungeonRun, int, str, DungeonMiniGameAttempt, DungeonMiniGameConfig, DungeonMiniGameService, Публичная карточка: код лица раскрывается только для matched/open. (+30 more)
+Cohesion: 0.05
+Nodes (47): int, str, bool, DungeonRun, int, str, DungeonMiniGameAttempt, DungeonMiniGameConfig (+39 more)
 
 ### Community 217 - "Community 217"
-Cohesion: 0.14
-Nodes (13): DungeonLootApiTests, DungeonLocationLootView, API-ручка таблицы лута подземелья., Возвращает таблицу лута данжа (кэшируется, admin-only данные)., API-ручка таблицы лута подземелья., Возвращает таблицу лута данжа (кэшируется, admin-only данные)., API-ручка таблицы лута подземелья., API-ручка таблицы лута подземелья. (+5 more)
+Cohesion: 0.18
+Nodes (11): DungeonRunHistoryView, Возвращает все активные лица с версией/ETag для инвалидации кеша., Возвращает все активные лица с версией/ETag для инвалидации кеша., Возвращает все активные лица с версией/ETag для инвалидации кеша., Возвращает все активные лица с версией/ETag для инвалидации кеша., Возвращает все активные лица с версией/ETag для инвалидации кеша., API-ручка истории завершённых забегов героя., API-ручка истории завершённых забегов героя. (+3 more)
 
 ### Community 218 - "Community 218"
 Cohesion: 0.25
@@ -929,7 +933,11 @@ Nodes (3): Возвращает активные предложения обме
 
 ### Community 225 - "Community 225"
 Cohesion: 0.05
-Nodes (51): ClaimResponseSerializer, DungeonMiniGameAttemptResponseSerializer, DungeonMiniGameMoveResponseSerializer, DungeonMiniGameMoveSerializer, DungeonMiniGameStartSerializer, DungeonRunStartSerializer, Meta, Возвращает оставшиеся секунды до конца активного забега. (+43 more)
+Nodes (51): ClaimResponseSerializer, DungeonMiniGameAttemptResponseSerializer, DungeonMiniGameMoveResponseSerializer, DungeonMiniGameMoveSerializer, DungeonMiniGameStartSerializer, DungeonRunStartSerializer, Meta, Сериализатор запроса на запуск подземелья. (+43 more)
+
+### Community 226 - "Community 226"
+Cohesion: 0.18
+Nodes (9): Возвращает диапазоны возможных наград за успех., Возвращает диапазоны возможных наград за успех., Возвращает оставшиеся секунды до конца активного забега., Возвращает оставшиеся секунды до конца активного забега., Возвращает оставшиеся секунды до конца активного забега., Возвращает оставшиеся секунды до конца активного забега., Возвращает диапазоны возможных наград за успех., Возвращает диапазоны возможных наград за успех. (+1 more)
 
 ### Community 227 - "Community 227"
 Cohesion: 0.17
@@ -1088,32 +1096,28 @@ Cohesion: 0.67
 Nodes (3): 5. Models, Ключевые связи, Модели по файлам
 
 ### Community 281 - "Community 281"
-Cohesion: 0.06
-Nodes (65): str, str, AssetType, MediaAsset, Meta, Абстрактная модель с датами создания и последнего обновления записи., Набор файлов одного медиа-ассета в разных размерах для S3-хранилища., TimestampedModel (+57 more)
+Cohesion: 0.07
+Nodes (56): str, str, AssetType, MediaAsset, Meta, Абстрактная модель с датами создания и последнего обновления записи., Набор файлов одного медиа-ассета в разных размерах для S3-хранилища., TimestampedModel (+48 more)
 
 ### Community 282 - "Community 282"
-Cohesion: 0.29
-Nodes (5): str, HeroIngredientSerializer, Возвращает локализованное название ингредиента., Возвращает компактный набор URL иконки ингредиента., Сериализатор строки склада ингредиентов героя для фронта.
+Cohesion: 0.25
+Nodes (8): DungeonLootApiTests, DungeonLocationLootView, API-ручка таблицы лута подземелья., API-ручка таблицы лута подземелья., API-ручка таблицы лута подземелья., API-ручка таблицы лута подземелья., API-ручка таблицы лута подземелья., API-ручка таблицы лута подземелья.
 
 ### Community 283 - "Community 283"
 Cohesion: 0.29
-Nodes (5): float, Считает абсолютную потерю HP от максимума по проценту (минимум 1, округление вве, Считает абсолютную потерю HP от максимума по проценту (минимум 1, округление вве, Считает абсолютную потерю HP от максимума по проценту (минимум 1, округление вве, Считает лечение за одно зелье от максимума HP (минимум 1 при положительном проце
+Nodes (5): str, HeroIngredientSerializer, Возвращает локализованное название ингредиента., Возвращает компактный набор URL иконки ингредиента., Сериализатор строки склада ингредиентов героя для фронта.
 
 ### Community 284 - "Community 284"
 Cohesion: 0.29
-Nodes (5): LoginSerializer, Сериализатор входа пользователя., Проверяет email и пароль, затем кладёт пользователя в validated_data., Проверяет учётные данные и возвращает новую пару JWT-токенов., Проверяет учётные данные и возвращает новую пару JWT-токенов.
+Nodes (6): Списывает выбранную валюту через её сервис-кошелёк., Списывает выбранную валюту: монеты с User или премиум через сервис., Сервис покупок в системном магазине: оплата, прокатка наград, история., Сервис покупок в системном магазине: оплата, прокатка наград, история., Сервис покупок в системном магазине: оплата, прокатка наград, история., ShopService
 
 ### Community 285 - "Community 285"
-Cohesion: 0.18
-Nodes (8): Command, Создаёт демонстрационные предложения магазина (идемпотентно по name)., Создаёт демонстрационные предложения магазина (идемпотентно по name)., Создаёт демонстрационные предложения обмена премиума на монеты., Создаёт демонстрационные предложения обмена премиума на монеты., load_seed_card_faces(), Загрузка стартового набора SVG-лиц карт мини-игры из backend-каталога.  Файлы ле, Возвращает список лиц `{code, name, svg_markup, sort_order}` из каталога.
+Cohesion: 0.10
+Nodes (13): str, Command, Создаёт демонстрационные предложения магазина (идемпотентно по name)., Создаёт демонстрационные предложения магазина (идемпотентно по name)., Создаёт демонстрационные предложения обмена премиума на монеты., Создаёт демонстрационные предложения обмена премиума на монеты., load_seed_card_faces(), Загрузка стартового набора SVG-лиц карт мини-игры из backend-каталога.  Файлы ле (+5 more)
 
 ### Community 286 - "Community 286"
-Cohesion: 0.29
-Nodes (7): DungeonMiniGameAttemptHistorySerializer, Возвращает локализованное название локации из истории., Сериализатор строки истории попыток мини-игры., Сериализатор строки истории попыток мини-игры., Сериализатор строки истории попыток мини-игры., Сериализатор строки истории попыток мини-игры., Сериализатор строки истории попыток мини-игры.
-
-### Community 287 - "Community 287"
-Cohesion: 0.29
-Nodes (6): Возвращает дату получения награды, если она уже была получена., Возвращает label сложности мини-игры., Возвращает label сложности мини-игры., Возвращает label сложности мини-игры., Возвращает label сложности мини-игры., Возвращает label сложности мини-игры.
+Cohesion: 0.22
+Nodes (9): DungeonMiniGameAttemptHistorySerializer, Возвращает дату получения награды, если она уже была получена., Возвращает локализованное название локации из истории., Сериализатор строки истории попыток мини-игры., Сериализатор строки истории попыток мини-игры., Сериализатор строки истории попыток мини-игры., Сериализатор строки истории попыток мини-игры., Сериализатор строки истории попыток мини-игры. (+1 more)
 
 ### Community 288 - "Community 288"
 Cohesion: 0.40
@@ -1124,43 +1128,75 @@ Cohesion: 0.22
 Nodes (7): str, Возвращает название класса героя., Возвращает название класса героя., Возвращает название класса героя., Возвращает имя героя., Возвращает имя героя., Возвращает имя героя.
 
 ### Community 292 - "Community 292"
-Cohesion: 0.33
-Nodes (5): Возвращает потерю прочности экипировки для успешного или провального забега., Возвращает потерю прочности экипировки для успешного или провального забега., Возвращает потерю прочности экипировки для успешного или провального забега., Возвращает потерю прочности экипировки для успешного или провального забега., Возвращает потерю прочности экипировки для успешного или провального забега.
+Cohesion: 0.05
+Nodes (55): TokenRefreshView, Обновление JWT-токена с ограничением частоты запросов по IP., ThrottledTokenRefreshView, CharacterClassListView, CharacterCreateView, CharacterMeView, API-ручка списка доступных классов героев., API-ручка списка доступных классов героев. (+47 more)
 
 ### Community 293 - "Community 293"
-Cohesion: 0.05
-Nodes (45): Any, float, int, ShopOffer, str, Counter, Возвращает цену предложения в выбранной валюте или бросает ошибку., Возвращает список записей-наград и проверяет правила количества записей. (+37 more)
+Cohesion: 0.22
+Nodes (8): Прокатывает и создаёт уникальные предметы пользователя одним bulk_create., Прокатывает и создаёт уникальные предметы пользователя одним bulk_create., Прокатывает и создаёт уникальные предметы пользователя одним bulk_create., Выбирает элемент из списка пар (элемент, вес) взвешенным случайным броском., Прокатывает и создаёт уникальные предметы пользователя одним bulk_create., Выбирает элемент из списка пар (элемент, вес) взвешенным случайным броском., Прокатывает и создаёт уникальные предметы пользователя одним bulk_create., _weighted_choice()
 
 ### Community 295 - "Community 295"
-Cohesion: 0.33
-Nodes (5): Считает шанс успеха забега по силе героя и требуемой силе локации., Считает шанс успеха забега по силе героя, требуемой силе и штрафу за низкое HP., Считает шанс успеха забега по силе героя, требуемой силе и штрафу за низкое HP., Считает шанс успеха забега по силе героя и требуемой силе локации., Считает шанс успеха забега по силе героя и требуемой силе локации.
+Cohesion: 0.40
+Nodes (4): Character, int, Транзакционно кладёт предметы на склад героя, инкрементируя count., Возвращает актуальное количество предмета на складе героя (0, если нет).
 
 ### Community 296 - "Community 296"
-Cohesion: 0.40
-Nodes (3): str, Возвращает название зелья., Возвращает связку героя, зелья и количества.
+Cohesion: 0.33
+Nodes (5): Возвращает список записей-наград и проверяет правила количества записей., Возвращает список записей-наград и проверяет правила количества записей., Возвращает список записей-наград и проверяет правила количества записей., Возвращает список записей-наград и проверяет правила количества записей., Прокатывает и выдаёт награды по дескриптору вида (склад либо предмет).
 
 ### Community 297 - "Community 297"
-Cohesion: 0.40
-Nodes (4): Ограничивает current_hp текущим максимумом HP (с учётом экипировки) и сохраняет, Считает лечение за одно зелье от максимума HP (минимум 1 при положительном проце, Ограничивает current_hp текущим максимумом HP (с учётом экипировки) и сохраняет, Ограничивает current_hp текущим максимумом HP (с учётом экипировки) и сохраняет
+Cohesion: 0.33
+Nodes (5): Группирует прокатки наград в Counter по идентификатору шаблона., Группирует прокатки наград в Counter по идентификатору шаблона., Группирует прокатки наград в Counter по идентификатору шаблона., Группирует прокатки наград в Counter по идентификатору шаблона., Группирует прокатки наград в Counter по идентификатору шаблона.
 
 ### Community 298 - "Community 298"
 Cohesion: 0.22
 Nodes (7): int, Возвращает буквенный ранг героя по его уровню., Возвращает буквенный ранг героя по его уровню., Возвращает буквенный ранг героя по его уровню., Возвращает буквенный ранг героя по его уровню., rank_for_level(), Return the rank bucket for a numeric hero or item level.
 
+### Community 299 - "Community 299"
+Cohesion: 0.33
+Nodes (5): Выдаёт стекируемые награды (ингредиенты/зелья) на склад героя., Выдаёт стекируемые награды (ингредиенты/зелья) на склад героя., Выдаёт стекируемые награды (ингредиенты/зелья) на склад героя., Выдаёт стекируемые награды (ингредиенты/зелья) на склад героя., Выдаёт стекируемые награды (ингредиенты/зелья) на склад героя.
+
+### Community 300 - "Community 300"
+Cohesion: 0.40
+Nodes (4): str, MoneyTransaction, Возвращает пользователя, сумму и причину движения., Неизменяемая запись леджера движений медных монет пользователя.
+
+### Community 301 - "Community 301"
+Cohesion: 0.07
+Nodes (27): DungeonMiniGameMoveView, MiniGameConfigCatalogView, Создаёт новый забег, если у героя нет активного забега и сломанных вещей., Создаёт новый забег, если у героя нет активного забега и сломанных вещей., Создаёт новый забег, если у героя нет активного забега и сломанных вещей., Создаёт новый забег, если у героя нет активного забега и сломанных вещей., API-ручка получения наград за завершённый забег., Создаёт новый забег, если у героя нет активного забега и сломанных вещей. (+19 more)
+
+### Community 302 - "Community 302"
+Cohesion: 0.40
+Nodes (4): Возвращает совместимый формат ответа после создания героя., Возвращает совместимый формат ответа после создания героя., Возвращает совместимый формат ответа после создания героя., Возвращает совместимый формат ответа после создания героя.
+
+### Community 303 - "Community 303"
+Cohesion: 0.40
+Nodes (4): Запрещает создание второго героя на одном аккаунте., Запрещает создание второго героя на одном аккаунте., Запрещает создание второго героя на одном аккаунте., Запрещает создание второго героя на одном аккаунте.
+
+### Community 304 - "Community 304"
+Cohesion: 0.50
+Nodes (3): DungeonLocation, Делает независимый бросок шанса по каждой записи дроп-таблицы локации., Делает независимый бросок шанса по каждой записи дроп-таблицы локации.
+
+### Community 305 - "Community 305"
+Cohesion: 0.40
+Nodes (4): Прокатывает и выдаёт награды по дескриптору вида (склад либо предмет)., Прокатывает и выдаёт награды в зависимости от вида и режима предложения., Прокатывает и выдаёт награды в зависимости от вида и режима предложения., Прокатывает и выдаёт награды в зависимости от вида и режима предложения.
+
+### Community 306 - "Community 306"
+Cohesion: 0.50
+Nodes (3): Возвращает актуальный баланс премиум-валюты из БД (без кэша связи) или 0., Возвращает актуальный баланс премиум-валюты из БД (без кэша связи) или 0., Возвращает актуальный баланс премиум-валюты из БД (без кэша связи) или 0.
+
 ## Knowledge Gaps
 - **845 isolated node(s):** `version`, `source`, `sourceType`, `skillPath`, `computedHash` (+840 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **78 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **79 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `TimestampedModel` connect `Community 281` to `Community 289`, `Community 194`, `Community 296`, `Community 40`, `Community 41`, `Community 205`, `Community 48`, `Community 147`, `Community 179`, `Community 21`, `Community 214`, `Community 190`?**
+- **Why does `GameFormulaService` connect `Community 10` to `Community 197`, `Community 199`, `Community 9`, `Community 141`, `Community 14`, `Community 47`, `Community 144`, `Community 13`, `Community 210`, `Community 213`, `Community 24`, `Community 191`?**
+  _High betweenness centrality (0.059) - this node is a cross-community bridge._
+- **Why does `TimestampedModel` connect `Community 281` to `Community 289`, `Community 194`, `Community 41`, `Community 300`, `Community 205`, `Community 178`, `Community 179`, `Community 147`, `Community 21`, `Community 214`, `Community 185`, `Community 57`?**
   _High betweenness centrality (0.056) - this node is a cross-community bridge._
-- **Why does `message()` connect `Community 9` to `Community 8`, `Community 136`, `Community 10`, `Community 15`, `Community 19`, `Community 24`, `Community 26`, `Community 284`, `Community 34`, `Community 293`, `Community 185`, `Community 187`, `Community 191`, `Community 195`, `Community 202`, `Community 203`, `Community 211`, `Community 216`, `Community 98`?**
-  _High betweenness centrality (0.055) - this node is a cross-community bridge._
-- **Why does `GameFormulaService` connect `Community 10` to `Community 9`, `Community 141`, `Community 14`, `Community 13`, `Community 144`, `Community 19`, `Community 24`, `Community 283`, `Community 292`, `Community 36`, `Community 295`, `Community 297`, `Community 44`, `Community 47`, `Community 56`, `Community 191`, `Community 197`, `Community 199`, `Community 210`?**
-  _High betweenness centrality (0.046) - this node is a cross-community bridge._
+- **Why does `message()` connect `Community 9` to `Community 8`, `Community 136`, `Community 15`, `Community 144`, `Community 19`, `Community 24`, `Community 25`, `Community 26`, `Community 284`, `Community 40`, `Community 296`, `Community 303`, `Community 187`, `Community 62`, `Community 191`, `Community 200`, `Community 202`, `Community 206`, `Community 214`, `Community 216`?**
+  _High betweenness centrality (0.052) - this node is a cross-community bridge._
 - **Are the 66 inferred relationships involving `TimestampedModel` (e.g. with `str` and `str`) actually correct?**
   _`TimestampedModel` has 66 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 52 inferred relationships involving `MediaAsset` (e.g. with `str` and `str`) actually correct?**

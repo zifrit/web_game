@@ -670,6 +670,8 @@ class MvpApiTests(APITestCase):
         self.assertEqual(dungeons.data[0]["name"], "Old Forest")
         self.assertEqual(dungeons.data[0]["description"], "A safe starting location.")
         self.assertIn("has_mini_game", dungeons.data[0])
+        self.assertEqual(dungeons.data[0]["hp_loss_success_percent"], 4)
+        self.assertEqual(dungeons.data[0]["hp_loss_fail_percent"], 9)
         self.assertTrue(dungeons.data[0]["media"]["medium_url"])
         self.assertNotIn("original_url", dungeons.data[0]["media"])
 

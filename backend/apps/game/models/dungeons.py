@@ -149,13 +149,13 @@ class DungeonLocation(TimestampedModel):
                 raise ValidationError("resource location must have zero hp loss")
             if self.daily_limit <= 0:
                 raise ValidationError("resource location must have daily_limit > 0")
-        if (
-            self.pk
-            and self.is_active
-            and self.item_drop_chance > 0
-            and not self.location_item_templates.filter(item_template__is_active=True).exists()
-        ):
-            raise ValidationError("active dungeon with item_drop_chance > 0 must have at least one active item template")
+        # if (
+        #     self.pk
+        #     and self.is_active
+        #     and self.item_drop_chance > 0
+        #     and not self.location_item_templates.filter(item_template__is_active=True).exists()
+        # ):
+        #     raise ValidationError("active dungeon with item_drop_chance > 0 must have at least one active item template")
 
     def __str__(self) -> str:
         """Возвращает название локации подземелья."""

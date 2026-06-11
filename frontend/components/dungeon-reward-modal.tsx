@@ -5,6 +5,7 @@ import { ErrorNotice } from "@/components/ui";
 import { formatCopper, formatNumber, formatStatName, type TranslationKey } from "@/lib/i18n";
 import { rarityColor } from "@/lib/rarity";
 import type { ClaimResponse } from "@/lib/types";
+import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 
 function rarityLabel(rarity: string, t: (key: TranslationKey) => string) {
   return t(`rarity.${rarity.toLowerCase()}` as TranslationKey);
@@ -19,6 +20,8 @@ export function DungeonRewardModal({
   error?: string;
   onClose: () => void;
 }) {
+  useModalScrollLock();
+
   const { locale, t } = useI18n();
   const item = result.rewards.items[0];
   const statusColor = result.is_success ? "var(--success)" : "var(--error)";
