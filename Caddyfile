@@ -2,7 +2,7 @@
 # Домен и e-mail для ACME подставляются из переменных окружения
 # (DOMAIN, ACME_EMAIL) — см. docker-compose.prod.yml.
 
-http://{$DOMAIN} {
+{$DOMAIN} {
 	log {
 		output stderr
 		format console

@@ -318,7 +318,6 @@ class DungeonRunClaimItemInline(admin.TabularInline):
     extra = 0
     autocomplete_fields = ("user_item",)
     readonly_fields = ("user_item", "created_at")
-    can_delete = False
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("user_item", "user_item__owner_user", "user_item__template")
@@ -426,16 +425,6 @@ class MoneyTransactionAdmin(admin.ModelAdmin):
         "updated_at",
     )
 
-    def has_add_permission(self, request) -> bool:
-        """Запрещает ручное добавление: начисления только через сервис."""
-
-        return False
-
-    def has_delete_permission(self, request, obj=None) -> bool:
-        """Запрещает удаление: медный леджер неизменяем."""
-
-        return False
-
 
 class ShopOfferIngredientInline(admin.TabularInline):
     model = ShopOfferIngredient
@@ -526,13 +515,3 @@ class ShopPurchaseAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
-
-    def has_add_permission(self, request) -> bool:
-        """Запрещает ручное добавление записей истории покупок."""
-
-        return False
-
-    def has_delete_permission(self, request, obj=None) -> bool:
-        """Запрещает удаление записей истории покупок (леджер)."""
-
-        return False

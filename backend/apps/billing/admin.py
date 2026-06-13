@@ -18,11 +18,6 @@ class UserPremiumBalanceAdmin(admin.ModelAdmin):
     list_select_related = ("user",)
     readonly_fields = ("user", "amount", "created_at", "updated_at")
 
-    def has_delete_permission(self, request, obj=None) -> bool:
-        """Запрещает удаление балансов: они привязаны к пользователю."""
-
-        return False
-
 
 @admin.register(PremiumCurrencyTransaction)
 class PremiumCurrencyTransactionAdmin(admin.ModelAdmin):
@@ -40,16 +35,6 @@ class PremiumCurrencyTransactionAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
-
-    def has_add_permission(self, request) -> bool:
-        """Запрещает ручное добавление: начисления только через сервис."""
-
-        return False
-
-    def has_delete_permission(self, request, obj=None) -> bool:
-        """Запрещает удаление: премиум-леджер неизменяем."""
-
-        return False
 
 
 @admin.register(PremiumTopUpOffer)
@@ -101,16 +86,6 @@ class PremiumTopUpAdmin(admin.ModelAdmin):
         "updated_at",
     )
 
-    def has_add_permission(self, request) -> bool:
-        """Запрещает ручное создание: top-up создаётся сервисом."""
-
-        return False
-
-    def has_delete_permission(self, request, obj=None) -> bool:
-        """Запрещает удаление записей top-up."""
-
-        return False
-
 
 @admin.register(PremiumTopUpEvent)
 class PremiumTopUpEventAdmin(admin.ModelAdmin):
@@ -137,16 +112,6 @@ class PremiumTopUpEventAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
-
-    def has_add_permission(self, request) -> bool:
-        """Запрещает ручное добавление: события приходят от провайдера."""
-
-        return False
-
-    def has_delete_permission(self, request, obj=None) -> bool:
-        """Запрещает удаление webhook-событий."""
-
-        return False
 
 
 @admin.register(CurrencyExchangeOffer)
@@ -178,13 +143,3 @@ class CurrencyExchangeTransactionAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
-
-    def has_add_permission(self, request) -> bool:
-        """Запрещает ручное добавление: обмен выполняется только через сервис."""
-
-        return False
-
-    def has_delete_permission(self, request, obj=None) -> bool:
-        """Запрещает удаление записей обмена."""
-
-        return False
