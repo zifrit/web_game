@@ -2,13 +2,7 @@
 # Домен и e-mail для ACME подставляются из переменных окружения
 # (DOMAIN, ACME_EMAIL) — см. docker-compose.prod.yml.
 
-{
-	email {$ACME_EMAIL}
-}
-
-{$DOMAIN} {
-	tls internal
-
+http://{$DOMAIN} {
 	encode zstd gzip
 
 	# Бэкенд Django: API, админка и его статика (whitenoise).
