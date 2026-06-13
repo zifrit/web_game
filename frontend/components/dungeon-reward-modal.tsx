@@ -5,7 +5,7 @@ import { ErrorNotice } from "@/components/ui";
 import { formatCopper, formatNumber, formatStatName, type TranslationKey } from "@/lib/i18n";
 import { rarityColor } from "@/lib/rarity";
 import type { ClaimResponse } from "@/lib/types";
-import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
+import { useModalScrollLock, useSwipeToClose } from "@/lib/use-modal-scroll-lock";
 
 function rarityLabel(rarity: string, t: (key: TranslationKey) => string) {
   return t(`rarity.${rarity.toLowerCase()}` as TranslationKey);
@@ -21,6 +21,7 @@ export function DungeonRewardModal({
   onClose: () => void;
 }) {
   useModalScrollLock();
+  const swipeToClose = useSwipeToClose(onClose);
 
   const { locale, t } = useI18n();
   const item = result.rewards.items[0];
@@ -40,7 +41,7 @@ export function DungeonRewardModal({
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="dungeon-reward-title">
-      <div className="modal reward-modal">
+      <div className="modal reward-modal" {...swipeToClose}>
         <div className="card-h">
           <div>
             <div id="dungeon-reward-title" className="card-title">{t("reward.title")}</div>
@@ -127,8 +128,6 @@ export function DungeonRewardModal({
                   <div>
                     <div className="reward-item-name">{item.name}</div>
                     <div className="mono reward-item-meta">
-                      {t("common.rank")} <span style={{ color: rarityColor(rarity) }}>{rarityLabel(item.rarity, t)}</span>
-                      {" · "}
                       {t("common.itemLevel")} {item.item_level}
                     </div>
                   </div>

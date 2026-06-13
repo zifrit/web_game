@@ -10,6 +10,7 @@ import { formatCopperCompact, type TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
 import type { ShopOffer } from "@/lib/types";
 import { ShopOfferModal } from "@/components/shop-offer-modal";
+import { useIsMobile } from "@/lib/use-is-mobile";
 
 function PriceTags({ offer }: { offer: ShopOffer }) {
   const { locale } = useI18n();
@@ -95,6 +96,7 @@ function ShopCard({ offer, onOpen }: { offer: ShopOffer; onOpen: (offer: ShopOff
 
 export function ShopScreen() {
   const { t } = useI18n();
+  const isMobile = useIsMobile();
   const [selected, setSelected] = useState<ShopOffer | null>(null);
   const offersQuery = useQuery({
     queryKey: ["shop", "offers"],
@@ -117,9 +119,11 @@ export function ShopScreen() {
     <>
       <div style={{
         display: "grid",
-        // Up to 5 cards per row (capped via max-width); drops to 4/3/2 when narrower.
-        gridTemplateColumns: "repeat(auto-fill, minmax(242px, 1fr))",
-        gap: 16,
+        // Mobile: 2 compact cards per row (comp). Desktop: up to 5 (capped via max-width).
+        gridTemplateColumns: isMobile
+          ? "repeat(2, minmax(0, 1fr))"
+          : "repeat(auto-fill, minmax(242px, 1fr))",
+        gap: isMobile ? 11 : 16,
         maxWidth: 1274, // 5 × 242 + 4 × 16 gap
         marginInline: "auto",
       }}>

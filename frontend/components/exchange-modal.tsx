@@ -7,10 +7,11 @@ import { api, ApiError } from "@/lib/api";
 import { useI18n } from "@/components/providers";
 import { LoadingLine } from "@/components/ui";
 import { formatCopperCompact } from "@/lib/i18n";
-import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
+import { useModalScrollLock, useSwipeToClose } from "@/lib/use-modal-scroll-lock";
 
 export function ExchangeModal({ onClose }: { onClose: () => void }) {
   useModalScrollLock();
+  const swipeToClose = useSwipeToClose(onClose);
 
   const { locale, t } = useI18n();
   const queryClient = useQueryClient();
@@ -41,7 +42,7 @@ export function ExchangeModal({ onClose }: { onClose: () => void }) {
       onClick={(e) => e.target === e.currentTarget && onClose()}
       style={{ alignItems: "flex-start", paddingTop: "clamp(60px, 6vh, 80px)", paddingBottom: "clamp(16px, 3vh, 40px)" }}
     >
-      <div className="modal" style={{ width: "min(480px, 94vw)", maxHeight: "calc(100vh - clamp(76px, 9vh, 120px))", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div className="modal" {...swipeToClose} style={{ width: "min(480px, 94vw)", maxHeight: "calc(100vh - clamp(76px, 9vh, 120px))", display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Header */}
         <div style={{
           padding: "20px 24px 14px", borderBottom: "1px solid var(--line-soft)",

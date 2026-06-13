@@ -6,6 +6,7 @@ import { useI18n } from "@/components/providers";
 import { ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { bestMediaUrl } from "@/lib/media";
+import { useIsMobile } from "@/lib/use-is-mobile";
 import type { LeaderboardMetric } from "@/lib/types";
 
 function rankStyle(rank: number): { borderColor: string; background: string; color: string } {
@@ -17,6 +18,7 @@ function rankStyle(rank: number): { borderColor: string; background: string; col
 
 export function LeaderboardScreen() {
   const { t } = useI18n();
+  const isMobile = useIsMobile();
   const [metric, setMetric] = useState<LeaderboardMetric>("level");
   const boardQuery = useQuery({
     queryKey: ["leaderboard", metric],
@@ -26,7 +28,7 @@ export function LeaderboardScreen() {
   return (
     <div className="col animate-fade-in">
       <div className="card">
-        <div className="card-h">
+        <div className="card-h" style={{ flexWrap: "wrap", rowGap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 22 }}>🏅</span>
             <div>
@@ -35,7 +37,11 @@ export function LeaderboardScreen() {
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 12,
+            flexWrap: "wrap", justifyContent: "flex-end",
+            flex: isMobile ? "1 1 100%" : undefined,
+          }}>
             {/* Metric toggle: level / power */}
             <div style={{
               display: "flex",
@@ -70,7 +76,12 @@ export function LeaderboardScreen() {
             {boardQuery.data?.my_rank && (
               <div style={{
                 borderRadius: 12, border: "1px solid rgba(59,130,246,0.3)",
-                background: "rgba(59,130,246,0.10)", padding: "8px 16px", textAlign: "right",
+                background: "rgba(59,130,246,0.10)", padding: "8px 16px",
+                textAlign: isMobile ? "left" : "right",
+                width: isMobile ? "100%" : undefined,
+                display: isMobile ? "flex" : undefined,
+                alignItems: isMobile ? "center" : undefined,
+                justifyContent: isMobile ? "space-between" : undefined,
               }}>
                 <div className="mono" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-mute)" }}>
                   {t("leaderboard.myRank")}

@@ -10,7 +10,7 @@ import { LoadingLine } from "@/components/ui";
 import { formatDuration } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
-import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
+import { useModalScrollLock, useSwipeToClose } from "@/lib/use-modal-scroll-lock";
 
 /* Категория ингредиента → акцентный цвет (не только цвет — рядом всегда текст-метка). */
 const CATEGORY_COLOR: Record<DungeonResourceDrop["category"], string> = {
@@ -60,6 +60,7 @@ export function DungeonResourceModal({
   onClose: () => void;
 }) {
   useModalScrollLock();
+  const swipeToClose = useSwipeToClose(onClose);
 
   const { locale, t } = useI18n();
   const resourcesQuery = useQuery({
@@ -81,6 +82,7 @@ export function DungeonResourceModal({
     >
       <div
         className="modal"
+        {...swipeToClose}
         style={{
           width: "min(660px, 94vw)",
           maxHeight: "calc(100vh - clamp(76px, 9vh, 120px))",

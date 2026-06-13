@@ -1,8 +1,9 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Backpack, BookOpen, Compass, Gem, LogOut, Plus, Settings2, ShoppingBag, Swords, Trophy } from "lucide-react";
+import { Backpack, BookOpen, ChevronRight, Compass, Gem, LogOut, MoreHorizontal, Plus, Settings2, ShoppingBag, Swords, Trophy } from "lucide-react";
 import { useEffect, useState, type CSSProperties } from "react";
+import { useIsMobile } from "@/lib/use-is-mobile";
 import { AuthScreen } from "@/components/screens/auth-screen";
 import { CharacterScreen } from "@/components/screens/character-screen";
 import { CreateCharacterScreen } from "@/components/screens/create-character-screen";
@@ -18,6 +19,7 @@ import { api } from "@/lib/api";
 import { useI18n, useSession } from "@/components/providers";
 import { formatNumber, splitCopper, type TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
+import { useSwipeToClose } from "@/lib/use-modal-scroll-lock";
 import type { MediaAssetUrls } from "@/lib/types";
 
 type Tab = "character" | "dungeons" | "shop" | "inventory" | "leaderboard" | "settings" | "guide";
@@ -240,38 +242,219 @@ function Sidebar({
   );
 }
 
-/* ─── Mobile nav (bottom bar on small screens) ─── */
-function MobileNav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
+/* ─── Mobile top app bar ─── */
+function MobileTopbar({ gold, premium, onOpenExchange }: {
+  gold?: number;
+  premium?: number;
+  onOpenExchange?: () => void;
+}) {
+  const { locale, t } = useI18n();
+  const money = splitCopper(gold);
+  const moneyLabels = locale === "ru"
+    ? { gold: "з", silver: "с", copper: "м" }
+    : { gold: "g", silver: "s", copper: "c" };
+  return (
+    <header style={{
+      flexShrink: 0,
+      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+      padding: "10px 14px 12px",
+      background: "#0B1020",
+      borderBottom: "1px solid #2E3B5A",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+        <div style={{
+          width: 28, height: 28, flexShrink: 0,
+          background: "linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%)",
+          borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
+          border: "1px solid rgba(96,165,250,0.35)",
+          boxShadow: "0 0 16px rgba(59,130,246,0.25), inset 0 1px 0 rgba(255,255,255,0.1)",
+        }}>
+          <Swords size={14} color="#93C5FD" strokeWidth={1.7} />
+        </div>
+        <div style={{
+          minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
+          fontSize: 16, fontWeight: 600, letterSpacing: "0.02em", color: "#F1F5F9",
+        }}>Ashreach</div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, flexShrink: 0 }}>
+        {premium !== undefined && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 4,
+            padding: "6px 9px", borderRadius: 9,
+            background: "rgba(168,85,247,0.10)", border: "1px solid rgba(168,85,247,0.25)",
+            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+          }}>
+            <Gem size={11} color="#c084fc" />
+            <span style={{ fontSize: 11, fontWeight: 600, color: "#d8b4fe" }}>{formatNumber(premium, locale)}</span>
+          </div>
+        )}
+        {gold !== undefined && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "6px 10px", boxSizing: "border-box",
+            borderRadius: 9, whiteSpace: "nowrap", overflow: "hidden",
+            background: "#1A2235", border: "1px solid #2E3B5A",
+            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+          }}>
+            <span style={{ color: "#64748B", letterSpacing: "0.1em", textTransform: "uppercase", fontSize: 8 }}>{t("common.money")}</span>
+            <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, fontSize: 11, fontWeight: 700 }}>
+              <span style={{ color: "#FBBF24" }}>{formatNumber(money.gold, locale)}{moneyLabels.gold}</span>
+              <span style={{ color: "#CBD5E1" }}>{money.silver}{moneyLabels.silver}</span>
+              <span style={{ color: "#CD7C45" }}>{money.copper}{moneyLabels.copper}</span>
+            </span>
+            {onOpenExchange && (
+              <button
+                onClick={onOpenExchange}
+                title={t("exchange.title")}
+                aria-label={t("exchange.title")}
+                style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  width: 17, height: 17, borderRadius: 5, cursor: "pointer",
+                  background: "rgba(96,165,250,0.14)", border: "1px solid rgba(96,165,250,0.35)",
+                  color: "#93C5FD",
+                }}
+              >
+                <Plus size={10} strokeWidth={3} />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}
+
+/* ─── Mobile bottom nav (5 items; last opens the More sheet) ─── */
+const BOTTOM_NAV: Array<{ key: Tab; labelKey: TranslationKey; icon: React.ReactNode }> = [
+  { key: "character", labelKey: "nav.character", icon: <Swords size={22} strokeWidth={1.9} /> },
+  { key: "dungeons",  labelKey: "nav.dungeons",  icon: <Compass size={22} strokeWidth={1.9} /> },
+  { key: "shop",      labelKey: "nav.shop",      icon: <ShoppingBag size={22} strokeWidth={1.9} /> },
+  { key: "inventory", labelKey: "nav.inventory", icon: <Backpack size={22} strokeWidth={1.9} /> },
+];
+
+const MORE_TABS: Tab[] = ["leaderboard", "guide", "settings"];
+
+function BottomNav({ tab, setTab, moreOpen, onOpenMore }: {
+  tab: Tab;
+  setTab: (t: Tab) => void;
+  moreOpen: boolean;
+  onOpenMore: () => void;
+}) {
   const { t } = useI18n();
-  const all = [...ADVENTURE_NAV, ...HERO_NAV];
+  const moreActive = moreOpen || MORE_TABS.includes(tab);
+  const itemStyle = (active: boolean): CSSProperties => ({
+    flex: 1, background: "none", border: "none", cursor: "pointer",
+    display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+    padding: "6px 0",
+    color: active ? "#60A5FA" : "#5d6b86",
+    transition: "color 150ms ease",
+  });
+  const labelStyle: CSSProperties = { fontSize: 10, fontWeight: 600 };
   return (
     <nav style={{
-      display: "grid",
-      gridTemplateColumns: `repeat(${all.length}, 1fr)`,
-      borderBottom: "1px solid #2E3B5A",
-      background: "#0D1525",
+      position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 40,
+      height: "var(--mobile-nav-h)",
+      padding: "8px 10px calc(env(safe-area-inset-bottom, 0px) + 10px)",
+      background: "linear-gradient(180deg, rgba(8,11,20,0.4), rgba(6,8,15,0.96) 45%)",
+      backdropFilter: "blur(16px)",
+      borderTop: "1px solid rgba(110,140,190,0.10)",
+      display: "flex", alignItems: "flex-start",
     }}>
-      {all.map((item) => (
-        <button
-          key={item.key}
-          onClick={() => setTab(item.key)}
-          style={{
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-            padding: "10px 4px",
-            fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em",
-            color: tab === item.key ? "#60A5FA" : "#4B6AA3",
-            background: "transparent", border: "none", cursor: "pointer",
-            borderBottom: tab === item.key ? "2px solid #3B82F6" : "2px solid transparent",
-            transition: "all 150ms ease",
-          }}
-        >
-          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 18, height: 18 }}>
-            {NAV_ICONS[item.key]}
-          </span>
-          {t(item.labelKey)}
-        </button>
-      ))}
+      {BOTTOM_NAV.map((item) => {
+        const active = tab === item.key;
+        return (
+          <button key={item.key} onClick={() => setTab(item.key)} style={itemStyle(active)}>
+            {item.icon}
+            <span style={labelStyle}>{t(item.labelKey)}</span>
+          </button>
+        );
+      })}
+      <button onClick={onOpenMore} style={itemStyle(moreActive)}>
+        <MoreHorizontal size={22} strokeWidth={1.9} />
+        <span style={labelStyle}>{t("nav.more")}</span>
+      </button>
     </nav>
+  );
+}
+
+/* ─── More bottom-sheet (Leaderboard / Guide / Settings + logout) ─── */
+function MoreSheet({ tab, setTab, onClose, onLogout, characterName, characterClass, characterLevel, characterRank, userAvatar }: {
+  tab: Tab;
+  setTab: (t: Tab) => void;
+  onClose: () => void;
+  onLogout: () => void;
+  characterName?: string;
+  characterClass?: string;
+  characterLevel?: number;
+  characterRank?: string;
+  userAvatar?: MediaAssetUrls | null;
+}) {
+  const { t } = useI18n();
+  const swipeToClose = useSwipeToClose(onClose);
+  const avatarUrl = bestMediaUrl(userAvatar, ["small_url", "medium_url", "large_url"]);
+  const items: Array<{ key: Tab; labelKey: TranslationKey; icon: React.ReactNode }> = [
+    { key: "leaderboard", labelKey: "nav.leaderboard", icon: <Trophy size={18} strokeWidth={1.8} /> },
+    { key: "guide",       labelKey: "nav.guide",       icon: <BookOpen size={18} strokeWidth={1.8} /> },
+    { key: "settings",    labelKey: "nav.settings",    icon: <Settings2 size={18} strokeWidth={1.8} /> },
+  ];
+  const pick = (next: Tab) => { setTab(next); onClose(); };
+  return (
+    <>
+      <div className="mobile-sheet-overlay" style={{ zIndex: 50 }} onClick={onClose} />
+      <div className="mobile-sheet animate-sheet-up" {...swipeToClose} style={{
+        zIndex: 51,
+        padding: "10px 16px calc(env(safe-area-inset-bottom, 0px) + 24px)",
+      }}>
+        <div className="mobile-sheet-grabber" style={{ margin: "4px auto 14px" }} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+          {items.map((mi) => {
+            const active = tab === mi.key;
+            return (
+              <button key={mi.key} onClick={() => pick(mi.key)} style={{
+                display: "flex", alignItems: "center", gap: 13, padding: 14, borderRadius: 14,
+                textAlign: "left", cursor: "pointer",
+                border: `1px solid ${active ? "rgba(96,165,250,0.35)" : "rgba(110,140,190,0.12)"}`,
+                background: active ? "rgba(59,130,246,0.12)" : "rgba(16,22,38,0.5)",
+                color: active ? "#9cc0ff" : "#cdd6e6",
+              }}>
+                <span style={{ width: 24, display: "flex", justifyContent: "center" }}>{mi.icon}</span>
+                <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>{t(mi.labelKey)}</span>
+                <ChevronRight size={16} style={{ opacity: 0.5 }} />
+              </button>
+            );
+          })}
+        </div>
+        {characterName && (
+          <div style={{
+            marginTop: 14, display: "flex", alignItems: "center", gap: 11,
+            padding: "13px 14px", borderRadius: 14,
+            background: "rgba(11,16,28,0.5)", border: "1px solid rgba(110,140,190,0.08)",
+          }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: "50%", flexShrink: 0, overflow: "hidden",
+              background: "linear-gradient(135deg,#2a3656,#171f36)", position: "relative",
+            }}>
+              {avatarUrl && <img src={avatarUrl} alt={characterName} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: "#dbe2ef", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{characterName}</div>
+              <div style={{
+                fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7c89a3", marginTop: 1,
+              }}>{characterClass ?? "—"} · {t("common.levelShort")} {characterLevel ?? "—"} · {t("common.rank")} {characterRank ?? "—"}</div>
+            </div>
+            <button onClick={() => { onClose(); onLogout(); }} title="Logout" style={{
+              width: 38, height: 38, borderRadius: 10, flexShrink: 0, cursor: "pointer",
+              border: "1px solid rgba(239,90,90,0.3)", background: "rgba(239,90,90,0.1)", color: "#f87171",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <LogOut size={17} />
+            </button>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -384,6 +567,8 @@ export function RpgClient() {
     localStorage.setItem("activeTab", next);
   };
   const [exchangeOpen, setExchangeOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
 
   const meQuery = useQuery({
@@ -460,25 +645,38 @@ export function RpgClient() {
       {/* ─── Main area ─── */}
       <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
 
-        {/* Top header */}
-        <Topbar
-          meta={meta}
-          title={pageTitle}
-          level={charLevel}
-          rank={characterQuery.data?.rank}
-          gold={gold}
-          premium={premium}
-          onOpenExchange={() => setExchangeOpen(true)}
-        />
-
-        {/* Mobile nav */}
-        <div className="lg:hidden">
-          <MobileNav tab={tab} setTab={setTab} />
-        </div>
+        {/* Top header: full desktop topbar, slim currency bar on mobile */}
+        {isMobile ? (
+          <MobileTopbar
+            gold={gold}
+            premium={premium}
+            onOpenExchange={() => setExchangeOpen(true)}
+          />
+        ) : (
+          <Topbar
+            meta={meta}
+            title={pageTitle}
+            level={charLevel}
+            rank={characterQuery.data?.rank}
+            gold={gold}
+            premium={premium}
+            onOpenExchange={() => setExchangeOpen(true)}
+          />
+        )}
 
         {/* Page content */}
-        <div data-app-scroll-root style={{ flex: 1, overflowY: "auto", padding: "28px 36px 60px" }}>
-          <div style={{ maxWidth: 1400, width: "100%", margin: "0 auto" }} className="animate-fade-in">
+        <div
+          data-app-scroll-root
+          className={isMobile ? "mobile-noscroll" : undefined}
+          style={{
+            flex: 1, overflowY: "auto",
+            padding: isMobile ? "16px 16px calc(var(--mobile-nav-h) + 16px)" : "28px 36px 60px",
+          }}
+        >
+          <div
+            style={{ maxWidth: isMobile ? "100%" : 1400, width: "100%", margin: "0 auto" }}
+            className="animate-fade-in"
+          >
             {tab === "character"   && (
               <CharacterScreen
                 onOpenDungeons={() => setTab("dungeons")}
@@ -494,6 +692,29 @@ export function RpgClient() {
           </div>
         </div>
       </div>
+
+      {/* ─── Mobile bottom nav + More sheet ─── */}
+      {isMobile && (
+        <BottomNav
+          tab={tab}
+          setTab={setTab}
+          moreOpen={moreOpen}
+          onOpenMore={() => setMoreOpen(true)}
+        />
+      )}
+      {isMobile && moreOpen && (
+        <MoreSheet
+          tab={tab}
+          setTab={setTab}
+          onClose={() => setMoreOpen(false)}
+          onLogout={handleLogout}
+          characterName={characterQuery.data?.name}
+          characterClass={characterQuery.data?.class?.name}
+          characterLevel={characterQuery.data?.level}
+          characterRank={characterQuery.data?.rank}
+          userAvatar={activeUser?.avatar}
+        />
+      )}
 
       {exchangeOpen && <ExchangeModal onClose={() => setExchangeOpen(false)} />}
     </div>

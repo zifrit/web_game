@@ -7,7 +7,7 @@ import { useI18n } from "@/components/providers";
 import { api } from "@/lib/api";
 import { formatDuration, formatTime } from "@/lib/i18n";
 import { useCardFaces } from "@/lib/use-card-faces";
-import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
+import { useModalScrollLock, useSwipeToClose } from "@/lib/use-modal-scroll-lock";
 import type { DungeonMiniGameAttempt, DungeonMiniGameCard, DungeonRun } from "@/lib/types";
 
 function useAttemptSeconds(attempt?: DungeonMiniGameAttempt | null) {
@@ -47,6 +47,7 @@ export function DungeonMiniGameDifficultyModal({
   pending?: boolean;
 }) {
   useModalScrollLock();
+  const swipeToClose = useSwipeToClose(onClose);
 
   const { t } = useI18n();
   const configsQuery = useQuery({
@@ -57,7 +58,7 @@ export function DungeonMiniGameDifficultyModal({
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal mini-game-modal">
+      <div className="modal mini-game-modal" {...swipeToClose}>
         <div className="mini-game-head">
           <div>
             <div className="card-sub">{t("miniGame.chooseSubtitle")}</div>
@@ -110,6 +111,7 @@ export function DungeonMiniGameModal({
   onFinished: (attempt: DungeonMiniGameAttempt) => void;
 }) {
   useModalScrollLock();
+  const swipeToClose = useSwipeToClose(onClose);
 
   const { t } = useI18n();
   const { facesByCode } = useCardFaces();
@@ -259,7 +261,7 @@ export function DungeonMiniGameModal({
 
   return (
     <div className="modal-backdrop">
-      <div className="modal mini-game-modal">
+      <div className="modal mini-game-modal" {...swipeToClose}>
         <div className="mini-game-head">
           <div>
             <div className="card-sub">{t("miniGame.subtitle", { difficulty: currentAttempt.config.difficulty })}</div>
@@ -310,6 +312,7 @@ export function DungeonMiniGameResultModal({
   onClose: () => void;
 }) {
   useModalScrollLock();
+  const swipeToClose = useSwipeToClose(onClose);
 
   const { locale, t } = useI18n();
   const success = attempt.status === "SUCCESS";
@@ -317,7 +320,7 @@ export function DungeonMiniGameResultModal({
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="mini-game-result-title">
-      <div className={`modal mini-game-result-modal ${success ? "success" : "failed"}`}>
+      <div className={`modal mini-game-result-modal ${success ? "success" : "failed"}`} {...swipeToClose}>
         <div className="mini-game-result-head">
           <div>
             <div className="card-sub">{t("miniGame.title")}</div>

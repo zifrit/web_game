@@ -12,6 +12,7 @@ import { ErrorNotice, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatDuration, formatTime } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
+import { useIsMobile } from "@/lib/use-is-mobile";
 import type { ClaimResponse, Dungeon, DungeonMiniGameAttempt, DungeonRun } from "@/lib/types";
 
 /* ── Timer hook ── */
@@ -41,6 +42,7 @@ function ActiveRunBanner({
 }) {
   const queryClient = useQueryClient();
   const { t } = useI18n();
+  const isMobile    = useIsMobile();
   const remaining   = useRemainingSeconds(run);
   const [miniGameAttempt, setMiniGameAttempt] = useState<DungeonMiniGameAttempt | null>(null);
   const [miniGameResult, setMiniGameResult] = useState<DungeonMiniGameAttempt | null>(null);
@@ -100,6 +102,87 @@ function ActiveRunBanner({
 
   const accent    = done ? "var(--warning)" : "var(--primary)";
   const accentRgb = done ? "245,158,11" : "59,130,246";
+
+  const miniGameModals = (
+    <>
+      {choosingDifficulty && !miniGameAttempt && (
+        <DungeonMiniGameDifficultyModal
+          pending={startMiniGame.isPending}
+          onClose={() => setChoosingDifficulty(false)}
+          onSelect={(configId) => startMiniGame.mutate(configId)}
+        />
+      )}
+      {miniGameAttempt && (
+        <DungeonMiniGameModal
+          attempt={miniGameAttempt}
+          onClose={() => setMiniGameAttempt(null)}
+          onFinished={(attempt) => {
+            setMiniGameAttempt(null);
+            setMiniGameResult(attempt);
+            void queryClient.invalidateQueries({ queryKey: ["current-run"] });
+          }}
+        />
+      )}
+      {miniGameResult && (
+        <DungeonMiniGameResultModal
+          attempt={miniGameResult}
+          onClose={() => setMiniGameResult(null)}
+        />
+      )}
+      <ErrorNotice message={(claimMutation.error as Error | null)?.message ?? (startMiniGame.error as Error | null)?.message} />
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        <div style={{
+          padding: 12, borderRadius: 16,
+          background: "linear-gradient(135deg, rgba(59,130,246,0.14), rgba(22,30,49,0.5))",
+          border: `1px solid ${accent}`,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+            <div style={{ width: 46, height: 46, minWidth: 46, borderRadius: 11, flexShrink: 0, overflow: "hidden", position: "relative", background: "linear-gradient(135deg,#2c3a5e,#19223a)" }}>
+              {imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imageUrl} alt={run.location.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+              )}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="mono" style={{ fontSize: 8, letterSpacing: "0.18em", textTransform: "uppercase", color: done ? "var(--warning)" : "var(--primary-bright)" }}>
+                {done ? t("dungeons.activeReward") : t("dungeons.inProgress")}
+              </div>
+              <div style={{ fontFamily: "var(--font-cinzel, 'Cinzel', serif)", fontWeight: 600, fontSize: 15, color: "#eef2f8", textTransform: "uppercase", letterSpacing: "0.04em", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {run.location.name}
+              </div>
+            </div>
+            {canStartMiniGame && (
+              <button className="btn btn-primary" style={{ flexShrink: 0, padding: "9px 14px", fontSize: 12 }} disabled={startMiniGame.isPending} onClick={handleSpeedUp}>
+                {startMiniGame.isPending ? t("miniGame.starting") : t("miniGame.speedUp")}
+              </button>
+            )}
+            {waitingClaim && (
+              <button className="btn btn-primary" style={{ flexShrink: 0, padding: "9px 14px", fontSize: 12 }} disabled={claimMutation.isPending} onClick={() => claimMutation.mutate(run.id)}>
+                {claimMutation.isPending ? t("dungeons.claiming") : t("dungeons.claim")}
+              </button>
+            )}
+          </div>
+          {inProgress && (
+            <>
+              <div style={{ marginTop: 11, height: 7, borderRadius: 4, background: "rgba(8,11,20,0.7)", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${progress}%`, borderRadius: 4, background: "linear-gradient(90deg, var(--primary-deep), var(--primary-bright))", transition: "width 1s linear" }} />
+              </div>
+              <div className="mono" style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 9, color: "#7c89a3" }}>
+                <span>{t("dungeons.complete", { progress })}</span>
+                <span>{t("dungeons.left", { time: formatTime(remaining) })}</span>
+              </div>
+            </>
+          )}
+        </div>
+        {miniGameModals}
+      </>
+    );
+  }
 
   return (
     <div className="card active-strip animate-pulse-glow" style={{
@@ -185,31 +268,7 @@ function ActiveRunBanner({
           )}
         </div>
       </div>
-      {choosingDifficulty && !miniGameAttempt && (
-        <DungeonMiniGameDifficultyModal
-          pending={startMiniGame.isPending}
-          onClose={() => setChoosingDifficulty(false)}
-          onSelect={(configId) => startMiniGame.mutate(configId)}
-        />
-      )}
-      {miniGameAttempt && (
-        <DungeonMiniGameModal
-          attempt={miniGameAttempt}
-          onClose={() => setMiniGameAttempt(null)}
-          onFinished={(attempt) => {
-            setMiniGameAttempt(null);
-            setMiniGameResult(attempt);
-            void queryClient.invalidateQueries({ queryKey: ["current-run"] });
-          }}
-        />
-      )}
-      {miniGameResult && (
-        <DungeonMiniGameResultModal
-          attempt={miniGameResult}
-          onClose={() => setMiniGameResult(null)}
-        />
-      )}
-      <ErrorNotice message={(claimMutation.error as Error | null)?.message ?? (startMiniGame.error as Error | null)?.message} />
+      {miniGameModals}
     </div>
   );
 }
@@ -234,8 +293,11 @@ function getTier(required_power: number) {
 export function DungeonsScreen() {
   const queryClient   = useQueryClient();
   const { locale, t } = useI18n();
+  const isMobile = useIsMobile();
   const [rewardResult, setRewardResult] = useState<ClaimResponse | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list" | "map">("grid");
+  // Mobile always renders the list view (comp); the grid/list/map switcher is desktop-only.
+  const effectiveView = isMobile ? "list" : viewMode;
   const [category, setCategory] = useState<"dungeon" | "resource">("dungeon");
   const [lootDungeon, setLootDungeon] = useState<Dungeon | null>(null);
   const [resourceLocation, setResourceLocation] = useState<Dungeon | null>(null);
@@ -290,12 +352,14 @@ export function DungeonsScreen() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
         {/* Category switcher */}
         <div style={{
-          display: "flex",
-          background: "rgba(255,255,255,0.05)",
+          display: isMobile ? "grid" : "flex",
+          gridTemplateColumns: isMobile ? "repeat(2, minmax(0, 1fr))" : undefined,
+          width: isMobile ? "100%" : undefined,
+          background: isMobile ? "transparent" : "rgba(255,255,255,0.05)",
           borderRadius: 10,
-          border: "1px solid rgba(255,255,255,0.08)",
-          padding: 3,
-          gap: 2,
+          border: isMobile ? "none" : "1px solid rgba(255,255,255,0.08)",
+          padding: isMobile ? 0 : 3,
+          gap: isMobile ? 8 : 2,
         }}>
           {(["dungeon", "resource"] as const).map((cat) => {
             const Icon = cat === "dungeon" ? Swords : Sprout;
@@ -307,24 +371,37 @@ export function DungeonsScreen() {
                 aria-label={cat === "dungeon" ? t("dungeons.categoryDungeons") : t("dungeons.categoryResources")}
                 aria-pressed={active}
                 style={{
-                  width: 34, height: 34,
+                  width: isMobile ? "100%" : 34,
+                  height: isMobile ? 42 : 34,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  border: "none", borderRadius: 7, cursor: "pointer",
-                  background: active ? "var(--primary)" : "transparent",
-                  color: active ? "#fff" : "rgba(255,255,255,0.35)",
-                  boxShadow: active ? "0 0 12px color-mix(in srgb, var(--primary) 60%, transparent)" : "none",
+                  gap: isMobile ? 8 : 0,
+                  border: isMobile
+                    ? active ? "1px solid rgba(96,165,250,0.72)" : "1px solid rgba(46,59,90,0.62)"
+                    : "none",
+                  borderRadius: isMobile ? 11 : 7,
+                  cursor: "pointer",
+                  background: active
+                    ? isMobile ? "rgba(37,99,235,0.22)" : "var(--primary)"
+                    : isMobile ? "rgba(17,24,39,0.55)" : "transparent",
+                  color: active ? "#dbeafe" : "rgba(226,232,240,0.48)",
+                  boxShadow: active && !isMobile ? "0 0 12px color-mix(in srgb, var(--primary) 60%, transparent)" : "none",
                   transition: "all 0.18s ease",
                 }}
               >
                 <Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
+                {isMobile && (
+                  <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1 }}>
+                    {cat === "dungeon" ? t("dungeons.categoryDungeons") : locale === "ru" ? "Сбор" : "Gather"}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
 
-        {/* View toggle */}
+        {/* View toggle — hidden on mobile (comp shows grid only) */}
         <div style={{
-          display: "flex",
+          display: isMobile ? "none" : "flex",
           background: "rgba(255,255,255,0.05)",
           borderRadius: 10,
           border: "1px solid rgba(255,255,255,0.08)",
@@ -357,7 +434,7 @@ export function DungeonsScreen() {
       </div>
 
       {/* Dungeon grid view */}
-      {viewMode === "grid" && category === "dungeon" && (
+      {effectiveView === "grid" && category === "dungeon" && (
         <div style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
@@ -483,7 +560,7 @@ export function DungeonsScreen() {
       )}
 
       {/* Dungeon list view */}
-      {viewMode === "list" && category === "dungeon" && (
+      {effectiveView === "list" && category === "dungeon" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {combatDungeons.map((dungeon) => {
             const tier         = getTier(dungeon.required_power);
@@ -494,6 +571,131 @@ export function DungeonsScreen() {
             const disabled     = hasRun || startMutation.isPending || hpTooLow || localExhausted || categoryExhausted;
             const dungeonImage = bestMediaUrl(dungeon.media, ["small_url", "medium_url", "large_url"]);
             const durLabel     = formatDuration(dungeon.duration_seconds, locale);
+            const actionLabel   = startMutation.isPending
+              ? t("dungeons.sending")
+              : isActive
+                ? t("dungeons.inProgressButton")
+                : categoryExhausted
+                  ? t("dungeons.categoryLimitReached")
+                  : localExhausted
+                    ? t("dungeons.dailyLimitReached")
+                    : awaitingClaim
+                      ? t("dungeons.claimFirst")
+                      : isRunning
+                        ? t("dungeons.heroBusy")
+                        : hpTooLow
+                          ? t("dungeons.lowHp")
+                          : t("dungeons.sendHero");
+
+            if (isMobile) {
+              return (
+                <div
+                  key={dungeon.id}
+                  className={`dungeon${isActive ? " active" : ""}`}
+                  style={{
+                    minHeight: 96,
+                    padding: 10,
+                    borderRadius: 14,
+                    overflow: "hidden",
+                    cursor: "default",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: 11, alignItems: "stretch" }}>
+                    <div style={{
+                      width: 62, height: 62, minWidth: 62,
+                      position: "relative",
+                      background: dungeonImage ? undefined : TIER_GRADIENT[tier] ?? TIER_GRADIENT[1],
+                      borderRadius: 10,
+                      flexShrink: 0, overflow: "hidden",
+                    }}>
+                      {dungeonImage && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={dungeonImage}
+                          alt={dungeon.name}
+                          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      )}
+                    </div>
+
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
+                        <h3 style={{
+                          fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
+                          fontSize: 14, fontWeight: 700, margin: 0,
+                          lineHeight: 1.1, letterSpacing: 0, color: "var(--bone)",
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          minWidth: 0,
+                        }}>
+                          {dungeon.name}
+                        </h3>
+                        <span className="mono" style={{
+                          flexShrink: 0,
+                          fontSize: 8, color: "var(--text-mute)", letterSpacing: 0,
+                          whiteSpace: "nowrap",
+                        }}>
+                          {t("common.power")} {dungeon.required_power}+
+                        </span>
+                      </div>
+
+                      <div style={{
+                        marginTop: 5,
+                        display: "flex", flexWrap: "wrap", gap: "3px 8px",
+                        fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                        fontSize: 9, lineHeight: 1.25, color: "var(--text-mute)",
+                      }}>
+                        <span>⏱ {durLabel}</span>
+                        <span>HP {dungeon.hp_loss_fail_percent}</span>
+                        <span>◆ {dungeon.rewards_preview?.money_copper?.max ?? "?"}</span>
+                        <span style={{ color: "var(--success)" }}>{t("common.loot")} {dungeon.item_drop_chance}%</span>
+                      </div>
+
+                      <div style={{
+                        marginTop: 8,
+                        display: "grid",
+                        gridTemplateColumns: "minmax(0, 1fr) 38px",
+                        gap: 8,
+                        alignItems: "center",
+                      }}>
+                        <button
+                          disabled={!isActive && disabled}
+                          onClick={() => !disabled && startMutation.mutate(dungeon.id)}
+                          className="btn btn-primary"
+                          style={{
+                            minHeight: 32, height: 32, padding: "0 10px",
+                            borderRadius: 8, fontSize: 12, fontWeight: 700,
+                            background: isActive
+                              ? "linear-gradient(180deg, rgba(31,58,103,0.95), rgba(29,49,87,0.95))"
+                              : disabled
+                                ? "rgba(24,34,55,0.92)"
+                              : undefined,
+                            borderColor: isActive || disabled ? "rgba(96,165,250,0.18)" : undefined,
+                            boxShadow: isActive || disabled ? "none" : undefined,
+                            color: !isActive && disabled ? "rgba(148,163,184,0.72)" : undefined,
+                            opacity: isActive || disabled ? 1 : undefined,
+                          }}
+                        >
+                          {actionLabel}
+                        </button>
+                        <button
+                          onClick={() => setLootDungeon(dungeon)}
+                          className="btn btn-secondary"
+                          aria-label="Dungeon info"
+                          style={{
+                            width: 38, minWidth: 38, height: 32, padding: 0,
+                            borderRadius: 9, color: "rgba(203,213,225,0.78)",
+                            borderColor: "rgba(46,59,90,0.72)",
+                            background: "rgba(11,16,32,0.42)",
+                          }}
+                        >
+                          <Info size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
 
             return (
               <div
@@ -600,21 +802,7 @@ export function DungeonsScreen() {
                       opacity: isActive ? 0.7 : undefined,
                     }}
                   >
-                    {startMutation.isPending
-                      ? t("dungeons.sending")
-                      : isActive
-                        ? t("dungeons.inProgressButton")
-                        : categoryExhausted
-                          ? t("dungeons.categoryLimitReached")
-                          : localExhausted
-                            ? t("dungeons.dailyLimitReached")
-                            : awaitingClaim
-                              ? t("dungeons.claimFirst")
-                              : isRunning
-                                ? t("dungeons.heroBusy")
-                                : hpTooLow
-                                  ? t("dungeons.lowHp")
-                                  : t("dungeons.sendHero")}
+                    {actionLabel}
                   </button>
                   <button
                     onClick={() => setLootDungeon(dungeon)}
@@ -643,7 +831,7 @@ export function DungeonsScreen() {
       )}
 
       {/* Map view — coming soon */}
-      {viewMode === "map" && (
+      {effectiveView === "map" && (
         <div style={{
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           padding: "80px 24px", gap: 16,
@@ -659,7 +847,7 @@ export function DungeonsScreen() {
         </div>
       )}
       {/* Resource grid view */}
-      {viewMode === "grid" && category === "resource" && (
+      {effectiveView === "grid" && category === "resource" && (
         <div style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
@@ -783,7 +971,7 @@ export function DungeonsScreen() {
       )}
 
       {/* Resource list view */}
-      {viewMode === "list" && category === "resource" && (
+      {effectiveView === "list" && category === "resource" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {resourceLocations.map((location) => {
             const remaining     = location.daily_remaining ?? location.daily_limit;
@@ -794,6 +982,131 @@ export function DungeonsScreen() {
             const disabled      = hasRun || startMutation.isPending || exhausted || categoryExhausted;
             const locationImage = bestMediaUrl(location.media, ["small_url", "medium_url", "large_url"]);
             const durLabel      = formatDuration(location.duration_seconds, locale);
+            const actionLabel   = startMutation.isPending
+              ? t("dungeons.sending")
+              : isActive
+                ? t("dungeons.inProgressButton")
+                : categoryExhausted
+                  ? t("dungeons.categoryLimitReached")
+                  : exhausted
+                    ? t("dungeons.dailyLimitReached")
+                    : awaitingClaim
+                      ? t("dungeons.claimFirst")
+                      : isRunning
+                        ? t("dungeons.heroBusy")
+                        : t("dungeons.gather");
+
+            if (isMobile) {
+              return (
+                <div
+                  key={location.id}
+                  className={`dungeon${isActive ? " active" : ""}`}
+                  style={{
+                    minHeight: 96,
+                    padding: 10,
+                    borderRadius: 14,
+                    overflow: "hidden",
+                    cursor: "default",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: 11, alignItems: "stretch" }}>
+                    <div style={{
+                      width: 62, height: 62, minWidth: 62,
+                      position: "relative",
+                      background: locationImage ? undefined : "var(--bg-3)",
+                      borderRadius: 10,
+                      flexShrink: 0, overflow: "hidden",
+                    }}>
+                      {locationImage && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={locationImage}
+                          alt={location.name}
+                          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      )}
+                    </div>
+
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
+                        <h3 style={{
+                          fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
+                          fontSize: 14, fontWeight: 700, margin: 0,
+                          lineHeight: 1.1, letterSpacing: 0, color: "var(--bone)",
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          minWidth: 0,
+                        }}>
+                          {location.name}
+                        </h3>
+                        <span className="mono" style={{
+                          flexShrink: 0,
+                          fontSize: 8, color: "var(--success)", letterSpacing: 0,
+                          whiteSpace: "nowrap",
+                        }}>
+                          {t("dungeons.guaranteedSuccess")}
+                        </span>
+                      </div>
+
+                      <div style={{
+                        marginTop: 5,
+                        display: "flex", flexWrap: "wrap", gap: "3px 8px",
+                        fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                        fontSize: 9, lineHeight: 1.25, color: "var(--text-mute)",
+                      }}>
+                        <span>⏱ {durLabel}</span>
+                        {location.daily_limit > 0 && (
+                          <span style={{ color: exhausted ? "var(--warning)" : "var(--text-mute)" }}>
+                            {t("dungeons.dailyRuns", { used, limit: location.daily_limit })}
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{
+                        marginTop: 8,
+                        display: "grid",
+                        gridTemplateColumns: "minmax(0, 1fr) 38px",
+                        gap: 8,
+                        alignItems: "center",
+                      }}>
+                        <button
+                          disabled={!isActive && disabled}
+                          onClick={() => !disabled && startMutation.mutate(location.id)}
+                          className="btn btn-primary"
+                          style={{
+                            minHeight: 32, height: 32, padding: "0 10px",
+                            borderRadius: 8, fontSize: 12, fontWeight: 700,
+                            background: isActive
+                              ? "linear-gradient(180deg, rgba(31,58,103,0.95), rgba(29,49,87,0.95))"
+                              : disabled
+                                ? "rgba(24,34,55,0.92)"
+                              : undefined,
+                            borderColor: isActive || disabled ? "rgba(96,165,250,0.18)" : undefined,
+                            boxShadow: isActive || disabled ? "none" : undefined,
+                            color: !isActive && disabled ? "rgba(148,163,184,0.72)" : undefined,
+                            opacity: isActive || disabled ? 1 : undefined,
+                          }}
+                        >
+                          {actionLabel}
+                        </button>
+                        <button
+                          onClick={() => setResourceLocation(location)}
+                          className="btn btn-secondary"
+                          aria-label={locale === "ru" ? "Информация о локации" : "Location info"}
+                          style={{
+                            width: 38, minWidth: 38, height: 32, padding: 0,
+                            borderRadius: 9, color: "rgba(203,213,225,0.78)",
+                            borderColor: "rgba(46,59,90,0.72)",
+                            background: "rgba(11,16,32,0.42)",
+                          }}
+                        >
+                          <Info size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
 
             return (
               <div
@@ -893,19 +1206,7 @@ export function DungeonsScreen() {
                       opacity: isActive ? 0.7 : undefined,
                     }}
                   >
-                    {startMutation.isPending
-                      ? t("dungeons.sending")
-                      : isActive
-                        ? t("dungeons.inProgressButton")
-                        : categoryExhausted
-                          ? t("dungeons.categoryLimitReached")
-                          : exhausted
-                            ? t("dungeons.dailyLimitReached")
-                            : awaitingClaim
-                              ? t("dungeons.claimFirst")
-                              : isRunning
-                                ? t("dungeons.heroBusy")
-                                : t("dungeons.gather")}
+                    {actionLabel}
                   </button>
                   <button
                     onClick={() => setResourceLocation(location)}

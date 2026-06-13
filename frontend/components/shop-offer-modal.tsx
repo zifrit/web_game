@@ -8,7 +8,7 @@ import { useI18n } from "@/components/providers";
 import { LoadingLine } from "@/components/ui";
 import { formatCopperCompact, type TranslationKey } from "@/lib/i18n";
 import { rarityColor } from "@/lib/rarity";
-import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
+import { useModalScrollLock, useSwipeToClose } from "@/lib/use-modal-scroll-lock";
 import type { BuyShopOfferResponse, PaymentCurrency, ShopOfferDetail, ShopPurchaseResult, User } from "@/lib/types";
 
 /** Shows the concrete rewards a purchase produced, resolving names from the offer's drop table. */
@@ -54,6 +54,7 @@ function ResultRewards({ result, offer }: { result: ShopPurchaseResult; offer: S
 
 export function ShopOfferModal({ offerId, onClose }: { offerId: number; onClose: () => void }) {
   useModalScrollLock();
+  const swipeToClose = useSwipeToClose(onClose);
 
   const { locale, t } = useI18n();
   const queryClient = useQueryClient();
@@ -110,7 +111,7 @@ export function ShopOfferModal({ offerId, onClose }: { offerId: number; onClose:
       onClick={(e) => e.target === e.currentTarget && onClose()}
       style={{ alignItems: "flex-start", paddingTop: "clamp(60px, 6vh, 80px)", paddingBottom: "clamp(16px, 3vh, 40px)" }}
     >
-      <div className="modal" style={{ width: "min(560px, 94vw)", maxHeight: "calc(100vh - clamp(76px, 9vh, 120px))", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div className="modal" {...swipeToClose} style={{ width: "min(560px, 94vw)", maxHeight: "calc(100vh - clamp(76px, 9vh, 120px))", display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Header */}
         <div style={{
           padding: "20px 24px 14px", borderBottom: "1px solid var(--line-soft)",

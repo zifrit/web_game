@@ -11,8 +11,10 @@ import { CharacterScreenSkeleton, ErrorNotice, LoadingLine } from "@/components/
 import { api } from "@/lib/api";
 import { formatDuration, type Locale, type TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
+import { useSwipeToClose } from "@/lib/use-modal-scroll-lock";
 import { rarityColor as rc, rarityGlow as rg } from "@/lib/rarity";
-import type { Character, ClaimResponse, Dungeon, DungeonMiniGameAttempt, EquipmentSlot, Inventory, InventoryCard, InventoryMutationResponse, Potion } from "@/lib/types";
+import { useIsMobile } from "@/lib/use-is-mobile";
+import type { Character, ClaimResponse, Dungeon, DungeonMiniGameAttempt, EquipmentSlot, Inventory, InventoryCard, InventoryMutationResponse, ItemDetail, Potion, StatKey } from "@/lib/types";
 
 function setStableDragImage(event: DragEvent<HTMLDivElement>) {
   const node = event.currentTarget;
@@ -95,6 +97,7 @@ function SlotCell({
   canDrop,
   dropActive,
   draggable,
+  onClick,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -110,6 +113,7 @@ function SlotCell({
   canDrop?: boolean;
   dropActive?: boolean;
   draggable?: boolean;
+  onClick?: () => void;
   onDragStart?: (event: DragEvent<HTMLDivElement>) => void;
   onDragEnd?: () => void;
   onDragOver?: (event: DragEvent<HTMLDivElement>) => void;
@@ -121,8 +125,9 @@ function SlotCell({
 
   return (
     <div
-      className={`slot${hasItem ? " filled" : ""}${draggable ? " draggable" : ""}${dropActive ? (canDrop ? " drop-ok" : " drop-blocked") : ""}`}
+      className={`slot${hasItem ? " filled" : ""}${draggable ? " draggable" : ""}${onClick ? " tappable" : ""}${dropActive ? (canDrop ? " drop-ok" : " drop-blocked") : ""}`}
       draggable={draggable}
+      onClick={onClick}
       onDragEnd={onDragEnd}
       onDragLeave={onDragLeave}
       onDragOver={onDragOver}
@@ -486,6 +491,7 @@ function ActiveExpeditionStrip({ run, imageUrl, onClaimed, onSpeedUp, speedUpPen
 }) {
   const queryClient = useQueryClient();
   const { t } = useI18n();
+  const isMobile = useIsMobile();
   const [localNow, setLocalNow] = useState(Date.now());
 
   useEffect(() => {
@@ -536,6 +542,49 @@ function ActiveExpeditionStrip({ run, imageUrl, onClaimed, onSpeedUp, speedUpPen
       void queryClient.invalidateQueries({ queryKey: ["current-run"] });
     }
   }, [inProgress, queryClient, remaining]);
+
+  if (isMobile) {
+    const accent = done ? "var(--warning)" : "var(--primary)";
+    return (
+      <div style={{
+        padding: 12, borderRadius: 16,
+        background: "linear-gradient(135deg, rgba(59,130,246,0.14), rgba(22,30,49,0.5))",
+        border: `1px solid ${accent}`,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+          <div style={{ width: 46, height: 46, minWidth: 46, borderRadius: 11, flexShrink: 0, overflow: "hidden", position: "relative", background: "linear-gradient(135deg,#2c3a5e,#19223a)" }}>
+            {imageUrl && <img src={imageUrl} alt={run.location.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="mono" style={{ fontSize: 8, letterSpacing: "0.18em", textTransform: "uppercase", color: done ? "var(--warning)" : "var(--primary-bright)" }}>
+              {done ? t("dungeons.activeReward") : t("dungeons.inProgress")}
+            </div>
+            <div style={{ fontFamily: "var(--font-cinzel, 'Cinzel', serif)", fontWeight: 600, fontSize: 15, color: "#eef2f8", textTransform: "uppercase", letterSpacing: "0.04em", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {run.location.name}
+            </div>
+          </div>
+          {canStartMiniGame && (
+            <button className="btn btn-primary" style={{ flexShrink: 0, padding: "9px 14px", fontSize: 12 }} disabled={speedUpPending} onClick={onSpeedUp}>
+              {speedUpPending ? t("miniGame.starting") : t("miniGame.speedUp")}
+            </button>
+          )}
+          {done && (
+            <button className="btn btn-primary" style={{ flexShrink: 0, padding: "9px 14px", fontSize: 12 }} disabled={claimMut.isPending} onClick={() => claimMut.mutate(run.id)}>
+              {claimMut.isPending ? t("dungeons.claiming") : t("dungeons.claim")}
+            </button>
+          )}
+        </div>
+        <div style={{ marginTop: 11, height: 7, borderRadius: 4, background: "rgba(8,11,20,0.7)", overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${progress * 100}%`, borderRadius: 4, background: done ? "var(--warning)" : "linear-gradient(90deg, var(--primary-deep), var(--primary-bright))", transition: "width 1s linear" }} />
+        </div>
+        <div className="mono" style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 9, color: "#7c89a3" }}>
+          <span>{t("dungeons.complete", { progress: Math.round(progress * 100) })}</span>
+          {inProgress && <span>{t("dungeons.left", { time: timeLabel })}</span>}
+        </div>
+        <ErrorNotice message={(claimMut.error as Error | null)?.message} />
+      </div>
+    );
+  }
 
   return (
     <div className="card active-strip" style={{
@@ -642,23 +691,213 @@ function PotionsPanel({ hpFull }: { hpFull: boolean }) {
       ) : (
         <div className="stat-list" style={{ gridTemplateColumns: "1fr" }}>
           {potions.map((potion: Potion) => (
-            <div key={potion.id} className="sl-row" style={{ alignItems: "center" }}>
-              <span className="lbl">
-                {potion.name} · +{potion.heal_percent}% · ×{potion.count}
+            <div key={potion.id} className="sl-row" style={{ alignItems: "center", gap: 10 }}>
+              <span className="lbl" style={{ minWidth: 0, flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
+                <span style={{ maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {potion.name}
+                </span>
+                <span className="mono" style={{ fontSize: 11, color: "var(--text-mute)", whiteSpace: "nowrap" }}>
+                  +{potion.heal_percent}% · ×{potion.count}
+                </span>
               </span>
               <button
                 type="button"
                 className="btn btn-secondary"
                 disabled={hpFull || useMut.isPending}
                 onClick={() => useMut.mutate(potion.id)}
+                style={{ flexShrink: 0, minWidth: 42, padding: "7px 10px", whiteSpace: "nowrap", fontSize: 12 }}
               >
-                {t("potions.use")}
+                {t("potions.useShort")}
               </button>
             </div>
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+/* ═══════════════════════════════════════
+   Mobile: equip-select sheet + compare modal
+═══════════════════════════════════════ */
+const COMPARE_STATS: StatKey[] = ["attack", "defense", "critical_chance", "evasion", "intellect", "max_hp"];
+const PERCENT_STATS = new Set<StatKey>(["critical_chance", "evasion"]);
+
+function EquipCompareModal({ candidate, currentItem, slotLabel, onCancel, onConfirm, pending }: {
+  candidate: InventoryCard;
+  currentItem: InventoryCard | null;
+  slotLabel: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+  pending: boolean;
+}) {
+  const { t } = useI18n();
+  const swipeToClose = useSwipeToClose(onCancel);
+  const color = rc(candidate.rarity);
+  const candQ = useQuery({ queryKey: ["item", candidate.id], queryFn: () => api.item(candidate.id) });
+  const curQ = useQuery({
+    queryKey: ["item", currentItem?.id],
+    queryFn: () => api.item(currentItem!.id),
+    enabled: Boolean(currentItem),
+  });
+
+  const newStats: ItemDetail["stats"] = candQ.data?.stats ?? {};
+  const oldStats: ItemDetail["stats"] = curQ.data?.stats ?? {};
+  const rows = COMPARE_STATS.filter((k) => (newStats[k] ?? 0) !== 0 || (oldStats[k] ?? 0) !== 0);
+  const dur = candQ.data?.durability ?? candidate.durability;
+  const iconUrl = bestMediaUrl(candidate.media, ["medium_url", "small_url", "large_url"]);
+
+  return (
+    <>
+      <div className="mobile-sheet-overlay" style={{ zIndex: 70 }} onClick={onCancel} />
+      <div className="equip-compare-modal" {...swipeToClose} style={{
+        position: "fixed", left: 16, right: 16, top: "50%", transform: "translateY(-50%)", zIndex: 71,
+        borderRadius: 22, overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "80%",
+        background: "linear-gradient(180deg, #121a2d, #0b1120)", border: "1px solid rgba(110,140,190,0.2)",
+      }}>
+        {/* header */}
+        <div style={{ flex: "none", padding: "14px 16px 12px", borderBottom: "1px solid rgba(110,140,190,0.1)", display: "flex", alignItems: "flex-start", gap: 11 }}>
+          <div style={{ position: "relative", width: 52, height: 52, borderRadius: 12, flexShrink: 0, background: "linear-gradient(150deg,#2b3a5e,#161f36)", overflow: "hidden" }}>
+            {iconUrl && <img src={iconUrl} alt={candidate.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
+            <div style={{ position: "absolute", top: 5, left: 5, width: 7, height: 7, borderRadius: "50%", background: color, boxShadow: `0 0 8px ${color}` }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+              <span style={{ fontFamily: "var(--font-cinzel, 'Cinzel', serif)", fontWeight: 600, fontSize: 16, color: "#eef2f8" }}>{candidate.name ?? slotLabel}</span>
+              <span className="mono" style={{ fontSize: 8, fontWeight: 600, padding: "2px 6px", borderRadius: 5, color, background: `${color}1f` }}>{t(`rarity.${candidate.rarity}` as TranslationKey)}</span>
+            </div>
+            <div className="mono" style={{ fontSize: 9, color: "#7c89a3", marginTop: 3 }}>
+              {slotLabel}{dur ? ` · ${t("common.durability")} ${dur.current}/${dur.max}` : ""}
+            </div>
+          </div>
+          <button onClick={onCancel} aria-label={t("common.cancel")} style={{ width: 28, height: 28, borderRadius: 9, flexShrink: 0, border: "1px solid rgba(110,140,190,0.16)", background: "rgba(11,16,28,0.5)", color: "#9aa6bd", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>✕</button>
+        </div>
+
+        {/* stat comparison */}
+        <div className="mobile-noscroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <span className="mono" style={{ fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", color: "#5d6b86" }}>{t("character.combatStats")}</span>
+            <div style={{ display: "flex", gap: 20 }}>
+              <span className="mono" style={{ fontSize: 8, letterSpacing: "0.08em", textTransform: "uppercase", color: "#5d6b86" }}>{t("equipment.now")}</span>
+              <span className="mono" style={{ fontSize: 8, letterSpacing: "0.08em", textTransform: "uppercase", color: "#6f9bff" }}>{t("equipment.new")}</span>
+            </div>
+          </div>
+          {(candQ.isLoading || (currentItem && curQ.isLoading)) ? (
+            <LoadingLine label={t("inventory.loadingItem")} />
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {rows.map((k) => {
+                const oldV = oldStats[k] ?? 0;
+                const newV = newStats[k] ?? 0;
+                const delta = newV - oldV;
+                const suffix = PERCENT_STATS.has(k) ? "%" : "";
+                const deltaColor = delta > 0 ? "var(--success)" : delta < 0 ? "var(--error)" : "#6b7894";
+                return (
+                  <div key={k} style={{ display: "flex", alignItems: "center", padding: "9px 11px", borderRadius: 10, background: "rgba(11,16,28,0.5)", border: "1px solid rgba(110,140,190,0.07)" }}>
+                    <span className="mono" style={{ flex: 1, fontSize: 9, textTransform: "uppercase", color: "#7c89a3", letterSpacing: "0.08em" }}>{t(`stats.${k}` as TranslationKey)}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                      <span style={{ fontWeight: 600, fontSize: 13, color: "#6b7894", minWidth: 26, textAlign: "right" }}>{oldV}{suffix}</span>
+                      <span style={{ color: "#3d4d68" }}>→</span>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: delta >= 0 ? "#eef2f8" : "#f87171", minWidth: 26, textAlign: "left" }}>{newV}{suffix}</span>
+                      <span className="mono" style={{ fontSize: 10, fontWeight: 600, color: deltaColor, minWidth: 40, textAlign: "right" }}>
+                        {delta > 0 ? "+" : ""}{delta}{suffix}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+              {!currentItem && (
+                <div style={{ marginTop: 3, padding: "9px 11px", borderRadius: 10, background: "rgba(63,181,107,0.07)", border: "1px solid rgba(63,181,107,0.18)", fontSize: 11, lineHeight: 1.4, color: "#7fc99c" }}>
+                  {t("equipment.slotEmptyNote")}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* actions */}
+        <div style={{ flex: "none", padding: "12px 16px 16px", borderTop: "1px solid rgba(110,140,190,0.08)", display: "flex", gap: 8 }}>
+          <button onClick={onCancel} className="btn" style={{ flex: 1 }}>{t("common.cancel")}</button>
+          <button onClick={onConfirm} disabled={pending || candidate.is_broken} className="btn btn-primary" style={{ flex: 1.6 }}>
+            {pending ? t("auth.working") : t("equipment.equip")}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function MobileEquipSheet({ slotLabel, currentItem, items, onClose, onEquip, onUnequip, equipPending, unequipPending }: {
+  slotLabel: string;
+  currentItem: InventoryCard | null;
+  items: InventoryCard[];
+  onClose: () => void;
+  onEquip: (itemId: number) => void;
+  onUnequip: (itemId: number) => void;
+  equipPending: boolean;
+  unequipPending: boolean;
+}) {
+  const { t } = useI18n();
+  const swipeToClose = useSwipeToClose(onClose);
+  const [candidate, setCandidate] = useState<InventoryCard | null>(null);
+
+  return (
+    <>
+      <div className="mobile-sheet-overlay" style={{ zIndex: 60 }} onClick={onClose} />
+      <div className="mobile-sheet animate-sheet-up" {...swipeToClose} style={{ zIndex: 61, top: 64, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div className="mobile-sheet-grabber" />
+        <div style={{ padding: "6px 18px 14px", borderBottom: "1px solid rgba(110,140,190,0.10)" }}>
+          <div className="mono" style={{ fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "#6f9bff" }}>{t("equipment.slot")} · {slotLabel}</div>
+          <div style={{ fontFamily: "var(--font-cinzel, 'Cinzel', serif)", fontWeight: 600, fontSize: 20, color: "#eef2f8", marginTop: 3 }}>{t("equipment.choose")}</div>
+          {currentItem && (
+            <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", borderRadius: 12, background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)" }}>
+              <span className="mono" style={{ fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7c89a3" }}>{t("equipment.current")}:</span>
+              <span style={{ flex: 1, fontWeight: 600, fontSize: 12, color: "#dbe2ef", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentItem.name ?? slotLabel}</span>
+              <button onClick={() => onUnequip(currentItem.id)} disabled={unequipPending} className="btn btn-danger" style={{ padding: "6px 11px", fontSize: 11 }}>{t("equipment.unequip")}</button>
+            </div>
+          )}
+        </div>
+        <div className="mobile-noscroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 9 }}>
+          {items.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 20px", color: "#7c89a3", fontSize: 13 }}>{t("equipment.noItemsForSlot")}</div>
+          ) : items.map((it) => {
+            const color = rc(it.rarity);
+            const iconUrl = bestMediaUrl(it.media, ["medium_url", "small_url", "large_url"]);
+            return (
+              <button key={it.id} onClick={() => setCandidate(it)} style={{
+                display: "flex", alignItems: "center", gap: 12, padding: 11, borderRadius: 14, textAlign: "left", cursor: "pointer",
+                border: "1px solid rgba(110,140,190,0.12)", background: "rgba(16,22,38,0.5)",
+              }}>
+                <div style={{ position: "relative", width: 52, height: 52, borderRadius: 11, flexShrink: 0, background: "linear-gradient(150deg,#2b3a5e,#161f36)", overflow: "hidden" }}>
+                  {iconUrl && <img src={iconUrl} alt={it.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
+                  <div style={{ position: "absolute", top: 5, left: 5, width: 7, height: 7, borderRadius: "50%", background: color, boxShadow: `0 0 7px ${color}` }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontWeight: 700, fontSize: 13, color: "#e6ecf6" }}>{it.name ?? slotLabel}</span>
+                    <span className="mono" style={{ fontSize: 8.5, fontWeight: 600, padding: "1px 5px", borderRadius: 5, color, background: `${color}1f` }}>{t(`rarity.${it.rarity}` as TranslationKey)}</span>
+                  </div>
+                  {it.durability && (
+                    <div className="mono" style={{ fontSize: 8.5, color: "#6b7894", marginTop: 4 }}>{t("common.durability")} {it.durability.current}/{it.durability.max}</div>
+                  )}
+                  {it.is_broken && <div className="mono" style={{ fontSize: 8.5, color: "var(--error)", marginTop: 3 }}>{t("inventory.broken")}</div>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {candidate && (
+        <EquipCompareModal
+          candidate={candidate}
+          currentItem={currentItem}
+          slotLabel={slotLabel}
+          pending={equipPending}
+          onCancel={() => setCandidate(null)}
+          onConfirm={() => onEquip(candidate.id)}
+        />
+      )}
+    </>
   );
 }
 
@@ -674,6 +913,8 @@ export function CharacterScreen({
 }) {
   const queryClient = useQueryClient();
   const { locale, t } = useI18n();
+  const isMobile = useIsMobile();
+  const [equipSlotOpen, setEquipSlotOpen] = useState<EquipmentSlot | null>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<EquipmentSlot | null>(null);
   const [inventoryDropActive, setInventoryDropActive] = useState(false);
@@ -1043,8 +1284,9 @@ export function CharacterScreen({
                     broken={item?.is_broken}
                     durability={item?.durability}
                     canDrop={dragState?.item.slot === cell.slot}
-                    draggable={Boolean(item)}
+                    draggable={!isMobile && Boolean(item)}
                     dropActive={dropActive}
+                    onClick={isMobile ? () => setEquipSlotOpen(cell.slot) : undefined}
                     onDragEnd={resetDragState}
                     onDragLeave={() => setDragOverSlot((current) => current === cell.slot ? null : current)}
                     onDragOver={(event) => {
@@ -1062,7 +1304,8 @@ export function CharacterScreen({
           </div>
         </div>
 
-        {/* Quick expeditions */}
+        {/* Quick expeditions — desktop only (hidden on mobile per design) */}
+        {!isMobile && (
         <div className="card">
           <div className="card-h">
             <div>
@@ -1095,9 +1338,11 @@ export function CharacterScreen({
             </div>
           </div>
         </div>
+        )}
       </div>
 
-      {/* ════════ RIGHT: Inventory mini-grid + Journal ════════ */}
+      {/* ════════ RIGHT: Inventory mini-grid + Journal — desktop only ════════ */}
+      {!isMobile && (
       <div
         className={`card inventory-card${inventoryDropActive ? " inventory-drop-ok" : ""}`}
         onDragLeave={() => setInventoryDropActive(false)}
@@ -1166,6 +1411,21 @@ export function CharacterScreen({
           )}
         </div>
       </div>
+      )}
+
+      {/* Mobile: equip-select sheet (tap a slot) */}
+      {isMobile && equipSlotOpen && (
+        <MobileEquipSheet
+          slotLabel={t(`slot.${equipSlotOpen}` as TranslationKey)}
+          currentItem={character.equipment?.[equipSlotOpen] ?? null}
+          items={packItems.filter((it) => it.slot === equipSlotOpen)}
+          equipPending={equipMutation.isPending}
+          unequipPending={unequipMutation.isPending}
+          onEquip={(itemId) => { equipMutation.mutate(itemId); setEquipSlotOpen(null); }}
+          onUnequip={(itemId) => { unequipMutation.mutate(itemId); setEquipSlotOpen(null); }}
+          onClose={() => setEquipSlotOpen(null)}
+        />
+      )}
 
       {rewardResult && (
         <DungeonRewardModal

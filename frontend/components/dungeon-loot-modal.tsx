@@ -10,7 +10,7 @@ import { LoadingLine } from "@/components/ui";
 import { formatCopperCompact, formatDuration, formatStatName } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n";
 import { RARITY_BG, RARITY_BORDER, RARITY_COLOR } from "@/lib/rarity";
-import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
+import { useModalScrollLock, useSwipeToClose } from "@/lib/use-modal-scroll-lock";
 
 function getRarityStyle(rarity: string | null) {
   const key = (rarity ?? "f").toLowerCase();
@@ -66,6 +66,7 @@ export function DungeonLootModal({
   onClose: () => void;
 }) {
   useModalScrollLock();
+  const swipeToClose = useSwipeToClose(onClose);
 
   const { locale, t } = useI18n();
   const lootQuery = useQuery({
@@ -85,6 +86,7 @@ export function DungeonLootModal({
     >
       <div
         className="modal"
+        {...swipeToClose}
         style={{
           width: "min(660px, 94vw)",
           maxHeight: "calc(100vh - clamp(76px, 9vh, 120px))",

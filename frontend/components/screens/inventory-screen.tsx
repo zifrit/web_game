@@ -1,8 +1,8 @@
 "use client";
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
-import { Check, FlaskConical, Leaf, Minus, Plus, ShieldCheck, Wrench } from "lucide-react";
-import { useEffect, useMemo, useState, type CSSProperties, type UIEvent } from "react";
+import { Check, ChevronDown, Filter, FlaskConical, Leaf, ListChecks, Minus, Plus, ShieldCheck, Wrench, X } from "lucide-react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode, type UIEvent } from "react";
 import { useI18n } from "@/components/providers";
 import { ErrorNotice, InventoryScreenSkeleton, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -10,7 +10,8 @@ import type { TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
 import { RARITY_COLOR, rarityColor as rc, rarityGlow as rg } from "@/lib/rarity";
 import type { Character, CraftRecipe, DestroyPreview, Ingredient, Inventory, InventoryCard, InventoryMutationResponse, ItemDetail, Potion, RepairPreview } from "@/lib/types";
-import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
+import { useModalScrollLock, useSwipeToClose } from "@/lib/use-modal-scroll-lock";
+import { useIsMobile } from "@/lib/use-is-mobile";
 
 /** Делит общее количество на визуальные стаки по `size` (например 6 → [5, 1]). */
 function splitToStacks(count: number, size = 5): number[] {
@@ -55,6 +56,94 @@ function FilterChips({ options, active, onSelect }: {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function MobileFilterDropdown({ options, active, onSelect, menuLayout = "grid" }: {
+  options: FilterOption[];
+  active: string | null;
+  onSelect: (value: string | null) => void;
+  menuLayout?: "grid" | "list";
+}) {
+  const { t } = useI18n();
+  const [filterOpen, setFilterOpen] = useState(false);
+  const activeLabel = options.find((o) => o.value === active)?.label ?? t("inventory.filterAll");
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setFilterOpen((v) => !v)}
+        style={{
+          display: "flex", alignItems: "center", gap: 8, padding: "9px 13px", borderRadius: 11, cursor: "pointer",
+          border: `1px solid ${filterOpen ? "rgba(96,165,250,0.4)" : "rgba(110,140,190,0.18)"}`,
+          background: "rgba(11,16,28,0.5)", color: "#cdd6e6", fontWeight: 600, fontSize: 12,
+          whiteSpace: "nowrap",
+        }}
+      >
+        <Filter size={14} />{t("inventory.filter")}
+        <span style={{ color: "#6f9bff" }}>{activeLabel}</span>
+        <ChevronDown size={13} style={{ opacity: 0.6 }} />
+      </button>
+      {filterOpen && (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 14 }} onClick={() => setFilterOpen(false)} />
+          <div className="animate-pop-in" style={{
+            position: "absolute", right: 0, top: 46, zIndex: 15, width: menuLayout === "list" ? 204 : 180, padding: 6, borderRadius: 13,
+            background: "#0e1424", border: "1px solid rgba(110,140,190,0.18)", boxShadow: "0 18px 40px -12px rgba(0,0,0,0.8)",
+          }}>
+            <div style={{ display: "grid", gridTemplateColumns: menuLayout === "list" ? "1fr" : "1fr 1fr 1fr", gap: 4 }}>
+              {options.map((opt) => {
+                const selected = active === opt.value;
+                const color = opt.color ?? "#9aa6bd";
+                return (
+                  <button
+                    key={opt.value ?? "all"}
+                    type="button"
+                    onClick={() => { onSelect(opt.value); setFilterOpen(false); }}
+                    className="mono"
+                    style={{
+                      padding: menuLayout === "list" ? "10px 12px" : "9px 0", borderRadius: 8, cursor: "pointer", fontWeight: 600, fontSize: 11,
+                      border: `1px solid ${selected ? color : "rgba(110,140,190,0.15)"}`,
+                      background: selected ? `${color}1f` : "rgba(11,16,28,0.5)",
+                      color: selected ? color : "#9aa6bd",
+                      textAlign: menuLayout === "list" ? "left" : "center",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function MobileSectionToolbar({
+  title,
+  subtitle,
+  action,
+}: {
+  title: string;
+  subtitle: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+      <div style={{ minWidth: 0 }}>
+        <div className="card-title" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {title}
+        </div>
+        <div className="card-sub" style={{ marginTop: 4 }}>
+          {subtitle}
+        </div>
+      </div>
+      {action && <div style={{ flexShrink: 0 }}>{action}</div>}
     </div>
   );
 }
@@ -144,7 +233,15 @@ function patchInfiniteInventory(
 }
 
 /* ── Item Detail Panel ── */
-function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChanged: (removedItemId?: number) => void }) {
+function ItemDetailPanel({
+  itemId,
+  onChanged,
+  compactImage = false,
+}: {
+  itemId: number | null;
+  onChanged: (removedItemId?: number) => void;
+  compactImage?: boolean;
+}) {
   const [confirmAction, setConfirmAction] = useState<"repair" | "destroy" | null>(null);
   const queryClient = useQueryClient();
   const { t } = useI18n();
@@ -253,9 +350,10 @@ function ItemDetailPanel({ itemId, onChanged }: { itemId: number | null; onChang
   return (
     <div className="card animate-fade-in">
       {/* Header image */}
-      <div style={{ padding: "16px 16px 0" }}>
+      <div style={{ padding: compactImage ? "48px 16px 0" : "16px 16px 0" }}>
       <div style={{
-        width: "100%", aspectRatio: "1", flexShrink: 0,
+        width: compactImage ? "85%" : "100%", aspectRatio: "1", flexShrink: 0,
+        margin: compactImage ? "0 auto" : undefined,
         background: "var(--bg-3)",
         borderRadius: 8,
         overflow: "hidden",
@@ -474,6 +572,7 @@ function BulkActionModal({
   onConfirm: () => void;
 }) {
   useModalScrollLock();
+  const swipeToClose = useSwipeToClose(onCancel);
 
   const { t } = useI18n();
   const isRepair = action === "repair";
@@ -481,7 +580,7 @@ function BulkActionModal({
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+      <div className="modal" {...swipeToClose}>
         <div className="card-h">
           <div className="card-title">{isRepair ? t("inventory.repairSelected") : t("inventory.destroySelected")}</div>
           <div className="card-sub">{isRepair ? t("inventory.repairSelectedSub") : t("inventory.destroySelectedSub")}</div>
@@ -529,9 +628,75 @@ function BulkActionModal({
 }
 
 /* ═══════════════════════════════════════
+   Mobile inventory toolbar (count + select toggle + filter dropdown)
+═══════════════════════════════════════ */
+function MobileInvToolbar({
+  itemsCount, slotsLimit, freeSlots, hasItems,
+  selectMode, selectedCount, onToggleSelect, onCancelSelect, onRepair, onDestroy,
+  filterOptions, rarityFilter, setRarityFilter,
+}: {
+  itemsCount: number;
+  slotsLimit: number | null;
+  freeSlots: number | null;
+  hasItems: boolean;
+  selectMode: boolean;
+  selectedCount: number;
+  onToggleSelect: () => void;
+  onCancelSelect: () => void;
+  onRepair: () => void;
+  onDestroy: () => void;
+  filterOptions: FilterOption[];
+  rarityFilter: string | null;
+  setRarityFilter: (v: string | null) => void;
+}) {
+  const { t } = useI18n();
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {selectMode && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 13, background: "rgba(16,22,38,0.75)", border: "1px solid rgba(110,140,190,0.16)" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="mono" style={{ fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#5d6b86" }}>{t("inventory.quickAction")}</div>
+            <div style={{ fontWeight: 600, fontSize: 12, color: "#cdd6e6", marginTop: 1 }}>{t("inventory.selectedCount", { count: selectedCount })}</div>
+          </div>
+          <button className="btn" style={{ padding: "6px 10px", fontSize: 11 }} onClick={onCancelSelect}>{t("common.cancel")}</button>
+          <button className="btn btn-primary" style={{ padding: "6px 10px", fontSize: 11 }} disabled={selectedCount === 0} onClick={onRepair}>{t("common.repair")}</button>
+          <button className="btn btn-danger" style={{ padding: "6px 10px", fontSize: 11 }} disabled={selectedCount === 0} onClick={onDestroy}>{t("common.destroy")}</button>
+        </div>
+      )}
+
+      <MobileSectionToolbar
+        title={t("nav.inventory")}
+        subtitle={`${slotsLimit === null ? itemsCount : `${itemsCount} / ${slotsLimit}`} ${freeSlots === null ? t("common.noLimit") : t("common.free", { count: freeSlots })}`}
+        action={(
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <button
+              onClick={onToggleSelect}
+              disabled={!hasItems && !selectMode}
+              aria-label={t("common.select")}
+              style={{
+                width: 36, height: 36, borderRadius: 10, flexShrink: 0, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                border: `1px solid ${selectMode ? "rgba(96,165,250,0.4)" : "rgba(110,140,190,0.18)"}`,
+                background: selectMode ? "rgba(59,130,246,0.14)" : "rgba(11,16,28,0.5)",
+                color: selectMode ? "#9cc0ff" : "#cdd6e6",
+              }}
+            >
+              <ListChecks size={15} />
+            </button>
+            <MobileFilterDropdown options={filterOptions} active={rarityFilter} onSelect={setRarityFilter} />
+          </div>
+        )}
+      />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
    EquipmentSection (8-col pack + detail pane)
 ═══════════════════════════════════════ */
 function EquipmentSection() {
+  const isMobile = useIsMobile();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedBulkIds, setSelectedBulkIds] = useState<number[]>([]);
@@ -572,6 +737,7 @@ function EquipmentSection() {
     ...RARITY_RANKS.map((rank) => ({ value: rank, label: rank.toUpperCase(), color: RARITY_COLOR[rank] })),
   ];
   const selectedBulkSet = new Set(selectedBulkIds);
+  const itemSheetSwipe = useSwipeToClose(() => setSelectedId(null));
 
   const repairPreviewQ = useQuery({
     queryKey: ["repair-preview", selectedBulkIds],
@@ -643,12 +809,33 @@ function EquipmentSection() {
     <div className="col animate-fade-in">
 
       {/* ── Left column (cards + grid) + Right column (detail pane) ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(320px, 0.42fr)", gap: 18, alignItems: "start" }}>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) minmax(320px, 0.42fr)",
+        gap: 18, alignItems: "start",
+      }}>
 
         {/* Left column */}
         <div className="col" style={{ gap: 18 }}>
 
-          {/* ── Top stat cards ── */}
+          {/* ── Top stat cards (mobile: compact toolbar) ── */}
+          {isMobile ? (
+            <MobileInvToolbar
+              itemsCount={itemsCount}
+              slotsLimit={slotsLimit}
+              freeSlots={freeSlots}
+              hasItems={items.length > 0}
+              selectMode={selectMode}
+              selectedCount={selectedBulkIds.length}
+              onToggleSelect={() => (selectMode ? cancelSelectMode() : setSelectMode(true))}
+              onCancelSelect={cancelSelectMode}
+              onRepair={() => setBulkAction("repair")}
+              onDestroy={() => setBulkAction("destroy")}
+              filterOptions={rarityOptions}
+              rarityFilter={rarityFilter}
+              setRarityFilter={setRarityFilter}
+            />
+          ) : (
           <div className="grid-2">
             {/* Pack */}
             <div className="card">
@@ -718,11 +905,13 @@ function EquipmentSection() {
               </div>
             </div>
           </div>
+          )}
 
           <ErrorNotice message={(invQ.error as Error | null)?.message} />
 
           {/* ── Pack grid ── */}
           <div className="card">
+            {!isMobile && (
             <div className="card-h">
               <div style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", minWidth: 0 }}>
                 <div>
@@ -734,6 +923,7 @@ function EquipmentSection() {
                 </div>
               </div>
             </div>
+            )}
             <div className="card-body">
               <div
                 onScroll={handlePackScroll}
@@ -772,19 +962,58 @@ function EquipmentSection() {
 
         </div>{/* end left column */}
 
-        {/* Right column — item detail */}
-        <aside className="inventory-detail-pane" style={{ marginTop: 94 }}>
-          <ItemDetailPanel
-            itemId={selectedId}
-            onChanged={(removedItemId) => {
-              if (removedItemId && removedItemId === selectedId) {
-                setSelectedId(null);
-              }
-            }}
-          />
-        </aside>
+        {/* Right column — item detail (desktop only; mobile uses bottom sheet) */}
+        {!isMobile && (
+          <aside className="inventory-detail-pane" style={{ marginTop: 94 }}>
+            <ItemDetailPanel
+              itemId={selectedId}
+              onChanged={(removedItemId) => {
+                if (removedItemId && removedItemId === selectedId) {
+                  setSelectedId(null);
+                }
+              }}
+            />
+          </aside>
+        )}
 
       </div>
+
+      {/* Mobile: selected item detail as a bottom sheet */}
+      {isMobile && selectedId !== null && (
+        <>
+          <div className="mobile-sheet-overlay" onClick={() => setSelectedId(null)} />
+          <div className="mobile-sheet animate-sheet-up mobile-noscroll" style={{
+            maxHeight: "85%", overflowY: "auto", position: "fixed",
+            padding: "0 0 calc(env(safe-area-inset-bottom, 0px) + 16px)",
+          }} {...itemSheetSwipe}>
+          <div className="mobile-sheet-grabber" />
+          <button
+            type="button"
+            onClick={() => setSelectedId(null)}
+            aria-label={t("miniGame.close")}
+            style={{
+              position: "absolute", top: 14, right: 14, zIndex: 2,
+              width: 34, height: 34, borderRadius: 10,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              border: "1px solid rgba(110,140,190,0.18)",
+              background: "rgba(11,16,28,0.72)",
+              color: "#aeb9cc", cursor: "pointer",
+            }}
+          >
+            <X size={17} strokeWidth={2.2} />
+          </button>
+            <ItemDetailPanel
+              itemId={selectedId}
+              compactImage
+              onChanged={(removedItemId) => {
+                if (removedItemId && removedItemId === selectedId) {
+                  setSelectedId(null);
+                }
+              }}
+            />
+          </div>
+        </>
+      )}
       {bulkAction && (
         <BulkActionModal
           action={bulkAction}
@@ -1029,6 +1258,7 @@ function CraftPanel({ ownedByIngredientId }: { ownedByIngredientId: Map<number, 
 function ConsumablesSection() {
   const { t } = useI18n();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const [consumableFilter, setConsumableFilter] = useState<string | null>(null);
   const ingredientsQ = useQuery({ queryKey: ["ingredients"], queryFn: () => api.ingredients() });
   const potionsQ = useQuery({ queryKey: ["potions"], queryFn: () => api.potions() });
@@ -1069,42 +1299,61 @@ function ConsumablesSection() {
 
   return (
     <div className="inventory-main-layout">
-      <div className="card">
-        <div className="card-h">
-          <div style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", minWidth: 0 }}>
-            <div>
-              <div className="card-title">{t("inventory.consumables")}</div>
-              <div className="card-sub">{t("inventory.consumablesSub")}</div>
-            </div>
-            <div style={{ marginLeft: "auto" }}>
-              <FilterChips options={consumableOptions} active={consumableFilter} onSelect={setConsumableFilter} />
+      <div className="col" style={{ gap: isMobile ? 18 : 0 }}>
+        {isMobile && (
+          <MobileSectionToolbar
+            title={t("inventory.consumables")}
+            subtitle={t("inventory.consumablesSub")}
+            action={(
+              <MobileFilterDropdown
+                options={consumableOptions}
+                active={consumableFilter}
+                onSelect={setConsumableFilter}
+                menuLayout="list"
+              />
+            )}
+          />
+        )}
+
+        <div className="card">
+          {!isMobile && (
+          <div className="card-h">
+            <div style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", minWidth: 0 }}>
+              <div>
+                <div className="card-title">{t("inventory.consumables")}</div>
+                <div className="card-sub">{t("inventory.consumablesSub")}</div>
+              </div>
+              <div style={{ marginLeft: "auto", flexShrink: 0 }}>
+                <FilterChips options={consumableOptions} active={consumableFilter} onSelect={setConsumableFilter} />
+              </div>
             </div>
           </div>
-        </div>
-        <div className="card-body">
-          {isLoading ? (
-            <LoadingLine label={t("inventory.consumables")} />
-          ) : cells.length === 0 ? (
-            <div style={{
-              textAlign: "center", padding: "40px 20px",
-              border: "1px dashed var(--line)", borderRadius: 10,
-            }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-dim)" }}>{t("inventory.consumablesEmpty")}</div>
-              <div style={{ fontSize: 12, color: "var(--text-mute)", marginTop: 6 }}>{t("inventory.consumablesEmptyBody")}</div>
-            </div>
-          ) : (
-            <div className="consumables-grid">
-              {filteredCells.map((cell, i) => (
-                <ConsumableGridCell
-                  key={`${cell.kind}-${cell.data.id}-${i}`}
-                  cell={cell}
-                  disabled={useM.isPending}
-                  onUse={cell.kind === "potion" ? () => useM.mutate(cell.data.id) : undefined}
-                />
-              ))}
-            </div>
           )}
-          <ErrorNotice message={(useM.error as Error | null)?.message ?? (ingredientsQ.error as Error | null)?.message ?? (potionsQ.error as Error | null)?.message} />
+          <div className="card-body">
+            {isLoading ? (
+              <LoadingLine label={t("inventory.consumables")} />
+            ) : cells.length === 0 ? (
+              <div style={{
+                textAlign: "center", padding: "40px 20px",
+                border: "1px dashed var(--line)", borderRadius: 10,
+              }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-dim)" }}>{t("inventory.consumablesEmpty")}</div>
+                <div style={{ fontSize: 12, color: "var(--text-mute)", marginTop: 6 }}>{t("inventory.consumablesEmptyBody")}</div>
+              </div>
+            ) : (
+              <div className="consumables-grid">
+                {filteredCells.map((cell, i) => (
+                  <ConsumableGridCell
+                    key={`${cell.kind}-${cell.data.id}-${i}`}
+                    cell={cell}
+                    disabled={useM.isPending}
+                    onUse={cell.kind === "potion" ? () => useM.mutate(cell.data.id) : undefined}
+                  />
+                ))}
+              </div>
+            )}
+            <ErrorNotice message={(useM.error as Error | null)?.message ?? (ingredientsQ.error as Error | null)?.message ?? (potionsQ.error as Error | null)?.message} />
+          </div>
         </div>
       </div>
 
