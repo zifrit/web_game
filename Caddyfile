@@ -7,6 +7,8 @@
 }
 
 {$DOMAIN} {
+	tls internal
+
 	encode zstd gzip
 
 	# Бэкенд Django: API, админка и его статика (whitenoise).
