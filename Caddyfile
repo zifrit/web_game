@@ -3,6 +3,11 @@
 # (DOMAIN, ACME_EMAIL) — см. docker-compose.prod.yml.
 
 http://{$DOMAIN} {
+	log {
+		output stderr
+		format console
+	}
+
 	encode zstd gzip
 
 	# Бэкенд Django: API, админка и его статика (whitenoise).
