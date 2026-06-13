@@ -11,7 +11,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential curl libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=ghcr.io/astral-sh/uv:0.9.1 /uv /usr/local/bin/uv
+RUN curl -LsSf https://astral.sh/uv/0.9.1/install.sh | UV_INSTALL_DIR=/usr/local/bin sh
 
 COPY pyproject.toml uv.lock* ./
 RUN uv export --format requirements-txt --no-dev --no-hashes | uv pip install --system -r -
