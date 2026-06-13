@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Детерминированная установка по lock-файлу.
 COPY package.json package-lock.json* ./
-RUN npm ci --network-timeout=300000
+RUN npm ci --registry https://registry.npmmirror.com
 
 COPY . .
 
