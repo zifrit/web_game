@@ -18,7 +18,7 @@ TOTP_INTERVAL_SECONDS = 30
 TOTP_VALID_WINDOW = 1
 LOGIN_CHALLENGE_MAX_AGE_SECONDS = 300
 LOGIN_CHALLENGE_SALT = "apps.game.auth.totp-login"
-TOTP_ISSUER = "Ashreach"
+TOTP_ISSUER = "VultWake"
 
 
 def _fernet() -> Fernet:

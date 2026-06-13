@@ -442,7 +442,7 @@ export function GuidebookScreen() {
           illustration={<IllustrationGate />}
           accentColor="#60A5FA"
           tag={c(locale, "Getting Started", "Начало приключения") as string}
-          title={c(locale, "Welcome to Ashreach", "Добро пожаловать в Эшрич")}
+          title={c(locale, "Welcome to VultWake", "Добро пожаловать в VultWake")}
           subtitle={c(
             locale,
             "An idle dungeon RPG where your hero ventures into the dark while you manage their equipment and growth.",
@@ -538,7 +538,7 @@ export function GuidebookScreen() {
           illustration={<IllustrationHourglass />}
           accentColor="#A855F7"
           tag={c(locale, "Expedition Guide", "Руководство по походам") as string}
-          title={c(locale, "Dungeons of Ashreach", "Данжи Эшрича")}
+          title={c(locale, "Dungeons of VultWake", "Данжи VultWake")}
           subtitle={c(
             locale,
             "Each dungeon is a timed expedition. The outcome depends on your hero's Power vs. the dungeon's difficulty.",
@@ -965,7 +965,7 @@ export function GuidebookScreen() {
           illustration={<IllustrationCoins />}
           accentColor="#FBBF24"
           tag={c(locale, "Economy", "Экономика") as string}
-          title={c(locale, "Coinage of Ashreach", "Монеты Эшрича")}
+          title={c(locale, "Coinage of VultWake", "Монеты VultWake")}
           subtitle={c(
             locale,
             "All wealth is measured in copper. The UI automatically converts large amounts to silver and gold.",
@@ -1131,7 +1131,7 @@ export function GuidebookScreen() {
               letterSpacing: "0.16em", textTransform: "uppercase",
               color: "#64748B",
             }}>
-              {c(locale, "Ashreach · Field Guide · v0.1", "Эшрич · Руководство искателя · v0.1")}
+              {c(locale, "VultWake · Field Guide · v0.1", "VultWake · Руководство искателя · v0.1")}
             </div>
           </div>
         </div>

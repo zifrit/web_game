@@ -90,7 +90,7 @@ export function AuthScreen() {
           <div className="auth-brand">
             <div className="brand-mark auth-brand-mark" />
             <div>
-              <div className="brand-name">Ashreach</div>
+              <div className="brand-name">VultWake</div>
               <div className="brand-sub">v0.1 — MVP</div>
             </div>
           </div>
@@ -114,7 +114,7 @@ export function AuthScreen() {
             </div>
             <div>
               <span>{t("auth.realm")}</span>
-              <strong>Ashreach</strong>
+              <strong>VultWake</strong>
             </div>
           </div>
         </div>

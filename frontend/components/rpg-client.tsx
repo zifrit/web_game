@@ -125,7 +125,7 @@ function Sidebar({
           <div style={{
             fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
             fontSize: 20, fontWeight: 600, letterSpacing: "0.02em",
-          }}>Ashreach</div>
+          }}>VultWake</div>
         </div>
       </div>
 
@@ -275,7 +275,7 @@ function MobileTopbar({ gold, premium, onOpenExchange }: {
           minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
           fontSize: 16, fontWeight: 600, letterSpacing: "0.02em", color: "#F1F5F9",
-        }}>Ashreach</div>
+        }}>VultWake</div>
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, flexShrink: 0 }}>
         {premium !== undefined && (

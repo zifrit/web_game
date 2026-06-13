@@ -37,3 +37,19 @@ graphify-out/*
 .codex
 .claude
 .agents
+
+# Локальные scratch-артефакты и скриншоты (не для релиза)
+/*.png
+/output/
+/mobile/
+/paper-assets/
+/.codex-paper-assets/
+/frontend-screenshots/
+/visual-audit-screenshots-*/
+/.playwright-cli/
+/.playwright-mcp/
+/.superpowers/
+/test.json
+/text.md
+/PROJECT_CONTEXT.md
+/production_memory_pairs_prompt.md

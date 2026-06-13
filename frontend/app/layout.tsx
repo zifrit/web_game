@@ -25,7 +25,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ashreach — Async Dungeon RPG",
+  title: "VultWake — Async Dungeon RPG",
   description: "Idle dungeon RPG MVP",
 };
 
