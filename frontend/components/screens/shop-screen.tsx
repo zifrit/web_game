@@ -5,8 +5,8 @@ import { Gem } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { useI18n } from "@/components/providers";
-import { LoadingLine } from "@/components/ui";
-import { formatCopperCompact, type TranslationKey } from "@/lib/i18n";
+import { CopperDisplay, LoadingLine } from "@/components/ui";
+import { type TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
 import type { ShopOffer } from "@/lib/types";
 import { ShopOfferModal } from "@/components/shop-offer-modal";
@@ -18,11 +18,11 @@ function PriceTags({ offer }: { offer: ShopOffer }) {
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
       {offer.prices.money_copper !== undefined && (
         <span className="mono" style={{
-          fontSize: 12, fontWeight: 700, color: "#FBBF24",
+          fontSize: 12, fontWeight: 700,
           padding: "3px 9px", borderRadius: 6,
           background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.25)",
         }}>
-          {formatCopperCompact(offer.prices.money_copper, locale)}
+          <CopperDisplay value={offer.prices.money_copper} locale={locale} />
         </span>
       )}
       {offer.prices.premium_currency !== undefined && (
@@ -58,14 +58,14 @@ function ShopCard({ offer, onOpen }: { offer: ShopOffer; onOpen: (offer: ShopOff
       <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minHeight: 0 }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           <span className="mono" style={{
-            fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase",
+            fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase",
             padding: "2px 7px", borderRadius: 4, color: "#94A3B8",
             background: "rgba(148,163,184,0.10)", border: "1px solid rgba(148,163,184,0.22)",
           }}>
             {t(`shop.rewardKind.${offer.reward_kind}` as TranslationKey)}
           </span>
           <span className="mono" style={{
-            fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase",
+            fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase",
             padding: "2px 7px", borderRadius: 4, color: "#60A5FA",
             background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.22)",
           }}>

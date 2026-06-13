@@ -6,8 +6,8 @@ import type React from "react";
 import { api } from "@/lib/api";
 import type { Dungeon } from "@/lib/types";
 import { useI18n } from "@/components/providers";
-import { LoadingLine } from "@/components/ui";
-import { formatCopperCompact, formatDuration, formatStatName } from "@/lib/i18n";
+import { CopperDisplay, LoadingLine } from "@/components/ui";
+import { formatDuration, formatStatName } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n";
 import { RARITY_BG, RARITY_BORDER, RARITY_COLOR } from "@/lib/rarity";
 import { useModalScrollLock, useSwipeToClose } from "@/lib/use-modal-scroll-lock";
@@ -42,7 +42,7 @@ function StatCard({
       minWidth: 0,
     }}>
       <div className="mono" style={{
-        fontSize: 9, letterSpacing: "0.16em", color: "var(--text-mute)",
+        fontSize: 10, letterSpacing: "0.18em", color: "var(--text-mute)",
         marginBottom: 5, textTransform: "uppercase",
       }}>
         {label}
@@ -111,7 +111,7 @@ export function DungeonLootModal({
               {dungeon.name}
             </h2>
             <div className="mono" style={{
-              fontSize: 9, letterSpacing: "0.22em", color: "var(--primary-bright)",
+              fontSize: 10, letterSpacing: "0.18em", color: "var(--primary-bright)",
               marginTop: 5, textTransform: "uppercase",
             }}>
               {t("dungeons.overview")}
@@ -165,11 +165,11 @@ export function DungeonLootModal({
           {/* Золото */}
           <StatCard label={locale === "ru" ? "Золото" : "Gold"} color="#fbbf24">
             <span style={{ whiteSpace: "nowrap" }}>
-              {formatCopperCompact(dungeon.rewards_preview?.money_copper?.min, locale)}
+              <CopperDisplay value={dungeon.rewards_preview?.money_copper?.min} locale={locale} />
             </span>
             <span style={{ color: "var(--text-mute)", fontSize: 10, margin: "1px 0" }}>—</span>
             <span style={{ whiteSpace: "nowrap" }}>
-              {formatCopperCompact(dungeon.rewards_preview?.money_copper?.max, locale)}
+              <CopperDisplay value={dungeon.rewards_preview?.money_copper?.max} locale={locale} />
             </span>
           </StatCard>
 
@@ -190,7 +190,7 @@ export function DungeonLootModal({
         {/* Loot table — высота ≈ 3 карточки */}
         <div style={{ overflowY: "auto", padding: "16px 24px", maxHeight: 340 }}>
           <div className="mono" style={{
-            fontSize: 9, letterSpacing: "0.22em", color: "var(--text-mute)",
+            fontSize: 10, letterSpacing: "0.18em", color: "var(--text-mute)",
             marginBottom: 12, textTransform: "uppercase",
           }}>
             {locale === "ru" ? "Возможные предметы" : "Possible Items"}
@@ -236,7 +236,7 @@ export function DungeonLootModal({
                       </span>
                       {item.rarity && (
                         <span className="mono" style={{
-                          fontSize: 9, letterSpacing: "0.14em",
+                          fontSize: 10, letterSpacing: "0.12em",
                           padding: "2px 8px", borderRadius: 4,
                           background: `color-mix(in srgb, ${color} 14%, transparent)`,
                           border: `1px solid ${border}`,

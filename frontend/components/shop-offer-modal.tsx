@@ -5,8 +5,8 @@ import { Gem, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { useI18n } from "@/components/providers";
-import { LoadingLine } from "@/components/ui";
-import { formatCopperCompact, type TranslationKey } from "@/lib/i18n";
+import { CopperDisplay, LoadingLine } from "@/components/ui";
+import { type TranslationKey } from "@/lib/i18n";
 import { rarityColor } from "@/lib/rarity";
 import { useModalScrollLock, useSwipeToClose } from "@/lib/use-modal-scroll-lock";
 import type { BuyShopOfferResponse, PaymentCurrency, ShopOfferDetail, ShopPurchaseResult, User } from "@/lib/types";
@@ -38,7 +38,7 @@ function ResultRewards({ result, offer }: { result: ShopPurchaseResult; offer: S
       marginTop: 14, padding: "14px 16px", borderRadius: 10,
       background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)",
     }}>
-      <div className="mono" style={{ fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--success)", marginBottom: 8 }}>
+      <div className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--success)", marginBottom: 8 }}>
         {t("shop.youReceived")}
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", fontSize: 13, color: "var(--bone)" }}>
@@ -123,7 +123,7 @@ export function ShopOfferModal({ offerId, onClose }: { offerId: number; onClose:
               {offer?.name ?? "…"}
             </h2>
             {offer && (
-              <div className="mono" style={{ fontSize: 9, letterSpacing: "0.22em", color: "var(--primary-bright)", marginTop: 5, textTransform: "uppercase" }}>
+              <div className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", color: "var(--primary-bright)", marginTop: 5, textTransform: "uppercase" }}>
                 {t(`shop.rewardKind.${offer.reward_kind}` as TranslationKey)} · {t(`shop.deliveryMode.${offer.delivery_mode}` as TranslationKey)}
               </div>
             )}
@@ -147,7 +147,7 @@ export function ShopOfferModal({ offerId, onClose }: { offerId: number; onClose:
               ) : (
                 <>
                   {/* Possible rewards (only before purchase — hidden once a result exists) */}
-                  <div className="mono" style={{ fontSize: 9, letterSpacing: "0.22em", color: "var(--text-mute)", marginBottom: 10, textTransform: "uppercase" }}>
+                  <div className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", color: "var(--text-mute)", marginBottom: 10, textTransform: "uppercase" }}>
                     {t("shop.possibleRewards")}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
@@ -160,7 +160,7 @@ export function ShopOfferModal({ offerId, onClose }: { offerId: number; onClose:
                         <span style={{ fontSize: 13, color: "var(--bone)" }}>
                           {reward.name}
                           {reward.rarity_key && (
-                            <span className="mono" style={{ marginLeft: 8, fontSize: 9, textTransform: "uppercase", color: "var(--text-mute)" }}>
+                            <span className="mono" style={{ marginLeft: 8, fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-mute)" }}>
                               {reward.rarity_key}
                             </span>
                           )}
@@ -173,7 +173,7 @@ export function ShopOfferModal({ offerId, onClose }: { offerId: number; onClose:
                   </div>
 
                   {/* Purchase count */}
-                  <label className="mono" style={{ display: "block", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--text-mute)", marginBottom: 6 }}>
+                  <label className="mono" style={{ display: "block", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-mute)", marginBottom: 6 }}>
                     {t("shop.purchaseCount")}
                   </label>
                   <input
@@ -188,7 +188,7 @@ export function ShopOfferModal({ offerId, onClose }: { offerId: number; onClose:
                   {/* Payment currency selector */}
                   {availableCurrencies.length > 0 && (
                     <>
-                      <div className="mono" style={{ fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--text-mute)", marginBottom: 6 }}>
+                      <div className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-mute)", marginBottom: 6 }}>
                         {t("shop.paymentCurrency")}
                       </div>
                       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
@@ -204,7 +204,7 @@ export function ShopOfferModal({ offerId, onClose }: { offerId: number; onClose:
                               {cur === "premium_currency" ? <Gem size={13} /> : null}
                               {cur === "premium_currency"
                                 ? offer.prices.premium_currency
-                                : formatCopperCompact(offer.prices.money_copper, locale)}
+                                : <CopperDisplay value={offer.prices.money_copper} locale={locale} />}
                             </button>
                           );
                         })}
@@ -214,13 +214,13 @@ export function ShopOfferModal({ offerId, onClose }: { offerId: number; onClose:
 
                   {/* Total */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span className="mono" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--text-mute)" }}>
+                    <span className="mono" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--text-mute)" }}>
                       {t("shop.quantity")}: {offer.quantity * purchaseCount}
                     </span>
-                    <span className="mono" style={{ fontSize: 14, fontWeight: 700, color: activeCurrency === "premium_currency" ? "#C084FC" : "#FBBF24" }}>
+                    <span className="mono" style={{ fontSize: 14, fontWeight: 700 }}>
                       {activeCurrency === "premium_currency"
-                        ? `${totalPrice} 💎`
-                        : formatCopperCompact(totalPrice, locale)}
+                        ? <span style={{ color: "#C084FC" }}>{totalPrice} 💎</span>
+                        : <CopperDisplay value={totalPrice} locale={locale} />}
                     </span>
                   </div>
 

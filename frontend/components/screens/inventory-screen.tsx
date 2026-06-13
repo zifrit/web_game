@@ -4,7 +4,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteD
 import { Check, ChevronDown, Filter, FlaskConical, Leaf, ListChecks, Minus, Plus, ShieldCheck, Wrench, X } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode, type UIEvent } from "react";
 import { useI18n } from "@/components/providers";
-import { ErrorNotice, InventoryScreenSkeleton, LoadingLine } from "@/components/ui";
+import { CopperDisplay, ErrorNotice, InventoryScreenSkeleton, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import type { TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
@@ -232,6 +232,96 @@ function patchInfiniteInventory(
   };
 }
 
+/* ── Destroy Confirm ── */
+function DestroyConfirmContent({
+  data,
+  isPending,
+  locale,
+  onCancel,
+  onConfirm,
+}: {
+  data: DestroyPreview;
+  isPending: boolean;
+  locale: import("@/lib/i18n").Locale;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <div style={{
+      padding: 18, borderRadius: 12,
+      background: "rgba(239,68,68,0.08)",
+      border: "1px solid rgba(239,68,68,0.28)",
+    }}>
+      <div className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", color: "var(--error)", marginBottom: 10, textTransform: "uppercase" }}>
+        {t("inventory.destroyPreview")}
+      </div>
+      <div className="mono" style={{ fontSize: 11, color: "var(--text-mute)", marginBottom: 8 }}>
+        {t("inventory.destroyRefund", { count: data.items_count })}{" "}<CopperDisplay value={data.refund_copper} locale={locale} />
+      </div>
+      <div style={{ fontSize: 11, color: "var(--error)", marginBottom: 12 }}>
+        {t("inventory.destroyIrreversible")}
+      </div>
+      <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
+        <button className="btn" style={{ flex: 1 }} disabled={isPending} onClick={onCancel}>
+          {t("common.cancel")}
+        </button>
+        <button
+          className="btn btn-danger"
+          style={{ flex: 1 }}
+          disabled={isPending || !data.can_destroy}
+          onClick={onConfirm}
+        >
+          {isPending ? t("common.destroying") : t("common.confirm")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DestroyConfirmModal({
+  isLoading,
+  data,
+  isPending,
+  locale,
+  onCancel,
+  onConfirm,
+}: {
+  isLoading: boolean;
+  data?: DestroyPreview;
+  isPending: boolean;
+  locale: import("@/lib/i18n").Locale;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  useModalScrollLock();
+  const swipeToClose = useSwipeToClose(onCancel);
+  const { t } = useI18n();
+
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal" {...swipeToClose}>
+        <div className="card-h">
+          <div className="card-title">{t("inventory.destroyPreview")}</div>
+        </div>
+        <div className="card-body">
+          {isLoading ? (
+            <LoadingLine label={t("inventory.calculating")} />
+          ) : data ? (
+            <DestroyConfirmContent
+              data={data}
+              isPending={isPending}
+              locale={locale}
+              onCancel={onCancel}
+              onConfirm={onConfirm}
+            />
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Item Detail Panel ── */
 function ItemDetailPanel({
   itemId,
@@ -244,7 +334,8 @@ function ItemDetailPanel({
 }) {
   const [confirmAction, setConfirmAction] = useState<"repair" | "destroy" | null>(null);
   const queryClient = useQueryClient();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     setConfirmAction(null);
@@ -391,7 +482,7 @@ function ItemDetailPanel({
           <span className="mono" style={{
             display: "inline-flex", marginTop: 8,
             background: "rgba(34,197,94,0.15)", padding: "2px 10px",
-            borderRadius: 2, fontSize: 9, letterSpacing: "0.15em",
+            borderRadius: 2, fontSize: 10, letterSpacing: "0.12em",
             color: "var(--success)", border: "1px solid rgba(34,197,94,0.25)",
           }}>{t("common.equipped").toUpperCase()}</span>
         )}
@@ -484,7 +575,7 @@ function ItemDetailPanel({
                 background: "rgba(59,130,246,0.08)",
                 border: "1px solid rgba(59,130,246,0.25)",
               }}>
-                <div className="mono" style={{ fontSize: 9, letterSpacing: "0.18em", color: "var(--primary-bright)", marginBottom: 8, textTransform: "uppercase" }}>
+                <div className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", color: "var(--primary-bright)", marginBottom: 8, textTransform: "uppercase" }}>
                   {t("inventory.repairPreview")}
                 </div>
                 <div className="mono" style={{ fontSize: 11, color: "var(--text-mute)", marginBottom: 14 }}>
@@ -507,39 +598,28 @@ function ItemDetailPanel({
             ) : null}
           </div>
         )}
-        {confirmAction === "destroy" && (
+        {confirmAction === "destroy" && isMobile && (
+          <DestroyConfirmModal
+            isLoading={destroyQ.isLoading}
+            data={destroyQ.data}
+            isPending={destroyM.isPending}
+            locale={locale}
+            onCancel={() => setConfirmAction(null)}
+            onConfirm={() => destroyM.mutate([item.id])}
+          />
+        )}
+        {confirmAction === "destroy" && !isMobile && (
           <div style={{ marginTop: 14 }}>
             {destroyQ.isLoading ? (
               <LoadingLine label={t("inventory.calculating")} />
             ) : destroyQ.data ? (
-              <div style={{
-                padding: 18, borderRadius: 12,
-                background: "rgba(239,68,68,0.08)",
-                border: "1px solid rgba(239,68,68,0.28)",
-              }}>
-                <div className="mono" style={{ fontSize: 9, letterSpacing: "0.18em", color: "var(--error)", marginBottom: 10, textTransform: "uppercase" }}>
-                  {t("inventory.destroyPreview")}
-                </div>
-                <div className="mono" style={{ fontSize: 11, color: "var(--text-mute)", marginBottom: 8 }}>
-                  {t("inventory.destroyRefund", { count: destroyQ.data.items_count, refund: destroyQ.data.refund_copper })}
-                </div>
-                <div style={{ fontSize: 11, color: "var(--error)", marginBottom: 12 }}>
-                  {t("inventory.destroyIrreversible")}
-                </div>
-                <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
-                  <button className="btn" style={{ flex: 1 }} disabled={destroyM.isPending} onClick={() => setConfirmAction(null)}>
-                    {t("common.cancel")}
-                  </button>
-                  <button
-                    className="btn btn-danger"
-                    style={{ flex: 1 }}
-                    disabled={destroyM.isPending || !destroyQ.data.can_destroy}
-                    onClick={() => destroyM.mutate([item.id])}
-                  >
-                    {destroyM.isPending ? t("common.destroying") : t("common.confirm")}
-                  </button>
-                </div>
-              </div>
+              <DestroyConfirmContent
+                data={destroyQ.data}
+                isPending={destroyM.isPending}
+                locale={locale}
+                onCancel={() => setConfirmAction(null)}
+                onConfirm={() => destroyM.mutate([item.id])}
+              />
             ) : null}
           </div>
         )}
@@ -656,7 +736,7 @@ function MobileInvToolbar({
       {selectMode && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 13, background: "rgba(16,22,38,0.75)", border: "1px solid rgba(110,140,190,0.16)" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="mono" style={{ fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#5d6b86" }}>{t("inventory.quickAction")}</div>
+            <div className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "#5d6b86" }}>{t("inventory.quickAction")}</div>
             <div style={{ fontWeight: 600, fontSize: 12, color: "#cdd6e6", marginTop: 1 }}>{t("inventory.selectedCount", { count: selectedCount })}</div>
           </div>
           <button className="btn" style={{ padding: "6px 10px", fontSize: 11 }} onClick={onCancelSelect}>{t("common.cancel")}</button>

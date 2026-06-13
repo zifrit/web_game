@@ -5,8 +5,7 @@ import { ArrowRight, Gem, X } from "lucide-react";
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { useI18n } from "@/components/providers";
-import { LoadingLine } from "@/components/ui";
-import { formatCopperCompact } from "@/lib/i18n";
+import { CopperDisplay, LoadingLine } from "@/components/ui";
 import { useModalScrollLock, useSwipeToClose } from "@/lib/use-modal-scroll-lock";
 
 export function ExchangeModal({ onClose }: { onClose: () => void }) {
@@ -53,7 +52,7 @@ export function ExchangeModal({ onClose }: { onClose: () => void }) {
             <h2 style={{ fontFamily: "var(--font-cinzel, 'Cinzel', serif)", fontSize: 19, fontWeight: 600, margin: 0, letterSpacing: "0.04em", color: "var(--bone)" }}>
               {t("exchange.title")}
             </h2>
-            <div className="mono" style={{ fontSize: 9, letterSpacing: "0.22em", color: "#C084FC", marginTop: 5, textTransform: "uppercase" }}>
+            <div className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", color: "#C084FC", marginTop: 5, textTransform: "uppercase" }}>
               {t("exchange.subtitle")}
             </div>
           </div>
@@ -97,9 +96,7 @@ export function ExchangeModal({ onClose }: { onClose: () => void }) {
                   <Gem size={15} /> {offer.premium_cost}
                 </span>
                 <ArrowRight size={16} color="var(--text-mute)" />
-                <span className="mono" style={{ fontSize: 15, fontWeight: 700, color: "#FBBF24" }}>
-                  {formatCopperCompact(offer.money_copper_reward, locale)}
-                </span>
+                <CopperDisplay value={offer.money_copper_reward} locale={locale} style={{ fontSize: 15, fontWeight: 700 }} />
               </button>
             ))}
           </div>

@@ -1,4 +1,6 @@
 import clsx from "clsx";
+import { splitCopper } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 /* ─────────────────────────────────────────
    Button
@@ -448,6 +450,50 @@ export function SidebarAvatarSkeleton({ size = 36 }: { size?: number }) {
       className="skeleton-avatar"
       style={{ width: size, height: size, borderRadius: 8 }}
     />
+  );
+}
+
+/* ─────────────────────────────────────────
+   CopperDisplay
+───────────────────────────────────────── */
+const GOLD_COLOR = "#FBBF24";
+const SILVER_COLOR = "#CBD5E1";
+const COPPER_COLOR = "#CD7C45";
+
+export function CopperDisplay({
+  value,
+  locale,
+  compact = true,
+  style,
+}: {
+  value: number | undefined | null;
+  locale: Locale;
+  compact?: boolean;
+  style?: React.CSSProperties;
+}) {
+  if (value === undefined || value === null) {
+    return <span style={{ color: "var(--text-mute)", ...style }}>?</span>;
+  }
+  const { gold, silver, copper } = splitCopper(value);
+  const labels = locale === "ru"
+    ? { gold: "з", silver: "с", copper: "м" }
+    : { gold: "g", silver: "s", copper: "c" };
+
+  const parts: React.ReactNode[] = [];
+  if (compact) {
+    if (gold > 0) parts.push(<span key="g" style={{ color: GOLD_COLOR }}>{gold}{labels.gold}</span>);
+    if (silver > 0) parts.push(<span key="s" style={{ color: SILVER_COLOR }}>{silver}{labels.silver}</span>);
+    if (copper > 0 || parts.length === 0) parts.push(<span key="c" style={{ color: COPPER_COLOR }}>{copper}{labels.copper}</span>);
+  } else {
+    parts.push(<span key="g" style={{ color: GOLD_COLOR }}>{gold}{labels.gold}</span>);
+    parts.push(<span key="s" style={{ color: SILVER_COLOR }}>{silver}{labels.silver}</span>);
+    parts.push(<span key="c" style={{ color: COPPER_COLOR }}>{copper}{labels.copper}</span>);
+  }
+
+  return (
+    <span style={{ display: "inline-flex", alignItems: "baseline", gap: 3, ...style }}>
+      {parts}
+    </span>
   );
 }
 

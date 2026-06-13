@@ -229,6 +229,63 @@ function IllustrationCoins() {
   );
 }
 
+function IllustrationPotion() {
+  return (
+    <svg viewBox="0 0 120 108" fill="none" xmlns="http://www.w3.org/2000/svg"
+         style={{ width: 104, height: 95, flexShrink: 0, opacity: 0.9 }}>
+      {/* Big round flask */}
+      <path d="M48 30 L48 50 Q24 64 24 84 Q24 100 48 100 L72 100 Q96 100 96 84 Q96 64 72 50 L72 30 Z"
+            fill="rgba(20,184,166,0.10)" stroke="#2DD4BF" strokeWidth="2"/>
+      {/* Liquid */}
+      <path d="M30 72 Q60 64 90 72 Q92 100 72 100 L48 100 Q28 100 30 72 Z" fill="rgba(20,184,166,0.40)"/>
+      {/* Bubbles */}
+      <circle cx="52" cy="84" r="2.6" fill="rgba(167,243,208,0.8)"/>
+      <circle cx="66" cy="90" r="2" fill="rgba(167,243,208,0.7)"/>
+      <circle cx="60" cy="78" r="1.6" fill="rgba(167,243,208,0.6)"/>
+      {/* Neck + cork */}
+      <rect x="46" y="20" width="28" height="12" rx="2" fill="#1A2235" stroke="#2DD4BF" strokeWidth="1.6"/>
+      <rect x="50" y="10" width="20" height="12" rx="3" fill="#3F2A1A" stroke="#A16207" strokeWidth="1.4"/>
+      {/* Steam */}
+      <path d="M56 8 Q52 2 58 -2" stroke="rgba(45,212,191,0.5)" strokeWidth="1.4" fill="none"/>
+      <path d="M64 8 Q68 2 62 -2" stroke="rgba(45,212,191,0.4)" strokeWidth="1.4" fill="none"/>
+      {/* Floating ingredient leaves */}
+      <path d="M14 40 Q6 34 14 28 Q22 34 14 40 Z" fill="rgba(34,197,94,0.5)" stroke="#22C55E" strokeWidth="1"/>
+      <path d="M104 46 Q112 40 104 34 Q96 40 104 46 Z" fill="rgba(34,197,94,0.45)" stroke="#22C55E" strokeWidth="1"/>
+      {/* Sparkles */}
+      <circle cx="18" cy="62" r="1.6" fill="#5EEAD4" opacity=".7"/>
+      <circle cx="100" cy="68" r="1.4" fill="#5EEAD4" opacity=".6"/>
+    </svg>
+  );
+}
+
+function IllustrationShop() {
+  return (
+    <svg viewBox="0 0 132 108" fill="none" xmlns="http://www.w3.org/2000/svg"
+         style={{ width: 116, height: 95, flexShrink: 0, opacity: 0.9 }}>
+      {/* Stall awning */}
+      <path d="M14 30 L118 30 L110 46 L22 46 Z" fill="rgba(192,132,252,0.16)" stroke="#C084FC" strokeWidth="1.6"/>
+      {[14,29,44,59,74,89,104].map((x, i) => (
+        <path key={x} d={`M${x} 30 L${x + 8} 46 L${x + 15} 30`} fill={i % 2 ? "rgba(192,132,252,0.28)" : "transparent"} stroke="#A855F7" strokeWidth=".8"/>
+      ))}
+      {/* Posts */}
+      <rect x="20" y="46" width="3" height="40" fill="#374E74"/>
+      <rect x="109" y="46" width="3" height="40" fill="#374E74"/>
+      {/* Counter */}
+      <rect x="16" y="84" width="100" height="10" rx="2" fill="#1A2235" stroke="#2E3B5A" strokeWidth="1.4"/>
+      {/* Treasure chest */}
+      <rect x="40" y="62" width="38" height="22" rx="2" fill="#3F2A1A" stroke="#A16207" strokeWidth="1.6"/>
+      <path d="M40 62 Q59 48 78 62 Z" fill="rgba(245,158,11,0.25)" stroke="#F59E0B" strokeWidth="1.6"/>
+      <rect x="55" y="66" width="8" height="9" rx="1.5" fill="#FBBF24" stroke="#A16207" strokeWidth="1"/>
+      {/* Gem on counter */}
+      <polygon points="92,66 99,70 96,80 88,80 85,70" fill="rgba(192,132,252,0.4)" stroke="#C084FC" strokeWidth="1.2"/>
+      <polygon points="92,66 95,71 92,73 89,71" fill="#E9D5FF"/>
+      {/* Sparkles */}
+      <circle cx="59" cy="54" r="2" fill="#FBE08A" opacity=".8"/>
+      <circle cx="104" cy="58" r="1.6" fill="#E9D5FF" opacity=".7"/>
+    </svg>
+  );
+}
+
 /* ══════════════════════════════════════════
    Section Components
 ══════════════════════════════════════════ */
@@ -372,7 +429,7 @@ const SLOT_ICONS_RU: Record<string, string> = {
    Main Screen
 ══════════════════════════════════════════ */
 
-type SectionId = "start" | "dungeons" | "equipment" | "rarity" | "stats" | "currency";
+type SectionId = "start" | "dungeons" | "equipment" | "rarity" | "stats" | "alchemy" | "shop" | "currency";
 
 const SECTION_LIST: Array<{ id: SectionId; labelEn: string; labelRu: string; color: string }> = [
   { id: "start",     labelEn: "Getting Started", labelRu: "Начало",        color: "#60A5FA" },
@@ -380,6 +437,8 @@ const SECTION_LIST: Array<{ id: SectionId; labelEn: string; labelRu: string; col
   { id: "equipment", labelEn: "Equipment",        labelRu: "Экипировка",    color: "#38BDF8" },
   { id: "rarity",    labelEn: "Rarity Tiers",     labelRu: "Редкость",      color: "#F59E0B" },
   { id: "stats",     labelEn: "Stats & Power",    labelRu: "Статы и Мощь",  color: "#22C55E" },
+  { id: "alchemy",   labelEn: "Potions & Brewing",labelRu: "Зелья и варка", color: "#14B8A6" },
+  { id: "shop",      labelEn: "Shop & Premium",   labelRu: "Магазин",       color: "#C084FC" },
   { id: "currency",  labelEn: "Currency",         labelRu: "Валюта",        color: "#FBBF24" },
 ];
 
@@ -490,8 +549,8 @@ export function GuidebookScreen() {
               {
                 num: 5, color: "#F59E0B",
                 titleEn: "Claim your reward", titleRu: "Заберите награду",
-                bodyEn: "Once the run finishes, claim XP, copper coins, and possibly a loot item. Your hero can immediately go on the next expedition.",
-                bodyRu: "По завершении похода заберите опыт, медные монеты и, возможно, предмет снаряжения. Герой сразу готов к следующему походу.",
+                bodyEn: "Once the run finishes, claim XP, copper coins, crafting ingredients, and possibly a loot item. Your hero can immediately go on the next expedition.",
+                bodyRu: "По завершении похода заберите опыт, медные монеты, ингредиенты для крафта и, возможно, предмет снаряжения. Герой сразу готов к следующему походу.",
               },
               {
                 num: 6, color: "#EF4444",
@@ -957,6 +1016,220 @@ export function GuidebookScreen() {
       </div>
 
       {/* ═══════════════════════════
+          SECTION: Potions & Brewing
+      ═══════════════════════════ */}
+      <div className="card" style={{ overflow: "hidden", marginBottom: 20 }}>
+        <SectionHeading
+          id="guide-alchemy"
+          illustration={<IllustrationPotion />}
+          accentColor="#14B8A6"
+          tag={c(locale, "Alchemy & Consumables", "Алхимия и расходники") as string}
+          title={c(locale, "Potions & Brewing", "Зелья и варка")}
+          subtitle={c(
+            locale,
+            "Gather ingredients, brew them into potions, and drink potions to restore your hero's health between expeditions.",
+            "Собирайте ингредиенты, варите из них зелья и пейте зелья, чтобы восстанавливать здоровье героя между походами."
+          )}
+        />
+
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+
+          {/* Consumable types */}
+          <div>
+            <div style={{
+              fontFamily: "var(--font-cinzel)", fontSize: 13, fontWeight: 600,
+              letterSpacing: "0.06em", color: "#94A3B8", textTransform: "uppercase",
+              marginBottom: 10,
+            }}>
+              {c(locale, "Two Kinds of Consumables", "Два вида расходников")}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {[
+                {
+                  icon: "🌿", color: "#22C55E",
+                  titleEn: "Ingredients", titleRu: "Ингредиенты",
+                  bodyEn: "Raw crafting materials dropped by dungeons or bought in the Shop. They have no direct use — combine them to brew potions.",
+                  bodyRu: "Сырьё для крафта, выпадает в данжах или покупается в Магазине. Сами по себе бесполезны — из них варят зелья.",
+                },
+                {
+                  icon: "⚗", color: "#14B8A6",
+                  titleEn: "Potions", titleRu: "Зелья",
+                  bodyEn: "Consumables that heal a percentage of your hero's max HP when used. Find them in Inventory → Consumables.",
+                  bodyRu: "Расходники, восстанавливающие процент от макс. HP героя при использовании. Ищите их в Инвентарь → Расходники.",
+                },
+              ].map(({ icon, color, titleEn, titleRu, bodyEn, bodyRu }) => (
+                <div key={titleEn} style={{
+                  padding: "12px 14px", borderRadius: 10,
+                  background: "#111827", border: "1px solid #2E3B5A",
+                  borderLeft: `3px solid ${color}`,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 15 }}>{icon}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#E5E7EB" }}>{c(locale, titleEn, titleRu)}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#94A3B8", lineHeight: 1.5 }}>{c(locale, bodyEn, bodyRu)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="divider" />
+
+          {/* Brewing steps */}
+          <div>
+            <div style={{
+              fontFamily: "var(--font-cinzel)", fontSize: 13, fontWeight: 600,
+              letterSpacing: "0.06em", color: "#94A3B8", textTransform: "uppercase",
+              marginBottom: 10,
+            }}>
+              {c(locale, "Brewing Potions", "Варка зелий")}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {[
+                {
+                  num: 1, color: "#14B8A6",
+                  titleEn: "Open the Brewing panel", titleRu: "Откройте панель варки",
+                  bodyEn: "Go to Inventory → Consumables. The Brewing panel lists every recipe you can learn.",
+                  bodyRu: "Откройте Инвентарь → Расходники. Панель «Варка зелий» показывает все доступные рецепты.",
+                },
+                {
+                  num: 2, color: "#38BDF8",
+                  titleEn: "Pick a recipe difficulty", titleRu: "Выберите сложность рецепта",
+                  bodyEn: "Recipes come in Small, Medium and Large tiers. Larger recipes need rarer ingredients and a higher hero level, but yield stronger potions.",
+                  bodyRu: "Рецепты бывают Малой, Средней и Большой сложности. Сложные требуют более редких ингредиентов и уровня героя, но дают более сильные зелья.",
+                },
+                {
+                  num: 3, color: "#22C55E",
+                  titleEn: "Check your ingredients", titleRu: "Проверьте ингредиенты",
+                  bodyEn: "Each recipe shows the ingredients required and how many you own. Missing ones are highlighted.",
+                  bodyRu: "Каждый рецепт показывает нужные ингредиенты и сколько у вас есть. Недостающие подсвечиваются.",
+                },
+                {
+                  num: 4, color: "#F59E0B",
+                  titleEn: "Set the batch size & brew", titleRu: "Задайте размер партии и варите",
+                  bodyEn: "Use the stepper to brew several potions at once (limited by your ingredients), then press Create.",
+                  bodyRu: "С помощью счётчика сварите несколько зелий сразу (в пределах ваших ингредиентов) и нажмите «Создать».",
+                },
+              ].map(({ num, color, titleEn, titleRu, bodyEn, bodyRu }) => (
+                <StepCard key={num} num={num} color={color} title={c(locale, titleEn, titleRu)} body={c(locale, bodyEn, bodyRu)} />
+              ))}
+            </div>
+          </div>
+
+          <TipBox tone="good">
+            {c(locale,
+              "Brew potions while your hero rests, then drink one before a risky expedition. Higher max HP from gear means each percent-based heal restores more.",
+              "Варите зелья, пока герой отдыхает, и выпивайте перед опасным походом. Чем выше макс. HP от снаряжения, тем больше восстанавливает каждое зелье в процентах."
+            )}
+          </TipBox>
+
+        </div>
+      </div>
+
+      {/* ═══════════════════════════
+          SECTION: Shop & Premium
+      ═══════════════════════════ */}
+      <div className="card" style={{ overflow: "hidden", marginBottom: 20 }}>
+        <SectionHeading
+          id="guide-shop"
+          illustration={<IllustrationShop />}
+          accentColor="#C084FC"
+          tag={c(locale, "Marketplace", "Торговая лавка") as string}
+          title={c(locale, "Shop & Premium", "Магазин и Премиум")}
+          subtitle={c(
+            locale,
+            "Spend copper or premium gems on offers that grant items, potions, ingredients, or whole chests of loot.",
+            "Тратьте медь или премиум-самоцветы на предложения, дающие предметы, зелья, ингредиенты или целые сундуки с лутом."
+          )}
+        />
+
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+
+          {/* What you can buy */}
+          <div>
+            <div style={{
+              fontFamily: "var(--font-cinzel)", fontSize: 13, fontWeight: 600,
+              letterSpacing: "0.06em", color: "#94A3B8", textTransform: "uppercase",
+              marginBottom: 10,
+            }}>
+              {c(locale, "Reading an Offer", "Как читать предложение")}
+            </div>
+            <div style={{
+              background: "#111827", border: "1px solid #2E3B5A", borderRadius: 12,
+              padding: "14px 16px", display: "flex", flexDirection: "column", gap: 1,
+            }}>
+              <InfoRow
+                label={c(locale, "Reward kind", "Тип награды")}
+                value={c(locale, "Item · Potion · Ingredient", "Предмет · Зелье · Ингредиент")}
+                accent="#60A5FA"
+              />
+              <InfoRow
+                label={c(locale, "Delivery: Single", "Доставка: Один")}
+                value={c(locale, "A fixed reward you get every time", "Фиксированная награда каждый раз")}
+                accent="#22C55E"
+              />
+              <InfoRow
+                label={c(locale, "Delivery: Chest ×N", "Доставка: Сундук ×N")}
+                value={c(locale, "Rolls N random rewards from a drop table", "Выдаёт N случайных наград из таблицы дропа")}
+                accent="#F59E0B"
+              />
+              <InfoRow
+                label={c(locale, "Price", "Цена")}
+                value={c(locale, "Copper and/or premium gems 💎", "Медь и/или премиум-самоцветы 💎")}
+                accent="#C084FC"
+              />
+            </div>
+          </div>
+
+          {/* Chests explained */}
+          <div style={{
+            background: "linear-gradient(135deg, rgba(192,132,252,0.08), rgba(11,16,32,0.5))",
+            border: "1px solid rgba(192,132,252,0.25)", borderRadius: 10,
+            padding: "14px 16px",
+          }}>
+            <div style={{
+              fontFamily: "var(--font-cinzel)", fontSize: 13, fontWeight: 600,
+              color: "#E9D5FF", marginBottom: 8,
+            }}>
+              {c(locale, "Chests & Drop Chances", "Сундуки и шансы дропа")}
+            </div>
+            <div style={{ fontSize: 12, color: "#94A3B8", lineHeight: 1.65 }}>
+              {c(locale,
+                "Open an offer to see its possible rewards, each with a drop chance %. Chest offers roll randomly from this table — set a purchase count to open several at once. After buying, the modal shows exactly what you received.",
+                "Откройте предложение, чтобы увидеть возможные награды и шанс выпадения каждой. Сундуки берут награды случайно из этой таблицы — задайте количество покупок, чтобы открыть сразу несколько. После покупки в окне показано, что именно вы получили."
+              )}
+            </div>
+          </div>
+
+          <div className="divider" />
+
+          {/* Premium & exchange */}
+          <div>
+            <div style={{
+              fontFamily: "var(--font-cinzel)", fontSize: 13, fontWeight: 600,
+              letterSpacing: "0.06em", color: "#94A3B8", textTransform: "uppercase",
+              marginBottom: 10,
+            }}>
+              {c(locale, "Premium Gems & Exchange", "Премиум-самоцветы и обмен")}
+            </div>
+            <div style={{ fontSize: 12, color: "#94A3B8", lineHeight: 1.65, marginBottom: 10 }}>
+              {c(locale,
+                "Premium gems 💎 are a special currency shown next to your coins in the top bar. Some shop offers can be paid for in either copper or gems — pick your preferred currency before buying. Need more copper? Tap the + button beside your coin balance to open the Exchange and convert gems into copper.",
+                "Премиум-самоцветы 💎 — особая валюта, показанная рядом с монетами в верхней панели. Некоторые предложения магазина можно оплатить медью или самоцветами — выберите валюту перед покупкой. Нужно больше меди? Нажмите кнопку + рядом с балансом монет, чтобы открыть Обмен и конвертировать самоцветы в медь."
+              )}
+            </div>
+            <TipBox tone="info">
+              {c(locale,
+                "The Exchange only goes one way — gems into copper. Spend gems on premium offers first; exchange the rest when you need coins for repairs or crafting.",
+                "Обмен работает только в одну сторону — самоцветы в медь. Сначала тратьте самоцветы на премиум-предложения, а остаток меняйте, когда нужна медь на ремонт или крафт."
+              )}
+            </TipBox>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ═══════════════════════════
           SECTION 6: Currency
       ═══════════════════════════ */}
       <div className="card" style={{ overflow: "hidden", marginBottom: 20 }}>
@@ -1006,6 +1279,13 @@ export function GuidebookScreen() {
             </div>
           </div>
 
+          <TipBox tone="info">
+            {c(locale,
+              "Premium gems 💎 are a separate currency and are not part of the copper/silver/gold scale. You can convert gems into copper via the Exchange — see the Shop & Premium section.",
+              "Премиум-самоцветы 💎 — отдельная валюта и не входят в шкалу медь/серебро/золото. Самоцветы можно конвертировать в медь через Обмен — см. раздел «Магазин и Премиум»."
+            )}
+          </TipBox>
+
           <div className="divider" />
 
           {/* Earning & spending */}
@@ -1020,6 +1300,7 @@ export function GuidebookScreen() {
                 c(locale, "Completing dungeon runs", "Завершение данжей"),
                 c(locale, "Claiming expedition rewards", "Получение наград"),
                 c(locale, "Destroying unwanted items", "Уничтожение предметов"),
+                c(locale, "Exchanging premium gems", "Обмен премиум-самоцветов"),
               ].map((item, i) => (
                 <div key={i} style={{
                   display: "flex", alignItems: "center", gap: 8,
@@ -1038,9 +1319,9 @@ export function GuidebookScreen() {
                 marginBottom: 8,
               }}>{c(locale, "Spending", "Расходы")}</div>
               {[
-                c(locale, "Repairing equipment", "Ремонт снаряжения"),
-                c(locale, "Repairing individual items", "Ремонт отдельных предметов"),
-                c(locale, "Repairing the full pack", "Ремонт всей сумки"),
+                c(locale, "Repairing broken equipment", "Ремонт сломанного снаряжения"),
+                c(locale, "Buying shop offers", "Покупки в магазине"),
+                c(locale, "Repairing the full pack at once", "Ремонт всей сумки сразу"),
               ].map((item, i) => (
                 <div key={i} style={{
                   display: "flex", alignItems: "center", gap: 8,
@@ -1117,6 +1398,16 @@ export function GuidebookScreen() {
               en: "Level up passively by completing runs. Higher level unlocks better gear rolls and increases your base stat growth.",
               ru: "Повышайте уровень пассивно, завершая походы. Более высокий уровень открывает лучшие предметы и увеличивает базовый прирост характеристик.",
             },
+            {
+              tone: "good" as const,
+              en: "Keep a few healing potions brewed and ready — drinking one before a low-success dungeon can be the difference between a win and a wasted run.",
+              ru: "Держите несколько лечебных зелий наготове — выпитое перед данжем с низким шансом успеха зелье может решить исход похода.",
+            },
+            {
+              tone: "info" as const,
+              en: "Check the Shop for chest offers — they roll random loot from a drop table and are a fast way to gather ingredients or chase rarer items.",
+              ru: "Загляните в Магазин за сундуками — они дают случайный лут из таблицы дропа и быстро пополняют ингредиенты или приносят редкие предметы.",
+            },
           ].map(({ tone, en, ru }, i) => (
             <TipBox key={i} tone={tone}>{c(locale, en, ru)}</TipBox>
           ))}
@@ -1131,7 +1422,7 @@ export function GuidebookScreen() {
               letterSpacing: "0.16em", textTransform: "uppercase",
               color: "#64748B",
             }}>
-              {c(locale, "VultWake · Field Guide · v0.1", "VultWake · Руководство искателя · v0.1")}
+              {c(locale, "VultWake · Field Guide · v0.2", "VultWake · Руководство искателя · v0.2")}
             </div>
           </div>
         </div>

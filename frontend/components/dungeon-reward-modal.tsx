@@ -1,8 +1,8 @@
 "use client";
 
 import { useI18n } from "@/components/providers";
-import { ErrorNotice } from "@/components/ui";
-import { formatCopper, formatNumber, formatStatName, type TranslationKey } from "@/lib/i18n";
+import { CopperDisplay, ErrorNotice } from "@/components/ui";
+import { formatNumber, formatStatName, type TranslationKey } from "@/lib/i18n";
 import { rarityColor } from "@/lib/rarity";
 import type { ClaimResponse } from "@/lib/types";
 import { useModalScrollLock, useSwipeToClose } from "@/lib/use-modal-scroll-lock";
@@ -60,7 +60,7 @@ export function DungeonRewardModal({
             </div>
             <div className="reward-metric reward-metric-money">
               <span>{t("reward.money")}</span>
-              <strong>{formatCopper(result.rewards.money_copper, locale)}</strong>
+              <strong><CopperDisplay value={result.rewards.money_copper} locale={locale} compact={false} /></strong>
             </div>
             <div className={`reward-metric ${result.is_success ? "reward-metric-success" : "reward-metric-failed"}`}>
               <span>{t("reward.successChance")}</span>
