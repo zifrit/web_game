@@ -49,11 +49,13 @@ class Command(BaseCommand):
             )
 
         # (key, names, max_hp, intellect, attack, defense, crit, evasion, special_growth)
+        # Стартовые статы подобраны так, чтобы мощь каждого класса = 71
+        # (power = int*1.5 + atk*2.0 + def*1.7 + crit*1.5 + eva*1.5; max_hp в мощь не входит).
         classes = [
-            ("warrior", {"en": "Warrior", "ru": "Воин"}, 120, 4, 10, 8, 5, 3, {"critical_chance": 0.5, "evasion": 0}),
-            ("mage", {"en": "Mage", "ru": "Маг"}, 80, 18, 16, 3, 8, 4, {"critical_chance": 0.8, "evasion": 0}),
-            ("archer", {"en": "Archer", "ru": "Лучник"}, 95, 8, 12, 5, 12, 8, {"critical_chance": 0.5, "evasion": 0.5}),
-            ("assassin", {"en": "Assassin", "ru": "Ассассин"}, 75, 10, 14, 3, 20, 15, {"critical_chance": 1, "evasion": 0.8}),
+            ("warrior", {"en": "Warrior", "ru": "Воин"}, 130, 5, 13, 15, 5, 3, {"critical_chance": 0.5, "evasion": 0}),
+            ("mage", {"en": "Mage", "ru": "Маг"}, 80, 20, 11, 5, 5, 2, {"critical_chance": 0.8, "evasion": 0}),
+            ("archer", {"en": "Archer", "ru": "Лучник"}, 100, 6, 12, 10, 8, 6, {"critical_chance": 0.5, "evasion": 0.5}),
+            ("assassin", {"en": "Assassin", "ru": "Ассассин"}, 78, 4, 14, 5, 12, 7, {"critical_chance": 1, "evasion": 0.8}),
         ]
         for index, (key, names, max_hp, intellect, attack, defense, crit, evasion, special) in enumerate(classes):
             CharacterClass.objects.update_or_create(
@@ -108,8 +110,10 @@ class Command(BaseCommand):
 
         item_templates = seed_ranked_item_templates()
         templates_by_rank = {}
+        templates_by_rank_slot = {}
         for template in item_templates:
             templates_by_rank.setdefault(template.rarity_key, []).append(template)
+            templates_by_rank_slot.setdefault((template.rarity_key, template.slot), []).append(template)
         dungeon_limit_category, _ = DungeonLimitCategory.objects.update_or_create(
             code="dungeons",
             defaults={
@@ -168,47 +172,96 @@ class Command(BaseCommand):
                 },
             )
 
-        # (..., money_min, money_max, hp_loss_success%, hp_loss_fail%, drop, has_mini_game, mini_diff, template_chances)
-        dungeons = [
-            ({"en": "Old Forest", "ru": "Старый лес"}, {"en": "A safe starting location.", "ru": "Безопасная стартовая локация."}, 15, 50, 5, 8, 30, 60, 4, 9, 10, True, "6", {"f": 90, "e": 10}),
-            ({"en": "Abandoned Trail", "ru": "Заброшенная тропа"}, {"en": "Light risk and quick farming.", "ru": "Легкий риск и быстрый фарм."}, 30, 70, 8, 14, 45, 90, 7, 15, 15, True, "8", {"f": 70, "e": 25, "d": 5}),
-            ({"en": "Damp Cave", "ru": "Сырая пещера"}, {"en": "A risky early dungeon.", "ru": "Рискованный early dungeon."}, 300, 100, 18, 35, 120, 220, 12, 25, 25, True, "12", {"f": 45, "e": 35, "d": 15, "c": 4, "b": 1}),
+        # Боевые локации сгруппированы в 4 тира. Внутри группы все боевые параметры
+        # совпадают, между группами растут. required_power подобран так, чтобы шанс
+        # прохождения на ОЖИДАЕМОЙ мощи игрока (база 71 + сжатый комплект группы) был
+        # 55/15/10/2% (см. success_chance_config: base 75, multiplier 0.6).
+        #
+        # Лут: rarity_weights — вес поля DungeonLocationItemTemplate.chance на каждый
+        # шаблон ранга; slot_plan — какие слоты роняет каждая локация группы по порядку
+        # (3 локации => 1+2+2 слота, вся группа покрывает все 5; одиночная гр.4 => все 5).
+        # has_mini_game берётся пер-локационно, чтобы не сбрасывать текущие мини-игры.
+        dungeon_groups = [
+            {
+                "params": {"duration": 60, "required_power": 104, "exp": (6, 10), "money": (25, 50), "hp_loss": (4, 8), "drop_chance": 40},
+                "rarity_weights": {"f": 100},
+                "slot_plan": [["weapon"], ["helmet", "armor"], ["boots", "ring"]],
+                "locations": [
+                    ({"en": "Old Forest", "ru": "Старый лес"}, {"en": "A forgotten forest on the edge of the kingdom. Weak beasts, bandits, and the first traces of ancient magic hide among the old trees.", "ru": "Забытый лес у окраины королевства. Среди старых деревьев прячутся слабые звери, разбойники и первые следы древней магии."}, True),
+                    ({"en": "Misty Ravine", "ru": "Туманный овраг"}, {"en": "A low ravine covered in cold mist. Visibility is poor, and every step may lead to an unexpected encounter.", "ru": "Низкий овраг, постоянно укрытый холодным туманом. Видимость здесь плохая, а каждый шаг может привести к неожиданной встрече."}, False),
+                    ({"en": "Abandoned Trail", "ru": "Заброшенная тропа"}, {"en": "An old road once used by traders. Now it is home to wild beasts and lesser creatures waiting in ambush.", "ru": "Старая дорога, по которой давно перестали ходить торговцы. Теперь здесь встречаются дикие звери и мелкие твари, нападающие из засады."}, True),
+                ],
+            },
+            {
+                "params": {"duration": 180, "required_power": 184, "exp": (14, 22), "money": (60, 110), "hp_loss": (7, 14), "drop_chance": 50},
+                "rarity_weights": {"f": 60, "e": 40},
+                "slot_plan": [["weapon"], ["helmet", "armor"], ["boots", "ring"]],
+                "locations": [
+                    ({"en": "Damp Cave", "ru": "Сырая пещера"}, {"en": "A dark, damp cave with moss-covered walls and strange sounds echoing from below. Danger here no longer feels accidental.", "ru": "Темная влажная пещера, где стены покрыты мхом, а из глубины доносятся странные звуки. Здесь опасность уже не кажется случайной."}, True),
+                    ({"en": "Wolf Trail", "ru": "Волчья тропа"}, {"en": "A narrow forest path marked by claw prints and the bones of prey. The pack watches everyone who dares to go deeper.", "ru": "Узкая лесная дорога, отмеченная следами когтей и костями добычи. Стая наблюдает за каждым, кто решится пройти дальше."}, False),
+                    ({"en": "Flooded Ruins", "ru": "Затопленные руины"}, {"en": "The remains of an ancient settlement, half-hidden beneath murky water. Guardians of the past still wander among the broken walls.", "ru": "Остатки древнего поселения, наполовину скрытые под мутной водой. Среди разрушенных стен всё ещё блуждают стражи прошлого."}, False),
+                ],
+            },
+            {
+                "params": {"duration": 420, "required_power": 204, "exp": (30, 45), "money": (140, 230), "hp_loss": (11, 20), "drop_chance": 60},
+                "rarity_weights": {"f": 39, "e": 60, "d": 1},
+                "slot_plan": [["weapon"], ["helmet", "armor"], ["boots", "ring"]],
+                "locations": [
+                    ({"en": "Cursed Grove", "ru": "Проклятая роща"}, {"en": "A grim grove where the trees are twisted by dark power. The very ground seems to resist the living.", "ru": "Мрачная роща, где деревья искривлены темной силой. Здесь сама земля будто сопротивляется живым существам."}, False),
+                    ({"en": "Rotten Crypt", "ru": "Гнилой склеп"}, {"en": "An underground crypt filled with the smell of dampness and decay. The dead do not rest peacefully here, and any intruder quickly awakens them.", "ru": "Подземный склеп, пропитанный запахом сырости и разложения. Мертвые здесь лежат неспокойно, а чужое присутствие быстро пробуждает их."}, False),
+                    ({"en": "Silent Mine", "ru": "Безмолвная шахта"}, {"en": "An old mine where the sound of pickaxes has long faded. Deep in the tunnels remain not only rusty tools, but also those who never escaped.", "ru": "Старая шахта, в которой давно не слышно ударов кирок. В глубине туннелей остались не только ржавые инструменты, но и те, кто не смог выбраться."}, False),
+                ],
+            },
+            {
+                "params": {"duration": 900, "required_power": 239, "exp": (70, 100), "money": (300, 460), "hp_loss": (16, 28), "drop_chance": 75},
+                "rarity_weights": {"f": 10, "e": 80, "d": 10},
+                "slot_plan": [["weapon", "helmet", "armor", "boots", "ring"]],
+                "locations": [
+                    ({"en": "Ashen Pass", "ru": "Пепельный перевал"}, {"en": "A dangerous mountain pass covered in gray ash and traces of old battles. Only those ready for a true trial survive here.", "ru": "Опасный горный проход, покрытый серым пеплом и следами старых битв. Здесь выживают только те, кто готов к настоящему испытанию."}, False),
+                ],
+            },
         ]
-        for index, data in enumerate(dungeons):
-            names, descriptions, duration, power, exp_min, exp_max, money_min, money_max, hp_loss_success, hp_loss_fail, drop, has_mini_game, _mini_game_difficulty, template_chances = data
-            dungeon, _ = DungeonLocation.objects.update_or_create(
-                name=names["ru"],
-                defaults={
-                    "description": descriptions["ru"],
-                    "name_i18n": names,
-                    "description_i18n": descriptions,
-                    "duration_seconds": duration,
-                    "required_power": power,
-                    "experience_min": exp_min,
-                    "experience_max": exp_max,
-                    "money_min_copper": money_min,
-                    "money_max_copper": money_max,
-                    "hp_loss_success_percent": hp_loss_success,
-                    "hp_loss_fail_percent": hp_loss_fail,
-                    "item_drop_chance": drop,
-                    "has_mini_game": has_mini_game,
-                    "location_type": LocationType.DUNGEON,
-                    "limit_category": dungeon_limit_category,
-                    "daily_limit": 0,
-                    "is_active": True,
-                    "sort_order": index,
-                },
-            )
-            active_template_ids = []
-            for rarity_key, chance in template_chances.items():
-                for template in templates_by_rank.get(rarity_key, []):
-                    DungeonLocationItemTemplate.objects.update_or_create(
-                        location=dungeon,
-                        item_template=template,
-                        defaults={"chance": chance},
-                    )
-                    active_template_ids.append(template.id)
-            DungeonLocationItemTemplate.objects.filter(location=dungeon).exclude(item_template_id__in=active_template_ids).delete()
+        sort_index = 0
+        for group in dungeon_groups:
+            params = group["params"]
+            for loc_index, (names, descriptions, has_mini_game) in enumerate(group["locations"]):
+                dungeon, _ = DungeonLocation.objects.update_or_create(
+                    name=names["ru"],
+                    defaults={
+                        "description": descriptions["ru"],
+                        "name_i18n": names,
+                        "description_i18n": descriptions,
+                        "duration_seconds": params["duration"],
+                        "required_power": params["required_power"],
+                        "experience_min": params["exp"][0],
+                        "experience_max": params["exp"][1],
+                        "money_min_copper": params["money"][0],
+                        "money_max_copper": params["money"][1],
+                        "hp_loss_success_percent": params["hp_loss"][0],
+                        "hp_loss_fail_percent": params["hp_loss"][1],
+                        "item_drop_chance": params["drop_chance"],
+                        "has_mini_game": has_mini_game,
+                        "location_type": LocationType.DUNGEON,
+                        "limit_category": dungeon_limit_category,
+                        "daily_limit": 0,
+                        "is_active": True,
+                        "sort_order": sort_index,
+                    },
+                )
+                sort_index += 1
+
+                slots = group["slot_plan"][loc_index]
+                active_template_ids = []
+                for slot in slots:
+                    for rarity_key, chance in group["rarity_weights"].items():
+                        for template in templates_by_rank_slot.get((rarity_key, slot), []):
+                            DungeonLocationItemTemplate.objects.update_or_create(
+                                location=dungeon,
+                                item_template=template,
+                                defaults={"chance": chance},
+                            )
+                            active_template_ids.append(template.id)
+                DungeonLocationItemTemplate.objects.filter(location=dungeon).exclude(item_template_id__in=active_template_ids).delete()
 
         # Ресурсная локация: гарантированный успех, только базовые ингредиенты, дневной лимит.
         DungeonLocation.objects.update_or_create(
@@ -325,21 +378,27 @@ class Command(BaseCommand):
             ingredient_by_code[code] = ingredient
 
         # location name -> {ingredient code: (chance_percent, min_quantity, max_quantity)}
+        # Боевые локации: ресурсы равны внутри группы, растут между группами.
+        group1_drops = {"forest_herb": (70, 1, 3), "clean_water": (45, 1, 2)}
+        group2_drops = {"cave_moss": (60, 1, 2), "bitter_root": (40, 1, 2)}
+        group3_drops = {"cave_moss": (50, 1, 3), "bitter_root": (35, 1, 2), "crystal_dust": (20, 1, 1)}
+        group4_drops = {"crystal_dust": (40, 1, 2), "cave_moss": (50, 1, 3), "bitter_root": (40, 1, 2)}
         ingredient_drops = {
-            "Старый лес": {
-                "forest_herb": (75, 1, 3),
-                "clean_water": (45, 1, 1),
-            },
-            "Заброшенная тропа": {
-                "forest_herb": (60, 1, 2),
-                "bitter_root": (35, 1, 1),
-                "cave_moss": (15, 1, 1),
-            },
-            "Сырая пещера": {
-                "cave_moss": (50, 1, 2),
-                "bitter_root": (30, 1, 1),
-                "crystal_dust": (8, 1, 1),
-            },
+            # Группа 1
+            "Старый лес": group1_drops,
+            "Туманный овраг": group1_drops,
+            "Заброшенная тропа": group1_drops,
+            # Группа 2
+            "Сырая пещера": group2_drops,
+            "Волчья тропа": group2_drops,
+            "Затопленные руины": group2_drops,
+            # Группа 3
+            "Проклятая роща": group3_drops,
+            "Гнилой склеп": group3_drops,
+            "Безмолвная шахта": group3_drops,
+            # Группа 4
+            "Пепельный перевал": group4_drops,
+            # Ресурсная локация
             "Лес трав": {
                 "forest_herb": (100, 1, 5),
                 "clean_water": (50, 1, 2),
@@ -347,16 +406,20 @@ class Command(BaseCommand):
         }
         for location_name, drops in ingredient_drops.items():
             location = DungeonLocation.objects.get(name=location_name)
+            active_ingredient_ids = []
             for code, (chance_percent, min_quantity, max_quantity) in drops.items():
+                ingredient = ingredient_by_code[code]
                 DungeonIngredientDrop.objects.update_or_create(
                     location=location,
-                    ingredient=ingredient_by_code[code],
+                    ingredient=ingredient,
                     defaults={
                         "chance_percent": chance_percent,
                         "min_quantity": min_quantity,
                         "max_quantity": max_quantity,
                     },
                 )
+                active_ingredient_ids.append(ingredient.id)
+            DungeonIngredientDrop.objects.filter(location=location).exclude(ingredient_id__in=active_ingredient_ids).delete()
 
         # (code, difficulty, potion_code, required_hero_level, {ingredient_code: quantity per potion})
         recipes = [

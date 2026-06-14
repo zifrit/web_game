@@ -668,17 +668,23 @@ class MvpApiTests(APITestCase):
         dungeons = self.client.get("/api/dungeons")
         self.assertEqual(dungeons.status_code, status.HTTP_200_OK)
         self.assertEqual(dungeons.data[0]["name"], "Old Forest")
-        self.assertEqual(dungeons.data[0]["description"], "A safe starting location.")
+        self.assertEqual(
+            dungeons.data[0]["description"],
+            "A forgotten forest on the edge of the kingdom. Weak beasts, bandits, and the first traces of ancient magic hide among the old trees.",
+        )
         self.assertIn("has_mini_game", dungeons.data[0])
         self.assertEqual(dungeons.data[0]["hp_loss_success_percent"], 4)
-        self.assertEqual(dungeons.data[0]["hp_loss_fail_percent"], 9)
+        self.assertEqual(dungeons.data[0]["hp_loss_fail_percent"], 8)
         self.assertTrue(dungeons.data[0]["media"]["medium_url"])
         self.assertNotIn("original_url", dungeons.data[0]["media"])
 
         dungeons_ru = self.client.get("/api/dungeons", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(dungeons_ru.status_code, status.HTTP_200_OK)
         self.assertEqual(dungeons_ru.data[0]["name"], "Старый лес")
-        self.assertEqual(dungeons_ru.data[0]["description"], "Безопасная стартовая локация.")
+        self.assertEqual(
+            dungeons_ru.data[0]["description"],
+            "Забытый лес у окраины королевства. Среди старых деревьев прячутся слабые звери, разбойники и первые следы древней магии.",
+        )
 
         bad_board = self.client.get("/api/leaderboard?type=gold", HTTP_ACCEPT_LANGUAGE="ru")
         self.assertEqual(bad_board.status_code, status.HTTP_400_BAD_REQUEST)

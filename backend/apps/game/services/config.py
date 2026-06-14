@@ -18,7 +18,7 @@ DEFAULT_CONFIGS: dict[str, dict[str, Any]] = {
         "critical_chance": 1.5,
         "evasion": 1.5,
     },
-    "success_chance_config": {"base": 75, "power_delta_multiplier": 1.5, "min": 35, "max": 100},
+    "success_chance_config": {"base": 75, "power_delta_multiplier": 0.6, "min": 1, "max": 100},
     "repair_cost_config": {"copper_per_durability": 10},
     "experience_curve_config": {"base": 100, "exponent": 1.5, "max_level": MAX_RANK_LEVEL},
     "stat_caps": {"critical_chance": 60, "evasion": 50},

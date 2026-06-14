@@ -60,7 +60,7 @@ def generate_item_instance(template: ItemTemplate) -> dict[str, Any]:
     for stat_key in selected_stats:
         stat_range = possible_stats[stat_key]
         base_value = random.randint(int(stat_range["min"]), int(stat_range["max"]))
-        value = base_value * rarity_config["stat_multiplier"] * (1 + item_level * 0.08)
+        value = base_value * rarity_config["stat_multiplier"] * (1 + item_level * 0.025)
         stats[stat_key] = max(1, int(round(value)))
 
     durability_max = random.randint(template.min_durability, template.max_durability)

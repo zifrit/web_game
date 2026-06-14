@@ -43,7 +43,7 @@ class GameFormulaTests(TestCase):
 
     def test_success_chance_is_capped(self):
         self.assertEqual(GameFormulaService.success_chance(10_000, 1), 100)
-        self.assertEqual(GameFormulaService.success_chance(1, 10_000), 35)
+        self.assertEqual(GameFormulaService.success_chance(1, 10_000), 1)
 
     def test_item_economy_uses_bankers_rounding(self):
         template = ItemTemplate.objects.filter(slot="weapon", item_type="sword").first()
@@ -403,7 +403,8 @@ class RankedSeedTests(TestCase):
         old_forest = DungeonLocation.objects.get(name="Старый лес")
         ranks = set(old_forest.location_item_templates.values_list("item_template__rarity_key", flat=True))
 
-        self.assertEqual(ranks, {"f", "e"})
+        # Группа 1 роняет только F-ранг (Старый лес — слот weapon).
+        self.assertEqual(ranks, {"f"})
         self.assertFalse(old_forest.location_item_templates.filter(chance=0).exists())
 
     def test_location_item_template_chance_must_be_between_one_and_one_hundred(self):
@@ -507,7 +508,8 @@ class ApiSmokeTests(TestCase):
 
         response = self.client.get("/api/dungeons")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 4)
+        # 10 боевых локаций (4 группы) + 1 ресурсная (Лес трав) из seed_game.
+        self.assertEqual(len(response.data), 11)
 
         response = self.client.post("/api/dungeon-runs", {"location_id": response.data[0]["id"]}, format="json")
         self.assertEqual(response.status_code, 201)
