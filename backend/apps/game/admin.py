@@ -1,6 +1,9 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.admin.widgets import AutocompleteSelect
+
+from .services.config import GameConfigService
+from .services.formulas import GameFormulaService
 
 from .models import (
     Character,
@@ -141,6 +144,84 @@ class CharacterAdmin(admin.ModelAdmin):
     search_fields = ("name", "user__email")
     autocomplete_fields = ("user", "character_class", "avatar_media")
     list_select_related = ("user", "character_class", "avatar_media")
+    actions = (
+        "level_up_1",
+        "level_up_3",
+        "level_up_5",
+        "level_up_10",
+        "level_down_1",
+        "level_down_3",
+        "level_down_5",
+        "level_down_10",
+    )
+
+    def _adjust_levels(self, request, queryset, delta: int) -> None:
+        """Сдвигает уровень выбранных героев на delta и пересчитывает их характеристики."""
+
+        config = GameConfigService.get_config("experience_curve_config")
+        max_level = int(config.get("max_level", 20))
+        updated = 0
+        skipped = 0
+        for character in queryset.select_related("character_class"):
+            new_level = max(1, min(max_level, character.level + delta))
+            if new_level == character.level:
+                skipped += 1
+                continue
+            character.level = new_level
+            # Тот же пересчёт статов от уровня, что и при клейме забега.
+            GameFormulaService.apply_level_stats(character)
+            character.save(
+                update_fields=[
+                    "level",
+                    "max_hp",
+                    "intellect",
+                    "attack",
+                    "defense",
+                    "critical_chance",
+                    "evasion",
+                    "updated_at",
+                ]
+            )
+            GameFormulaService.clamp_current_hp(character)
+            GameFormulaService.refresh_power_cache(character)
+            updated += 1
+        self.message_user(
+            request,
+            f"Изменён уровень (Δ{delta:+d}): обновлено {updated}, пропущено {skipped} (упёрлись в лимит 1..{max_level}).",
+            messages.SUCCESS if updated else messages.WARNING,
+        )
+
+    @admin.action(description="Уровень: +1")
+    def level_up_1(self, request, queryset):
+        self._adjust_levels(request, queryset, 1)
+
+    @admin.action(description="Уровень: +3")
+    def level_up_3(self, request, queryset):
+        self._adjust_levels(request, queryset, 3)
+
+    @admin.action(description="Уровень: +5")
+    def level_up_5(self, request, queryset):
+        self._adjust_levels(request, queryset, 5)
+
+    @admin.action(description="Уровень: +10")
+    def level_up_10(self, request, queryset):
+        self._adjust_levels(request, queryset, 10)
+
+    @admin.action(description="Уровень: −1")
+    def level_down_1(self, request, queryset):
+        self._adjust_levels(request, queryset, -1)
+
+    @admin.action(description="Уровень: −3")
+    def level_down_3(self, request, queryset):
+        self._adjust_levels(request, queryset, -3)
+
+    @admin.action(description="Уровень: −5")
+    def level_down_5(self, request, queryset):
+        self._adjust_levels(request, queryset, -5)
+
+    @admin.action(description="Уровень: −10")
+    def level_down_10(self, request, queryset):
+        self._adjust_levels(request, queryset, -10)
 
 
 class DungeonLocationItemTemplateInline(admin.TabularInline):
