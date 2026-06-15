@@ -323,7 +323,41 @@ export function DungeonsScreen() {
 
   const startMutation = useMutation({
     mutationFn: (id: number) => api.startRun(id),
-    onSuccess: async () => queryClient.invalidateQueries({ queryKey: ["current-run"] }),
+    onMutate: (dungeonId: number) => {
+      const prev = queryClient.getQueryData<Dungeon[]>(["dungeons"]);
+      queryClient.setQueryData<Dungeon[]>(["dungeons"], (old) => {
+        if (!old) return old;
+        const target = old.find((d) => d.id === dungeonId);
+        const catId = target?.limit_category?.id;
+        return old.map((d) => {
+          const newD = { ...d };
+          if (d.id === dungeonId && d.daily_remaining !== null) {
+            newD.daily_remaining = Math.max(0, d.daily_remaining - 1);
+          }
+          if (catId && d.limit_category?.id === catId && d.limit_category.limit_count > 0) {
+            const newUsed = d.limit_category.used + 1;
+            const newRemaining = d.limit_category.remaining !== null
+              ? Math.max(0, d.limit_category.remaining - 1)
+              : null;
+            newD.limit_category = {
+              ...d.limit_category,
+              used: newUsed,
+              remaining: newRemaining,
+              is_exhausted: newRemaining !== null ? newRemaining <= 0 : false,
+            };
+          }
+          return newD;
+        });
+      });
+      return { prev };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.prev) queryClient.setQueryData(["dungeons"], context.prev);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["current-run"] });
+      await queryClient.invalidateQueries({ queryKey: ["dungeons"] });
+    },
   });
 
   const isRunning = currentRun.data?.status === "IN_PROGRESS";
