@@ -604,9 +604,13 @@ class ShopPurchaseAdmin(admin.ModelAdmin):
         "updated_at",
     )
 
-REGISTERED_TASKS: list[tuple[str, str]] = [
-    ("complete_due_dungeon_runs", "Завершить просроченные забеги"),
-]
+def _get_task_map() -> dict:
+    from apps.game.tasks import complete_due_dungeon_runs, daily_gift
+
+    return {
+        "complete_due_dungeon_runs": complete_due_dungeon_runs,
+        "daily_gift": daily_gift,
+    }
 
 
 @admin.register(CeleryTaskLog)
@@ -615,7 +619,7 @@ class CeleryTaskLogAdmin(admin.ModelAdmin):
     list_filter = ("status", "task_name")
     search_fields = ("task_name", "celery_task_id", "triggered_by__email")
     readonly_fields = ("task_name", "celery_task_id", "triggered_by", "status", "result", "created_at", "updated_at")
-    actions = ("run_complete_due_dungeon_runs",)
+    actions = ("run_selected_tasks",)
 
     def has_add_permission(self, request):
         return False
@@ -641,34 +645,36 @@ class CeleryTaskLogAdmin(admin.ModelAdmin):
     def result_short(self, obj: CeleryTaskLog) -> str:
         return obj.result[:80] if obj.result else "—"
 
-    @admin.action(description="▶ Запустить: Завершить просроченные забеги")
-    def run_complete_due_dungeon_runs(self, request, queryset):
-        self._dispatch_task(request, "complete_due_dungeon_runs")
+    @admin.action(description="▶ Выполнить выбранные задачи")
+    def run_selected_tasks(self, request, queryset):
+        task_map = _get_task_map()
+        task_keys = queryset.values_list("task_name", flat=True).distinct()
+        dispatched, unknown = [], []
 
-    def _dispatch_task(self, request, task_key: str) -> None:
-        from apps.game.tasks import complete_due_dungeon_runs
+        for task_key in task_keys:
+            task_fn = task_map.get(task_key)
+            if task_fn is None:
+                unknown.append(task_key)
+                continue
+            log = CeleryTaskLog.objects.create(
+                task_name=task_key,
+                triggered_by=request.user,
+                status=CeleryTaskLog.Status.DISPATCHED,
+            )
+            result = task_fn.apply_async(kwargs={"log_id": log.id})
+            log.celery_task_id = result.id
+            log.save(update_fields=["celery_task_id"])
+            dispatched.append(task_key)
 
-        task_map = {"complete_due_dungeon_runs": complete_due_dungeon_runs}
-        task_fn = task_map.get(task_key)
-        if task_fn is None:
-            self.message_user(request, f"Задача «{task_key}» не найдена.", messages.ERROR)
-            return
-
-        log = CeleryTaskLog.objects.create(
-            task_name=task_key,
-            triggered_by=request.user,
-            status=CeleryTaskLog.Status.DISPATCHED,
-        )
-        result = task_fn.apply_async(kwargs={"log_id": log.id})
-        log.celery_task_id = result.id
-        log.save(update_fields=["celery_task_id"])
-        self.message_user(
-            request,
-            f"Задача «{task_key}» отправлена в очередь (ID: {result.id}).",
-            messages.SUCCESS,
-        )
-
-    def changelist_view(self, request, extra_context=None):
-        extra_context = extra_context or {}
-        extra_context["registered_tasks"] = REGISTERED_TASKS
-        return super().changelist_view(request, extra_context=extra_context)
+        if dispatched:
+            self.message_user(
+                request,
+                f"Отправлено в очередь: {', '.join(dispatched)}.",
+                messages.SUCCESS,
+            )
+        if unknown:
+            self.message_user(
+                request,
+                f"Неизвестные задачи (пропущены): {', '.join(unknown)}.",
+                messages.WARNING,
+            )
