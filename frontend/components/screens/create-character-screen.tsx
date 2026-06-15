@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Check } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useI18n, useSession } from "@/components/providers";
@@ -26,6 +26,8 @@ export function CreateCharacterScreen() {
   const { locale, t } = useI18n();
   const queryClient = useQueryClient();
   const classesQuery = useQuery({ queryKey: ["character-classes"], queryFn: api.characterClasses });
+  const iconsQuery = useQuery({ queryKey: ["iconAssets"], queryFn: api.iconAssets });
+  const [selectedAvatarId, setSelectedAvatarId] = useState<number | null>(null);
 
   const form = useForm<CharacterValues>({
     resolver: zodResolver(characterSchema(t)),
@@ -42,6 +44,13 @@ export function CreateCharacterScreen() {
   const mutation = useMutation({
     mutationFn: (values: CharacterValues) => api.createCharacter(values.name, values.class_key, values.gender),
     onSuccess: async () => {
+      if (selectedAvatarId != null) {
+        try {
+          await api.updateAvatar(selectedAvatarId);
+        } catch {
+          // Avatar is optional — ignore failures so character creation still completes.
+        }
+      }
       const me = await queryClient.fetchQuery({ queryKey: ["me"], queryFn: api.me });
       setUser(me);
       await queryClient.invalidateQueries({ queryKey: ["character"] });
@@ -159,6 +168,55 @@ export function CreateCharacterScreen() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* Account avatar picker — horizontally scrollable */}
+            <div style={{ display: "grid", gap: 8 }}>
+              <div style={{ fontSize: 13, color: "#94A3B8" }}>{t("character.avatarLabel")}</div>
+              <div className="mono" style={{ fontSize: 11, color: "#64748B" }}>{t("character.avatarHint")}</div>
+
+              {iconsQuery.isLoading ? (
+                <div style={{ display: "flex", flexWrap: "nowrap", overflowX: "auto", gap: 8, paddingBottom: 6, WebkitOverflowScrolling: "touch" }}>
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} style={{ flexShrink: 0, width: 64, height: 64, borderRadius: "50%", background: "#111827", animation: "shimmer 1.4s infinite" }} />
+                  ))}
+                </div>
+              ) : (iconsQuery.data ?? []).length === 0 ? (
+                <div className="mono" style={{ fontSize: 12, color: "#64748B" }}>{t("settings.avatarEmpty")}</div>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "nowrap", overflowX: "auto", gap: 8, paddingBottom: 6, WebkitOverflowScrolling: "touch" }}>
+                  {(iconsQuery.data ?? []).map((icon) => {
+                    const iconUrl = bestMediaUrl(icon);
+                    const isSelected = selectedAvatarId === icon.id;
+                    return (
+                      <button
+                        key={icon.id}
+                        type="button"
+                        onClick={() => setSelectedAvatarId(isSelected ? null : icon.id)}
+                        title={icon.name}
+                        style={{
+                          appearance: "none", padding: 0,
+                          flexShrink: 0,
+                          width: 64, height: 64,
+                          borderRadius: "50%",
+                          overflow: "hidden",
+                          cursor: "pointer",
+                          border: `2px solid ${isSelected ? "#3B82F6" : "var(--line)"}`,
+                          background: isSelected ? "rgba(59,130,246,0.18)" : "#111827",
+                          transition: "border-color 0.15s, background 0.15s, transform 0.1s",
+                          transform: isSelected ? "scale(1.06)" : "scale(1)",
+                          boxShadow: isSelected ? "0 0 0 2px rgba(59,130,246,0.30)" : "none",
+                        }}
+                      >
+                        {iconUrl
+                          ? <img src={iconUrl} alt={icon.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                          : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#64748B" }}>?</div>
+                        }
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <button

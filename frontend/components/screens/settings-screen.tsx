@@ -166,9 +166,9 @@ export function SettingsScreen() {
                 </div>
 
                 {iconsQuery.isLoading ? (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 112px)", gap: 8, marginBottom: 14 }}>
+                  <div style={{ display: "flex", flexWrap: "nowrap", overflowX: "auto", gap: 8, marginBottom: 14, paddingBottom: 6, WebkitOverflowScrolling: "touch" }}>
                     {Array.from({ length: 8 }).map((_, i) => (
-                      <div key={i} style={{ width: 112, height: 112, borderRadius: "50%", background: "var(--bg-1)", animation: "shimmer 1.4s infinite" }} />
+                      <div key={i} style={{ flexShrink: 0, width: 112, height: 112, borderRadius: "50%", background: "var(--bg-1)", animation: "shimmer 1.4s infinite" }} />
                     ))}
                   </div>
                 ) : (iconsQuery.data ?? []).length === 0 ? (
@@ -176,7 +176,7 @@ export function SettingsScreen() {
                     {t("settings.avatarEmpty")}
                   </div>
                 ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 112px)", gap: 8, marginBottom: 14 }}>
+                  <div style={{ display: "flex", flexWrap: "nowrap", overflowX: "auto", gap: 8, marginBottom: 14, paddingBottom: 6, WebkitOverflowScrolling: "touch" }}>
                     {(iconsQuery.data ?? []).map((icon) => {
                       const iconUrl = bestMediaUrl(icon);
                       const isSelected = selectedIconId === icon.id;
@@ -193,6 +193,7 @@ export function SettingsScreen() {
                             borderRadius: "50%",
                             background: isSelected ? "color-mix(in srgb, var(--primary) 14%, transparent)" : "var(--bg-1)",
                             cursor: "pointer",
+                            flexShrink: 0,
                             width: 112, height: 112,
                             overflow: "hidden",
                             transition: "border-color 0.15s, background 0.15s, transform 0.1s",
