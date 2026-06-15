@@ -1,7 +1,12 @@
+import json
+
 from django.contrib import admin, messages
+from django.contrib.admin.sites import NotRegistered
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.admin.widgets import AutocompleteSelect
 from django.utils.html import format_html
+from django_celery_beat.admin import PeriodicTaskAdmin as BasePeriodicTaskAdmin
+from django_celery_beat.models import PeriodicTask
 
 from .services.config import GameConfigService
 from .services.formulas import GameFormulaService
@@ -678,3 +683,42 @@ class CeleryTaskLogAdmin(admin.ModelAdmin):
                 f"Неизвестные задачи (пропущены): {', '.join(unknown)}.",
                 messages.WARNING,
             )
+
+
+try:
+    admin.site.unregister(PeriodicTask)
+except NotRegistered:
+    pass
+
+
+@admin.register(PeriodicTask)
+class PeriodicTaskAdmin(BasePeriodicTaskAdmin):
+    @admin.action(description="Запустить выбранные задачи")
+    def run_tasks(self, request, queryset):
+        task_ids = []
+
+        for periodic_task in queryset:
+            headers = json.loads(periodic_task.headers or "{}")
+            async_result = self.celery_app.send_task(
+                periodic_task.task,
+                args=json.loads(periodic_task.args),
+                kwargs=json.loads(periodic_task.kwargs),
+                queue=periodic_task.queue or None,
+                exchange=periodic_task.exchange or None,
+                routing_key=periodic_task.routing_key or None,
+                headers={
+                    **headers,
+                    "periodic_task_name": periodic_task.name,
+                },
+            )
+            task_ids.append(async_result.id)
+
+        tasks_run = len(task_ids)
+        self.message_user(
+            request,
+            "{0} task{1} {2} successfully run".format(
+                tasks_run,
+                "" if tasks_run == 1 else "s",
+                "was" if tasks_run == 1 else "were",
+            ),
+        )
