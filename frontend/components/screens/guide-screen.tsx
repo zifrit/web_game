@@ -821,6 +821,70 @@ export function GuidebookScreen() {
             </div>
           </div>
 
+          <div className="divider" />
+
+          {/* Item Level */}
+          <div>
+            <div style={{
+              fontFamily: "var(--font-cinzel)", fontSize: 13, fontWeight: 600,
+              letterSpacing: "0.06em", color: "#94A3B8", textTransform: "uppercase",
+              marginBottom: 10,
+            }}>
+              {c(locale, "Item Level", "Уровень предмета")}
+            </div>
+            <div style={{ fontSize: 12, color: "#94A3B8", lineHeight: 1.65, marginBottom: 10 }}>
+              {c(locale,
+                "Every dropped or purchased item has an Item Level — a quality score that scales all of its stats. Two items with the same rarity and stat types can differ significantly in strength if their item levels differ.",
+                "У каждого выпавшего или купленного предмета есть Уровень предмета — показатель качества, который масштабирует все его характеристики. Два предмета с одинаковой редкостью и типами статов могут значительно различаться по силе из-за разного уровня предмета."
+              )}
+            </div>
+            <div style={{
+              background: "linear-gradient(135deg, rgba(56,189,248,0.08), rgba(11,16,32,0.5))",
+              border: "1px solid rgba(56,189,248,0.25)", borderRadius: 10,
+              padding: "14px 16px", marginBottom: 10,
+            }}>
+              <div style={{
+                fontFamily: "var(--font-mono)", fontSize: 13,
+                color: "#E5E7EB", letterSpacing: "0.04em", lineHeight: 1.8,
+              }}>
+                <span style={{ color: "#38BDF8", fontWeight: 700 }}>
+                  {c(locale, "Final stat", "Итоговый стат")}
+                </span>
+                {" = "}
+                <span style={{ color: "#94A3B8" }}>{c(locale, "base", "база")}</span>
+                {" × "}
+                <span style={{ color: "#A855F7" }}>{c(locale, "rarity mult", "множитель редкости")}</span>
+                {" × (1 + "}
+                <span style={{ color: "#F59E0B" }}>{c(locale, "item level", "уровень предмета")}</span>
+                {" × 0.025)"}
+              </div>
+              <div style={{ marginTop: 10, fontSize: 12, color: "#64748B", lineHeight: 1.5 }}>
+                {c(locale,
+                  "Each item level adds +2.5% to every stat. A level 10 item has +25% stronger stats than a level 1 item of the same rarity.",
+                  "Каждый уровень предмета добавляет +2,5% к каждому стату. Предмет 10-го уровня имеет на +25% более сильные характеристики, чем предмет 1-го уровня той же редкости."
+                )}
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 10 }}>
+              <InfoRow
+                label={c(locale, "How level is set", "Как задаётся уровень")}
+                value={c(locale, "Rolled randomly within the rarity's range at drop time", "Случайно выбирается в диапазоне редкости при выпадении")}
+                accent="#38BDF8"
+              />
+              <InfoRow
+                label={c(locale, "Can it be upgraded?", "Можно ли улучшить?")}
+                value={c(locale, "No — fixed at creation", "Нет — фиксируется при создании")}
+                accent="#F59E0B"
+              />
+            </div>
+            <TipBox tone="info">
+              {c(locale,
+                "Item level is shown on each item card in your Inventory. When comparing two items of the same rarity, the one with a higher item level will generally have stronger stats.",
+                "Уровень предмета отображается на карточке каждого предмета в инвентаре. При сравнении двух предметов одной редкости тот, у которого выше уровень предмета, как правило, окажется сильнее."
+              )}
+            </TipBox>
+          </div>
+
         </div>
       </div>
 
@@ -880,6 +944,13 @@ export function GuidebookScreen() {
               "В более сложных данжах выше шанс выпадения редких предметов. По мере роста Мощи открываются новые данжи с более ценным лутом. Граница редкости светится на каждом предмете в инвентаре — это позволяет с первого взгляда определить ценные вещи."
             )}
           </div>
+
+          <TipBox tone="info">
+            {c(locale,
+              "Each rarity tier also determines the Item Level range that can be rolled when the item drops. Higher rarities unlock higher item level ranges — meaning rarer items receive a larger stat bonus on top of their rarity multiplier. See the Equipment section for details.",
+              "Каждый уровень редкости также определяет диапазон Уровня предмета, который может выпасть. Более высокие редкости открывают более высокие диапазоны уровней — это значит, что редкие предметы получают дополнительный бонус к статам поверх множителя редкости. Подробности — в разделе «Экипировка»."
+            )}
+          </TipBox>
 
         </div>
       </div>
