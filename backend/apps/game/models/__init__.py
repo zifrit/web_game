@@ -1,4 +1,5 @@
 from .base import MediaAsset, TimestampedModel
+from .celery_log import CeleryTaskLog
 from .characters import Character, CharacterClass
 from .config import EquipmentSlotConfig, GameConfig, RarityConfig
 from .consumables import HeroPotionStorage, PotionTemplate
@@ -31,6 +32,7 @@ from .shop import (
 from .users import User, UserManager, UserTwoFactor
 
 __all__ = [
+    "CeleryTaskLog",
     "Character",
     "CharacterClass",
     "CraftRecipe",

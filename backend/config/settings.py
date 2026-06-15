@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "storages",
     "rest_framework_simplejwt.token_blacklist",
     "django_extensions",
+    "django_celery_beat",
     "apps.game",
     "apps.billing",
 ]
@@ -205,12 +206,7 @@ else:
             "TIMEOUT": 300,
         }
     }
-CELERY_BEAT_SCHEDULE = {
-    "complete-dungeon-runs": {
-        "task": "apps.game.tasks.complete_due_dungeon_runs",
-        "schedule": 5.0,
-    }
-}
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 
 # AWS настройки

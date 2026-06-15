@@ -1,11 +1,13 @@
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.admin.widgets import AutocompleteSelect
+from django.utils.html import format_html
 
 from .services.config import GameConfigService
 from .services.formulas import GameFormulaService
 
 from .models import (
+    CeleryTaskLog,
     Character,
     CharacterClass,
     DungeonIngredientDrop,
@@ -601,3 +603,72 @@ class ShopPurchaseAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
+
+REGISTERED_TASKS: list[tuple[str, str]] = [
+    ("complete_due_dungeon_runs", "Завершить просроченные забеги"),
+]
+
+
+@admin.register(CeleryTaskLog)
+class CeleryTaskLogAdmin(admin.ModelAdmin):
+    list_display = ("task_name", "status_badge", "result_short", "triggered_by", "celery_task_id", "created_at")
+    list_filter = ("status", "task_name")
+    search_fields = ("task_name", "celery_task_id", "triggered_by__email")
+    readonly_fields = ("task_name", "celery_task_id", "triggered_by", "status", "result", "created_at", "updated_at")
+    actions = ("run_complete_due_dungeon_runs",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    @admin.display(description="Статус")
+    def status_badge(self, obj: CeleryTaskLog) -> str:
+        colors = {
+            CeleryTaskLog.Status.DISPATCHED: "#888",
+            CeleryTaskLog.Status.SUCCESS: "#2e7d32",
+            CeleryTaskLog.Status.FAILURE: "#c62828",
+        }
+        color = colors.get(obj.status, "#888")
+        return format_html(
+            '<span style="color:{};font-weight:600">{}</span>',
+            color,
+            obj.get_status_display(),
+        )
+
+    @admin.display(description="Результат")
+    def result_short(self, obj: CeleryTaskLog) -> str:
+        return obj.result[:80] if obj.result else "—"
+
+    @admin.action(description="▶ Запустить: Завершить просроченные забеги")
+    def run_complete_due_dungeon_runs(self, request, queryset):
+        self._dispatch_task(request, "complete_due_dungeon_runs")
+
+    def _dispatch_task(self, request, task_key: str) -> None:
+        from apps.game.tasks import complete_due_dungeon_runs
+
+        task_map = {"complete_due_dungeon_runs": complete_due_dungeon_runs}
+        task_fn = task_map.get(task_key)
+        if task_fn is None:
+            self.message_user(request, f"Задача «{task_key}» не найдена.", messages.ERROR)
+            return
+
+        log = CeleryTaskLog.objects.create(
+            task_name=task_key,
+            triggered_by=request.user,
+            status=CeleryTaskLog.Status.DISPATCHED,
+        )
+        result = task_fn.apply_async(kwargs={"log_id": log.id})
+        log.celery_task_id = result.id
+        log.save(update_fields=["celery_task_id"])
+        self.message_user(
+            request,
+            f"Задача «{task_key}» отправлена в очередь (ID: {result.id}).",
+            messages.SUCCESS,
+        )
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context["registered_tasks"] = REGISTERED_TASKS
+        return super().changelist_view(request, extra_context=extra_context)
