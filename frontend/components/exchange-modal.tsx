@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Gem, X } from "lucide-react";
 import { useState } from "react";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useI18n } from "@/components/providers";
 import { CopperDisplay, LoadingLine } from "@/components/ui";
 import { useModalScrollLock, useSwipeToClose } from "@/lib/use-modal-scroll-lock";
@@ -31,7 +31,6 @@ export function ExchangeModal({ onClose }: { onClose: () => void }) {
     },
   });
 
-  const errorMessage = exchangeMutation.error instanceof ApiError ? exchangeMutation.error.message : null;
   const offers = offersQuery.data ?? [];
 
   return (
@@ -75,10 +74,6 @@ export function ExchangeModal({ onClose }: { onClose: () => void }) {
               {t("exchange.success")}
             </div>
           )}
-          {errorMessage && (
-            <div style={{ marginBottom: 12, fontSize: 12, color: "var(--danger, #EF4444)" }}>{errorMessage}</div>
-          )}
-
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {offers.map((offer) => (
               <button

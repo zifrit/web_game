@@ -1,7 +1,7 @@
 "use client";
 
 import { useI18n } from "@/components/providers";
-import { CopperDisplay, ErrorNotice } from "@/components/ui";
+import { CopperDisplay } from "@/components/ui";
 import { formatNumber, formatStatName, type TranslationKey } from "@/lib/i18n";
 import { rarityColor } from "@/lib/rarity";
 import type { ClaimResponse } from "@/lib/types";
@@ -154,7 +154,6 @@ export function DungeonRewardModal({
           </div>
           )}
 
-          <ErrorNotice message={error} />
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
             <button className="btn btn-primary" onClick={onClose}>{t("reward.okay")}</button>
           </div>

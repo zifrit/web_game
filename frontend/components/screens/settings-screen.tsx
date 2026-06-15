@@ -5,7 +5,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound } from "lucide-react";
 import { useI18n } from "@/components/providers";
 import { useToast } from "@/components/toast";
-import { ErrorNotice } from "@/components/ui";
 import { api } from "@/lib/api";
 import { bestMediaUrl } from "@/lib/media";
 import type { TwoFactorSetup, User } from "@/lib/types";
@@ -306,8 +305,6 @@ export function SettingsScreen() {
             </label>
           </div>
 
-          <ErrorNotice message={(setupMutation.error as Error | null)?.message} />
-
           {twoFactorSetup && (
             <div style={{ marginTop: 18, display: "grid", gap: 14 }}>
               <div className="divider" />
@@ -343,8 +340,6 @@ export function SettingsScreen() {
                   />
                 </div>
               </label>
-
-              <ErrorNotice message={(confirmMutation.error as Error | null)?.message} />
 
               <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                 <button
@@ -405,8 +400,6 @@ export function SettingsScreen() {
                   />
                 </div>
               </label>
-
-              <ErrorNotice message={(disableMutation.error as Error | null)?.message} />
 
               <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                 <button

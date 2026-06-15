@@ -7,7 +7,7 @@ import { CircleHelp, Zap } from "lucide-react";
 import { canOpenMiniGame, DungeonMiniGameDifficultyModal, DungeonMiniGameModal, DungeonMiniGameResultModal } from "@/components/dungeon-mini-game-modal";
 import { useI18n } from "@/components/providers";
 import { DungeonRewardModal } from "@/components/dungeon-reward-modal";
-import { CharacterScreenSkeleton, ErrorNotice, LoadingLine } from "@/components/ui";
+import { CharacterScreenSkeleton, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatDuration, type Locale, type TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
@@ -581,7 +581,6 @@ function ActiveExpeditionStrip({ run, imageUrl, onClaimed, onSpeedUp, speedUpPen
           <span>{t("dungeons.complete", { progress: Math.round(progress * 100) })}</span>
           {inProgress && <span>{t("dungeons.left", { time: timeLabel })}</span>}
         </div>
-        <ErrorNotice message={(claimMut.error as Error | null)?.message} />
       </div>
     );
   }
@@ -659,7 +658,6 @@ function ActiveExpeditionStrip({ run, imageUrl, onClaimed, onSpeedUp, speedUpPen
           )}
         </div>
       </div>
-      <ErrorNotice message={(claimMut.error as Error | null)?.message} />
     </div>
   );
 }
@@ -1083,7 +1081,7 @@ export function CharacterScreen({
     return <CharacterScreenSkeleton />;
   }
   if (characterQuery.error || !characterQuery.data) {
-    return <ErrorNotice message={(characterQuery.error as Error | null)?.message ?? t("character.failedLoad")} />;
+    return null;
   }
 
   const character = characterQuery.data;
@@ -1297,11 +1295,6 @@ export function CharacterScreen({
             </div>
           </div>
           <div className="card-body">
-            <ErrorNotice message={
-              dropError ??
-              (equipMutation.error as Error | null)?.message ??
-              (unequipMutation.error as Error | null)?.message
-            } />
             <div className="equipment-layout">
               {EQUIPMENT_SLOTS.map((cell, i) => {
                 const item = character.equipment?.[cell.slot] ?? null;
@@ -1353,7 +1346,6 @@ export function CharacterScreen({
             </button>
           </div>
           <div className="card-body">
-            <ErrorNotice message={(startMutation.error as Error | null)?.message} />
             <div className="quick-dungeons">
               {dungeonsQuery.isLoading && <LoadingLine label={t("dungeons.loading")} />}
               {dungeons.slice(0, 3).map((d) => (
@@ -1489,7 +1481,6 @@ export function CharacterScreen({
           onClose={() => setMiniGameResult(null)}
         />
       )}
-      <ErrorNotice message={(startMiniGameMutation.error as Error | null)?.message} />
 
     </div>
   );

@@ -4,7 +4,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteD
 import { Check, ChevronDown, Filter, FlaskConical, Leaf, ListChecks, Minus, Plus, ShieldCheck, Wrench, X } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode, type UIEvent } from "react";
 import { useI18n } from "@/components/providers";
-import { CopperDisplay, ErrorNotice, InventoryScreenSkeleton, LoadingLine } from "@/components/ui";
+import { CopperDisplay, InventoryScreenSkeleton, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import type { TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
@@ -429,9 +429,7 @@ function ItemDetailPanel({
   if (itemQ.isLoading) return (
     <div className="card card-body"><LoadingLine label={t("inventory.loadingItem")} /></div>
   );
-  if (!itemQ.data) return (
-    <div className="card card-body"><ErrorNotice message={(itemQ.error as Error | null)?.message} /></div>
-  );
+  if (!itemQ.data) return null;
 
   const item   = itemQ.data;
   const color  = rc(item.rarity);
@@ -624,7 +622,6 @@ function ItemDetailPanel({
           </div>
         )}
 
-        <ErrorNotice message={(equipM.error as Error | null)?.message ?? (repairM.error as Error | null)?.message ?? (destroyM.error as Error | null)?.message} />
       </div>
     </div>
   );
@@ -690,7 +687,6 @@ function BulkActionModal({
               </div>
             </>
           ) : null}
-          <ErrorNotice message={error} />
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
             <button className="btn" disabled={isPending} onClick={onCancel}>{t("common.cancel")}</button>
             <button
@@ -986,8 +982,6 @@ function EquipmentSection() {
             </div>
           </div>
           )}
-
-          <ErrorNotice message={(invQ.error as Error | null)?.message} />
 
           {/* ── Pack grid ── */}
           <div className="card">
@@ -1322,7 +1316,6 @@ function CraftPanel({ ownedByIngredientId }: { ownedByIngredientId: Map<number, 
                     {successMsg}
                   </div>
                 )}
-                <ErrorNotice message={(craftM.error as Error | null)?.message} />
               </>
             )}
           </>
@@ -1432,7 +1425,6 @@ function ConsumablesSection() {
                 ))}
               </div>
             )}
-            <ErrorNotice message={(useM.error as Error | null)?.message ?? (ingredientsQ.error as Error | null)?.message ?? (potionsQ.error as Error | null)?.message} />
           </div>
         </div>
       </div>

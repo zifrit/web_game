@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Gem, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useI18n } from "@/components/providers";
 import { CopperDisplay, LoadingLine } from "@/components/ui";
 import { type TranslationKey } from "@/lib/i18n";
@@ -101,8 +101,6 @@ export function ShopOfferModal({ offerId, onClose }: { offerId: number; onClose:
 
   const canBuy =
     !!activeCurrency && purchaseCount >= 1 && !notEnough && !buyMutation.isPending && !result;
-
-  const errorMessage = buyMutation.error instanceof ApiError ? buyMutation.error.message : null;
 
   return (
     /* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
@@ -226,9 +224,6 @@ export function ShopOfferModal({ offerId, onClose }: { offerId: number; onClose:
 
                   {notEnough && (
                     <div style={{ fontSize: 12, color: "var(--danger, #EF4444)", marginBottom: 8 }}>{t("shop.insufficient")}</div>
-                  )}
-                  {errorMessage && (
-                    <div style={{ fontSize: 12, color: "var(--danger, #EF4444)", marginBottom: 8 }}>{errorMessage}</div>
                   )}
                 </>
               )}

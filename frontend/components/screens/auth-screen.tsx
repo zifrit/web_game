@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useI18n, useSession } from "@/components/providers";
-import { ErrorNotice } from "@/components/ui";
+import { useToast } from "@/components/toast";
 import { api } from "@/lib/api";
 
 const authSchema = (t: ReturnType<typeof useI18n>["t"]) => z.object({
@@ -18,8 +18,6 @@ const authSchema = (t: ReturnType<typeof useI18n>["t"]) => z.object({
 type AuthValues = z.infer<ReturnType<typeof authSchema>>;
 type AuthMode = "login" | "register";
 
-const isEmailAlreadyRegisteredError = (error: unknown) =>
-  error instanceof Error && error.message.includes("Email already registered");
 
 export function AuthScreen() {
   const [mode, setMode] = useState<AuthMode>("login");
@@ -47,13 +45,6 @@ export function AuthScreen() {
       setSession(auth);
       void queryClient.invalidateQueries({ queryKey: ["me"] });
     },
-    onError: (error) => {
-      if (mode !== "register" || !isEmailAlreadyRegisteredError(error)) return;
-      form.setError("email", {
-        type: "server",
-        message: t("validation.emailTaken"),
-      });
-    },
   });
 
   const totpMutation = useMutation({
@@ -75,13 +66,9 @@ export function AuthScreen() {
     totpMutation.reset();
   };
 
+  const { showError } = useToast();
   const isLogin = mode === "login";
   const needsTotp = Boolean(totpChallenge);
-  const mutationError = mutation.error as Error | null;
-  const mutationErrorMessage =
-    mode === "register" && isEmailAlreadyRegisteredError(mutationError)
-      ? undefined
-      : mutationError?.message;
 
   return (
     <main className="auth-shell">
@@ -166,8 +153,6 @@ export function AuthScreen() {
                 </div>
               </label>
 
-              <ErrorNotice message={(totpMutation.error as Error | null)?.message} />
-
               <button
                 type="submit"
                 disabled={totpMutation.isPending || totpCode.length !== 6}
@@ -195,7 +180,13 @@ export function AuthScreen() {
               </button>
             </form>
           ) : (
-            <form className="auth-form" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
+            <form className="auth-form" onSubmit={form.handleSubmit(
+              (values) => mutation.mutate(values),
+              (errors) => {
+                const first = Object.values(errors)[0];
+                if (first?.message) showError(String(first.message));
+              }
+            )}>
               <label>
                 <span>{t("auth.email")}</span>
                 <div className="auth-input-wrap">
@@ -208,9 +199,6 @@ export function AuthScreen() {
                     {...form.register("email")}
                   />
                 </div>
-                {form.formState.errors.email && (
-                  <small>{form.formState.errors.email.message}</small>
-                )}
               </label>
 
               <label>
@@ -225,12 +213,7 @@ export function AuthScreen() {
                     {...form.register("password")}
                   />
                 </div>
-                {form.formState.errors.password && (
-                  <small>{form.formState.errors.password.message}</small>
-                )}
               </label>
-
-              <ErrorNotice message={mutationErrorMessage} />
 
               <button
                 type="submit"

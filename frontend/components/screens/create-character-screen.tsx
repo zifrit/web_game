@@ -7,7 +7,8 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useI18n, useSession } from "@/components/providers";
-import { ErrorNotice, LoadingLine } from "@/components/ui";
+import { useToast } from "@/components/toast";
+import { LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatStatName } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
@@ -58,6 +59,8 @@ export function CreateCharacterScreen() {
       ["medium_url", "large_url", "small_url"],
     );
 
+  const { showError } = useToast();
+
   const handleBackToAuth = () => {
     queryClient.clear();
     void logout();
@@ -101,7 +104,13 @@ export function CreateCharacterScreen() {
 
           <form
             style={{ display: "grid", gap: 16 }}
-            onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
+            onSubmit={form.handleSubmit(
+              (values) => mutation.mutate(values),
+              (errors) => {
+                const first = Object.values(errors)[0];
+                if (first?.message) showError(String(first.message));
+              }
+            )}
           >
             <label style={{ display: "grid", gap: 6, fontSize: 13, color: "#94A3B8" }}>
               {t("character.heroName")}
@@ -110,9 +119,6 @@ export function CreateCharacterScreen() {
                 placeholder="Arthas"
                 {...form.register("name")}
               />
-              {form.formState.errors.name && (
-                <span style={{ fontSize: 11, color: "#EF4444" }}>{form.formState.errors.name.message}</span>
-              )}
             </label>
 
             <input type="hidden" {...form.register("class_key")} />
@@ -154,14 +160,6 @@ export function CreateCharacterScreen() {
                 })}
               </div>
             </div>
-
-            <ErrorNotice message={
-              (mutation.error as Error | null)?.message ??
-              (classesQuery.error as Error | null)?.message
-            } />
-            {form.formState.errors.class_key && (
-              <span style={{ fontSize: 11, color: "#EF4444" }}>{form.formState.errors.class_key.message}</span>
-            )}
 
             <button
               type="submit"

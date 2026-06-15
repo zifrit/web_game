@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useI18n } from "@/components/providers";
-import { ErrorNotice, LoadingLine } from "@/components/ui";
+import { LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { bestMediaUrl } from "@/lib/media";
 import { useIsMobile } from "@/lib/use-is-mobile";
@@ -98,7 +98,6 @@ export function LeaderboardScreen() {
 
         <div className="card-body">
           {boardQuery.isLoading && <LoadingLine label={t("leaderboard.loading")} />}
-          <ErrorNotice message={(boardQuery.error as Error | null)?.message} />
 
           {boardQuery.data?.items.length === 0 && !boardQuery.isLoading && (
             <div style={{

@@ -8,7 +8,7 @@ import { DungeonLootModal } from "@/components/dungeon-loot-modal";
 import { DungeonResourceModal } from "@/components/dungeon-resource-modal";
 import { useI18n } from "@/components/providers";
 import { DungeonRewardModal } from "@/components/dungeon-reward-modal";
-import { ErrorNotice, LoadingLine } from "@/components/ui";
+import { LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatDuration, formatTime } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
@@ -129,7 +129,6 @@ function ActiveRunBanner({
           onClose={() => setMiniGameResult(null)}
         />
       )}
-      <ErrorNotice message={(claimMutation.error as Error | null)?.message ?? (startMiniGame.error as Error | null)?.message} />
     </>
   );
 
@@ -376,10 +375,6 @@ export function DungeonsScreen() {
       {/* Active run banner */}
       {hasRun && currentRun.data && <ActiveRunBanner run={currentRun.data} imageUrl={activeRunImage} onClaimed={setRewardResult} />}
 
-      <ErrorNotice message={
-        (dungeonsQuery.error as Error | null)?.message ??
-        (startMutation.error as Error | null)?.message
-      } />
       {dungeonsQuery.isLoading && <LoadingLine label={t("dungeons.loading")} />}
 
       {/* Toolbar: category tabs (left) + view toggle (right) */}
