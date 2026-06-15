@@ -283,6 +283,7 @@ class DungeonLimitCategoryAdmin(admin.ModelAdmin):
 @admin.register(DungeonLocation)
 class DungeonLocationAdmin(admin.ModelAdmin):
     list_display = ("name", "location_type", "limit_category", "duration_seconds", "required_power", "hp_loss_success_percent", "hp_loss_fail_percent", "item_drop_chance", "has_mini_game", "daily_limit", "is_active", "sort_order")
+    list_editable = ("location_type", "limit_category", "duration_seconds", "required_power", "hp_loss_success_percent", "hp_loss_fail_percent", "item_drop_chance", "has_mini_game", "daily_limit", "is_active", "sort_order")
     list_filter = ("location_type", "limit_category", "has_mini_game", "is_active")
     search_fields = ("name", "description")
     autocomplete_fields = ("media", "limit_category")
@@ -342,6 +343,7 @@ class DungeonMiniGameAttemptAdmin(admin.ModelAdmin):
 @admin.register(DungeonLocationItemTemplate)
 class DungeonLocationItemTemplateAdmin(admin.ModelAdmin):
     list_display = ("id", "location", "item_template", "chance", "item_slot", "item_type", "item_rarity", "created_at")
+    list_editable = ("chance",)
     list_filter = ("location", "chance", "item_template__slot", "item_template__item_type", "item_template__rarity_key")
     search_fields = ("location__name", "item_template__name")
     autocomplete_fields = ("location", "item_template")
@@ -441,6 +443,7 @@ class PotionTemplateAdmin(admin.ModelAdmin):
 @admin.register(HeroPotionStorage)
 class HeroPotionStorageAdmin(admin.ModelAdmin):
     list_display = ("character", "potion", "count")
+    list_editable = ("count",)
     search_fields = ("character__name", "potion__code", "potion__name")
     autocomplete_fields = ("character", "potion")
     list_select_related = ("character", "potion")
@@ -476,6 +479,7 @@ class CraftRecipeAdmin(admin.ModelAdmin):
 @admin.register(HeroIngredientStorage)
 class HeroIngredientStorageAdmin(admin.ModelAdmin):
     list_display = ("character", "ingredient", "count")
+    list_editable = ("count",)
     search_fields = ("character__name", "ingredient__code", "ingredient__name")
     autocomplete_fields = ("character", "ingredient")
     list_select_related = ("character", "ingredient")
@@ -551,6 +555,7 @@ class ShopOfferAdmin(admin.ModelAdmin):
         "sort_order",
         "created_at",
     )
+    list_editable = ("price_money_copper", "price_premium_currency",)
     list_filter = ("reward_kind", "delivery_mode", "is_active")
     search_fields = ("id",)
     autocomplete_fields = ("media",)
