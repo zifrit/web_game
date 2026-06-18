@@ -15,8 +15,7 @@ class RewardDescriptorTests(TestCase):
     def test_stackable_descriptors_declare_storage(self):
         for descriptor in REWARD_KINDS.values():
             if descriptor.stackable:
-                self.assertIsNotNone(descriptor.storage_model)
-                self.assertIsNotNone(descriptor.storage_fk)
+                self.assertIsNotNone(descriptor.storage)
 
     def test_template_id_attr_derives_from_template_attr(self):
         self.assertEqual(

@@ -61,7 +61,9 @@ returns the storage row with the new count. Deliberately distinct from the
 wallet's **grant / charge** — storages are not currencies, so the verbs differ.
 `withdraw` takes an `insufficient_message` and optional `missing_message` i18n
 key so callers keep context-specific errors (`not_enough_potions`,
-`potion_not_owned`, `not_enough_ingredients`).
+`potion_not_owned`, `not_enough_ingredients`). Batch issuance still crosses
+this module through `deposit_many` / `deposit_for_characters`; callers do not
+bulk-update `count` directly.
 _Avoid_: grant/charge (reserved for wallets), add/spend, increment/decrement.
 
 ## Language — Dungeon Limits

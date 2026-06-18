@@ -24,6 +24,7 @@ staticfiles/
 celerybeat-schedule
 backend/celerybeat-schedule
 backend/generated_assets
+/backend/*.sql
 .idea/
 .vscode/
 backend/assets/

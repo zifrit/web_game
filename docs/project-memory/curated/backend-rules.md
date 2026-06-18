@@ -145,11 +145,13 @@ should also go through services instead of being calculated in views.
   fk_field)` backs `INGREDIENT_STORAGE` and `POTION_STORAGE`; both expose
   `deposit` (add, get-or-creates the row) and `withdraw` (remove, self-locks,
   enforces non-negative, returns the row with the new count). No caller touches
-  the `count` field directly. Verbs are `deposit`/`withdraw` — deliberately
-  distinct from the wallet's `grant`/`charge`, since storages are not currencies
-  and have no ledger. `craft_potions` withdraws ingredients in deterministic
-  `ingredient_id` order (deadlock-safe) and deposits potions; `use_potion`
-  withdraws potions; dungeon claim deposits ingredient drops.
+  the `count` field directly; batch issuance goes through
+  `deposit_many` / `deposit_for_characters` on the same storage seam. Verbs are
+  `deposit`/`withdraw` — deliberately distinct from the wallet's
+  `grant`/`charge`, since storages are not currencies and have no ledger.
+  `craft_potions` withdraws ingredients in deterministic `ingredient_id` order
+  (deadlock-safe) and deposits potions; `use_potion` withdraws potions; dungeon
+  claim, shop stack rewards, and daily gifts deposit through hero storage.
 - Ingredients are a separate hero storage, not inventory items. Dungeon
   ingredient drops are independent per-location rolls from
   `DungeonIngredientDrop`.

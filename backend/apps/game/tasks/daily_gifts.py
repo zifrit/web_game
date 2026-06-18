@@ -22,7 +22,8 @@ def daily_gift(self, log_id: int | None = None) -> dict:
 
 
 def _run() -> tuple[int, int]:
-    from apps.game.models import Character, HeroPotionStorage, PotionTemplate
+    from apps.game.models import Character, PotionTemplate
+    from apps.game.services import POTION_STORAGE
 
     try:
         potion = PotionTemplate.objects.get(code=SMALL_POTION_CODE)
@@ -36,31 +37,7 @@ def _run() -> tuple[int, int]:
     if not characters:
         return 0, 0
 
-    char_ids = [c.id for c in characters]
-
-    with transaction.atomic():
-        existing = {
-            s.character_id: s
-            for s in HeroPotionStorage.objects.select_for_update()
-            .filter(character_id__in=char_ids, potion=potion)
-        }
-        to_create = []
-        to_update = []
-        for c in characters:
-            if c.id in existing:
-                entry = existing[c.id]
-                entry.count += DAILY_POTION_GIFT
-                to_update.append(entry)
-            else:
-                to_create.append(HeroPotionStorage(
-                    character_id=c.id,
-                    potion=potion,
-                    count=DAILY_POTION_GIFT,
-                ))
-        if to_create:
-            HeroPotionStorage.objects.bulk_create(to_create)
-        if to_update:
-            HeroPotionStorage.objects.bulk_update(to_update, ["count", "updated_at"])
+    POTION_STORAGE.deposit_for_characters(characters, potion.id, DAILY_POTION_GIFT)
 
     healed = 0
     with transaction.atomic():

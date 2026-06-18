@@ -971,6 +971,30 @@ class HeroStorageTests(TestCase):
             1,
         )
 
+    def test_deposit_many_groups_storage_updates_for_one_character(self):
+        INGREDIENT_STORAGE.deposit_many(self.character, {self.herb.id: 2})
+        INGREDIENT_STORAGE.deposit_many(self.character, {self.herb.id: 3, 0: 10})
+
+        self.assertEqual(INGREDIENT_STORAGE.get_count(self.character, self.herb.id), 5)
+        self.assertEqual(
+            HeroIngredientStorage.objects.filter(
+                character=self.character, ingredient=self.herb
+            ).count(),
+            1,
+        )
+
+    def test_deposit_for_characters_groups_storage_updates_for_one_item(self):
+        other_user = User.objects.create_user("storage-other@example.com", "strongpass123")
+        other = GameBalanceService.create_character(
+            other_user, "Other", CharacterClass.objects.get(key="mage")
+        )
+
+        POTION_STORAGE.deposit_for_characters([self.character, other], self.potion.id, 2)
+        POTION_STORAGE.deposit_for_characters([self.character, other], self.potion.id, 1)
+
+        self.assertEqual(POTION_STORAGE.get_count(self.character, self.potion.id), 3)
+        self.assertEqual(POTION_STORAGE.get_count(other, self.potion.id), 3)
+
     def test_withdraw_decrements_and_returns_row(self):
         INGREDIENT_STORAGE.deposit(self.character, self.herb.id, 5)
         storage = INGREDIENT_STORAGE.withdraw(

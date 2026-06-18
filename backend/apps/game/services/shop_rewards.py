@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from apps.game.models import HeroIngredientStorage, HeroPotionStorage, ShopOffer
+from apps.game.models import ShopOffer
+
+from .storages import HeroStorage, INGREDIENT_STORAGE, POTION_STORAGE
 
 
 @dataclass(frozen=True)
@@ -19,8 +21,7 @@ class RewardKindDescriptor:
     type_label: str              # презентационная метка ("ingredient"/"potion"/"item")
     payload_key: str             # ключ результата выдачи в result_payload
     stackable: bool              # True → склад героя; False → уникальный UserItem
-    storage_model: type | None = None   # модель склада (только для stackable)
-    storage_fk: str | None = None        # FK склада на шаблон (только для stackable)
+    storage: HeroStorage | None = None  # шов склада героя (только для stackable)
 
     @property
     def template_id_attr(self) -> str:
@@ -36,8 +37,7 @@ REWARD_KINDS: dict[str, RewardKindDescriptor] = {
         type_label="ingredient",
         payload_key="ingredients",
         stackable=True,
-        storage_model=HeroIngredientStorage,
-        storage_fk="ingredient_id",
+        storage=INGREDIENT_STORAGE,
     ),
     ShopOffer.RewardKind.POTION: RewardKindDescriptor(
         related_name="potion_entries",
@@ -45,8 +45,7 @@ REWARD_KINDS: dict[str, RewardKindDescriptor] = {
         type_label="potion",
         payload_key="potions",
         stackable=True,
-        storage_model=HeroPotionStorage,
-        storage_fk="potion_id",
+        storage=POTION_STORAGE,
     ),
     ShopOffer.RewardKind.ITEM: RewardKindDescriptor(
         related_name="item_entries",

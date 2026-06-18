@@ -167,32 +167,10 @@ class ShopService:
     def _grant_storage(cls, *, offer, entries, character, total_rewards, descriptor) -> dict:
         """Выдаёт стекируемые награды (ингредиенты/зелья) на склад героя."""
 
-        storage_model = descriptor.storage_model
-        storage_fk = descriptor.storage_fk
         payload_key = descriptor.payload_key
         counter = cls._roll_counter(offer, entries, total_rewards, descriptor.template_id_attr)
 
-        existing = {
-            getattr(row, storage_fk): row
-            for row in storage_model.objects.select_for_update().filter(
-                character=character, **{f"{storage_fk}__in": list(counter.keys())}
-            )
-        }
-
-        to_update = []
-        to_create = []
-        for template_id, qty in counter.items():
-            row = existing.get(template_id)
-            if row is not None:
-                row.count += qty
-                to_update.append(row)
-            else:
-                to_create.append(storage_model(character=character, count=qty, **{storage_fk: template_id}))
-
-        if to_update:
-            storage_model.objects.bulk_update(to_update, ["count", "updated_at"])
-        if to_create:
-            storage_model.objects.bulk_create(to_create)
+        descriptor.storage.deposit_many(character, counter)
 
         return {
             payload_key: [
