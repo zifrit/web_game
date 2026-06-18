@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from apps.game.i18n import DEFAULT_LOCALE, message, translate
 from apps.game.models import AutoDungeonRun, DungeonIngredientDrop, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonRun, DungeonRunStatus, IngredientTemplate, LocationType
-from apps.game.services import DungeonMiniGameService, DungeonRunService, GameFormulaService
+from apps.game.services import DungeonAvailabilityService, DungeonMiniGameService, DungeonRunService, GameFormulaService
 
 from .common import localized_item_name, localized_name, media_payload, serializer_locale
 
@@ -18,6 +18,7 @@ class DungeonLocationSerializer(serializers.ModelSerializer):
     rewards_preview = serializers.SerializerMethodField()
     daily_remaining = serializers.SerializerMethodField()
     limit_category = serializers.SerializerMethodField()
+    action_state = serializers.SerializerMethodField()
 
     class Meta:
         model = DungeonLocation
@@ -36,6 +37,7 @@ class DungeonLocationSerializer(serializers.ModelSerializer):
             "daily_limit",
             "daily_remaining",
             "limit_category",
+            "action_state",
             "media",
             "rewards_preview",
         ]
@@ -45,6 +47,9 @@ class DungeonLocationSerializer(serializers.ModelSerializer):
 
         if obj.daily_limit == 0:
             return None
+        availability_context = self.context.get("availability_context")
+        if availability_context is not None:
+            return DungeonAvailabilityService.daily_remaining(obj, availability_context)
         used = self.context.get("daily_used_map", {}).get(obj.id, 0)
         return max(0, obj.daily_limit - used)
 
@@ -52,7 +57,11 @@ class DungeonLocationSerializer(serializers.ModelSerializer):
         """Возвращает общий лимит категории этой локации."""
 
         category = obj.limit_category
-        state = self.context.get("category_limit_state_map", {}).get(category.id)
+        availability_context = self.context.get("availability_context")
+        if availability_context is not None:
+            state = availability_context.category_limit_state_map.get(category.id)
+        else:
+            state = self.context.get("category_limit_state_map", {}).get(category.id)
         if state is None:
             state = DungeonRunService.category_limit_state(self.context.get("character"), category)
         return {
@@ -66,6 +75,22 @@ class DungeonLocationSerializer(serializers.ModelSerializer):
             "remaining": state["remaining"],
             "is_exhausted": state["is_exhausted"],
         }
+
+    def get_action_state(self, obj):
+        """Возвращает нормализованное состояние кнопки запуска для локации."""
+
+        availability_context = self.context.get("availability_context")
+        if availability_context is None:
+            availability_context = DungeonAvailabilityService.context_for_locations(
+                self.context.get("character"),
+                [obj],
+            )
+        return DungeonAvailabilityService.action_state(
+            obj,
+            availability_context,
+            daily_remaining=self.get_daily_remaining(obj),
+            limit_category=self.get_limit_category(obj),
+        )
 
     def get_success_chance(self, obj):
         """Считает шанс успеха текущего героя в этой локации."""

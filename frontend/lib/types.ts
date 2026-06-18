@@ -171,11 +171,30 @@ export type Dungeon = {
     remaining: number | null;
     is_exhausted: boolean;
   };
+  action_state?: DungeonActionState;
   media?: MediaAssetUrls | null;
   rewards_preview?: {
     experience?: RangeValue;
     money_copper?: RangeValue;
   };
+};
+
+export type DungeonActionState = {
+  can_start: boolean;
+  blocker_code:
+    | "no_character"
+    | "auto_run_active"
+    | "auto_run_summary_unread"
+    | "active_run_exists"
+    | "unclaimed_run_exists"
+    | "category_limit_reached"
+    | "daily_limit_reached"
+    | "broken_items_block_run"
+    | "hp_too_low"
+    | null;
+  is_active_location: boolean;
+  daily_remaining: Dungeon["daily_remaining"];
+  limit_category: Dungeon["limit_category"];
 };
 
 export type RangeValue = {

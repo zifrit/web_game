@@ -98,6 +98,12 @@ should also go through services instead of being calculated in views.
   leaving a waiting-to-claim dungeon run behind.
 - Unread stopped auto-run summaries block starting another dungeon/resource run
   until acknowledged.
+- Dungeon location availability is server-owned. `DungeonAvailabilityService`
+  prepares shared context for `/api/dungeons` and location detail responses,
+  then emits `action_state` with `can_start`, `blocker_code`, active-location
+  marker, and the same daily/category limit payloads the API already exposes.
+  Views and serializers can render this payload, but frontend screens should
+  consume it instead of reconstructing start blockers from raw run state.
 - The acceleration mini-game is available for an active run when the location
   has `has_mini_game=true`; the player chooses difficulty (`config_id`) at
   start, and it is fixed on the run (one attempt per run).

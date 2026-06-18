@@ -10,6 +10,7 @@ from .config import (
     _invalidate_rarity_config_cache,
 )
 from .auto_runs import AutoDungeonRunService
+from .dungeon_availability import DungeonAvailabilityContext, DungeonAvailabilityService
 from .dungeon_runs import ClaimResult, DungeonRunService
 from .formulas import GameFormulaService
 from .ingredients import IngredientDropService, IngredientService
@@ -40,6 +41,8 @@ __all__ = [
     "CraftService",
     "DEFAULT_CONFIGS",
     "DEFAULT_RARITIES",
+    "DungeonAvailabilityContext",
+    "DungeonAvailabilityService",
     "DungeonRunService",
     "DungeonMiniGameService",
     "GameBalanceService",

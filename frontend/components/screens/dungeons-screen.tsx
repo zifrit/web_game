@@ -12,6 +12,7 @@ import { useI18n } from "@/components/providers";
 import { DungeonRewardModal } from "@/components/dungeon-reward-modal";
 import { CopperDisplay, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
+import { resolveDungeonActionState, type DungeonActionContext, type DungeonBlockerCode } from "@/lib/dungeon-actions";
 import { formatDuration, formatNumber, formatTime } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
 import { useIsMobile } from "@/lib/use-is-mobile";
@@ -530,37 +531,6 @@ export function DungeonsScreen({
 
   const startMutation = useMutation({
     mutationFn: ({ id, auto }: { id: number; auto: boolean }) => api.startRun(id, auto),
-    onMutate: ({ id }) => {
-      const prev = queryClient.getQueryData<Dungeon[]>(["dungeons"]);
-      queryClient.setQueryData<Dungeon[]>(["dungeons"], (old) => {
-        if (!old) return old;
-        const target = old.find((d) => d.id === id);
-        const catId = target?.limit_category?.id;
-        return old.map((d) => {
-          const newD = { ...d };
-          if (d.id === id && d.daily_remaining !== null) {
-            newD.daily_remaining = Math.max(0, d.daily_remaining - 1);
-          }
-          if (catId && d.limit_category?.id === catId && d.limit_category.limit_count > 0) {
-            const newUsed = d.limit_category.used + 1;
-            const newRemaining = d.limit_category.remaining !== null
-              ? Math.max(0, d.limit_category.remaining - 1)
-              : null;
-            newD.limit_category = {
-              ...d.limit_category,
-              used: newUsed,
-              remaining: newRemaining,
-              is_exhausted: newRemaining !== null ? newRemaining <= 0 : false,
-            };
-          }
-          return newD;
-        });
-      });
-      return { prev };
-    },
-    onError: (_err, _variables, context) => {
-      if (context?.prev) queryClient.setQueryData(["dungeons"], context.prev);
-    },
     onSuccess: () => {
       setArmedAuto(null);
     },
@@ -612,37 +582,34 @@ export function DungeonsScreen({
           : t("autoRun.processing")
         : null;
 
-  const getActionLabel = ({
-    isActive,
-    exhausted,
-    categoryExhausted,
-    isResource,
-  }: {
-    isActive: boolean;
-    exhausted: boolean;
-    categoryExhausted: boolean;
-    isResource: boolean;
-  }) => {
-    if (startMutation.isPending) return t("dungeons.sending");
-    if (autoStatusLabel) return autoStatusLabel;
-    if (isActive) return t("dungeons.inProgressButton");
-    if (categoryExhausted) return t("dungeons.categoryLimitReached");
-    if (exhausted) return t("dungeons.dailyLimitReached");
-    if (awaitingClaim) return t("dungeons.claimFirst");
-    if (isRunning) return t("dungeons.heroBusy");
-    if (!isResource && hpTooLow) return t("dungeons.lowHp");
-    return isResource ? t("dungeons.gather") : t("dungeons.sendHero");
+  const getCurrentRunBlockerCode = (): DungeonBlockerCode => {
+    if (autoRun?.status === "ACTIVE" || autoRun?.status === "STOPPING") return "auto_run_active";
+    if (autoRun?.summary_unread) return "auto_run_summary_unread";
+    if (awaitingClaim) return "unclaimed_run_exists";
+    if (isRunning) return "active_run_exists";
+    return null;
   };
 
-  const getActionDisabled = ({
-    exhausted,
-    categoryExhausted,
-    needsHpCheck,
-  }: {
-    exhausted: boolean;
-    categoryExhausted: boolean;
-    needsHpCheck: boolean;
-  }) => hasRun || autoBlocksStarts || startMutation.isPending || exhausted || categoryExhausted || (needsHpCheck && hpTooLow);
+  const dungeonActionContext: DungeonActionContext = {
+    startPending: startMutation.isPending,
+    currentRunBlockerCode: getCurrentRunBlockerCode(),
+    activeLocationId,
+    hpTooLow,
+    labels: {
+      sending: t("dungeons.sending"),
+      autoRunning: autoStatusLabel ?? t("autoRun.running"),
+      autoSummary: autoStatusLabel ?? t("autoRun.summaryTitle"),
+      inProgress: t("dungeons.inProgressButton"),
+      heroBusy: t("dungeons.heroBusy"),
+      claimFirst: t("dungeons.claimFirst"),
+      categoryLimitReached: t("dungeons.categoryLimitReached"),
+      dailyLimitReached: t("dungeons.dailyLimitReached"),
+      repairGear: t("dungeons.repairGear"),
+      lowHp: t("dungeons.lowHp"),
+      gather: t("dungeons.gather"),
+      sendHero: t("dungeons.sendHero"),
+    },
+  };
 
   const renderAutoButton = (locationId: number, disabled: boolean, stretch = false) => {
     const armed = armedAutoLocationId === locationId;
@@ -668,25 +635,7 @@ export function DungeonsScreen({
     );
   };
 
-  const getLocationActionState = (location: Dungeon) => {
-    const exhausted = location.daily_remaining !== null && location.daily_remaining <= 0;
-    const categoryExhausted = location.limit_category.is_exhausted;
-    const isResource = location.location_type === "resource";
-    const isActive = activeLocationId === location.id;
-    const disabled = getActionDisabled({
-      exhausted,
-      categoryExhausted,
-      needsHpCheck: !isResource,
-    });
-    const actionLabel = getActionLabel({
-      isActive,
-      exhausted,
-      categoryExhausted,
-      isResource,
-    });
-
-    return { actionLabel, categoryExhausted, disabled, exhausted, isActive, isResource };
-  };
+  const getLocationActionState = (location: Dungeon) => resolveDungeonActionState(location, dungeonActionContext);
 
   const closeDetails = () => {
     setLootDungeon(null);
@@ -896,23 +845,10 @@ export function DungeonsScreen({
         }}>
           {combatDungeons.map((dungeon) => {
             const tier       = getTier(dungeon.required_power);
-            const isActive   = activeLocationId === dungeon.id;
-            const localRemaining = dungeon.daily_remaining;
-            const localExhausted = localRemaining !== null && localRemaining <= 0;
-            const categoryExhausted = dungeon.limit_category.is_exhausted;
-            const disabled = getActionDisabled({
-              exhausted: localExhausted,
-              categoryExhausted,
-              needsHpCheck: true,
-            });
+            const { actionLabel, categoryExhausted, dailyRemaining, disabled, exhausted: localExhausted, isActive } = getLocationActionState(dungeon);
+            const localRemaining = dailyRemaining;
             const dungeonImage = bestMediaUrl(dungeon.media, ["large_url", "medium_url", "small_url"]);
             const durLabel = formatDuration(dungeon.duration_seconds, locale);
-            const actionLabel = getActionLabel({
-              isActive,
-              exhausted: localExhausted,
-              categoryExhausted,
-              isResource: false,
-            });
             const isSelected = lootDungeon?.id === dungeon.id;
 
             return (
@@ -1019,23 +955,10 @@ export function DungeonsScreen({
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {combatDungeons.map((dungeon) => {
             const tier         = getTier(dungeon.required_power);
-            const isActive     = activeLocationId === dungeon.id;
-            const localRemaining = dungeon.daily_remaining;
-            const localExhausted = localRemaining !== null && localRemaining <= 0;
-            const categoryExhausted = dungeon.limit_category.is_exhausted;
-            const disabled = getActionDisabled({
-              exhausted: localExhausted,
-              categoryExhausted,
-              needsHpCheck: true,
-            });
+            const { actionLabel, categoryExhausted, dailyRemaining, disabled, exhausted: localExhausted, isActive } = getLocationActionState(dungeon);
+            const localRemaining = dailyRemaining;
             const dungeonImage = bestMediaUrl(dungeon.media, ["small_url", "medium_url", "large_url"]);
             const durLabel     = formatDuration(dungeon.duration_seconds, locale);
-            const actionLabel = getActionLabel({
-              isActive,
-              exhausted: localExhausted,
-              categoryExhausted,
-              isResource: false,
-            });
             const isSelected = lootDungeon?.id === dungeon.id;
 
             if (isMobile) {
@@ -1310,24 +1233,11 @@ export function DungeonsScreen({
           gap: 18,
         }}>
           {resourceLocations.map((location) => {
-            const remaining   = location.daily_remaining ?? location.daily_limit;
+            const { actionLabel, categoryExhausted, dailyRemaining, disabled, exhausted, isActive } = getLocationActionState(location);
+            const remaining   = dailyRemaining ?? location.daily_limit;
             const used        = location.daily_limit - remaining;
-            const exhausted   = location.daily_remaining !== null && remaining <= 0;
-            const categoryExhausted = location.limit_category.is_exhausted;
-            const isActive = activeLocationId === location.id;
-            const disabled = getActionDisabled({
-              exhausted,
-              categoryExhausted,
-              needsHpCheck: false,
-            });
             const locationImage = bestMediaUrl(location.media, ["large_url", "medium_url", "small_url"]);
             const durLabel    = formatDuration(location.duration_seconds, locale);
-            const actionLabel = getActionLabel({
-              isActive,
-              exhausted,
-              categoryExhausted,
-              isResource: true,
-            });
             const isSelected = resourceLocation?.id === location.id;
 
             return (
@@ -1423,24 +1333,11 @@ export function DungeonsScreen({
       {effectiveView === "list" && category === "resource" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {resourceLocations.map((location) => {
-            const remaining     = location.daily_remaining ?? location.daily_limit;
+            const { actionLabel, categoryExhausted, dailyRemaining, disabled, exhausted, isActive } = getLocationActionState(location);
+            const remaining     = dailyRemaining ?? location.daily_limit;
             const used          = location.daily_limit - remaining;
-            const exhausted     = location.daily_remaining !== null && remaining <= 0;
-            const categoryExhausted = location.limit_category.is_exhausted;
-            const isActive = activeLocationId === location.id;
-            const disabled = getActionDisabled({
-              exhausted,
-              categoryExhausted,
-              needsHpCheck: false,
-            });
             const locationImage = bestMediaUrl(location.media, ["small_url", "medium_url", "large_url"]);
             const durLabel      = formatDuration(location.duration_seconds, locale);
-            const actionLabel = getActionLabel({
-              isActive,
-              exhausted,
-              categoryExhausted,
-              isResource: true,
-            });
             const isSelected = resourceLocation?.id === location.id;
 
             if (isMobile) {

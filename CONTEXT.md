@@ -100,3 +100,11 @@ _Avoid_: queued auto run, reserved run.
 The result summary produced when an auto run stops. The player must acknowledge
 an unread auto run summary before starting another dungeon run.
 _Avoid_: notification, toast, report.
+
+**Dungeon action state**:
+The server-rendered availability payload for a location start action. It
+combines active/unclaimed run state, auto-run blockers, daily/category limits,
+HP, and broken-equipment guards into `can_start`, `blocker_code`, and
+`is_active_location`. Frontend screens may render this state but should not
+recreate the backend's start rules.
+_Avoid_: button state logic, frontend availability rules.

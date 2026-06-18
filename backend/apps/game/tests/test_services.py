@@ -9,7 +9,7 @@ from rest_framework.test import APIClient
 from apps.game.management.commands.seed_game import Command as SeedCommand
 from rest_framework.serializers import ValidationError as DRFValidationError
 
-from apps.game.models import CharacterClass, CraftRecipe, DungeonIngredientDrop, DungeonLimitCategory, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonMiniGameConfig, DungeonRun, HeroIngredientStorage, HeroPotionStorage, IngredientTemplate, ItemTemplate, PotionTemplate, RarityConfig, User, UserItem
+from apps.game.models import AutoDungeonRun, AutoDungeonRunStatus, CharacterClass, CraftRecipe, DungeonIngredientDrop, DungeonLimitCategory, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonMiniGameConfig, DungeonRun, HeroIngredientStorage, HeroPotionStorage, IngredientTemplate, ItemTemplate, PotionTemplate, RarityConfig, User, UserItem
 from apps.game.services import CraftService, DungeonMiniGameService, DungeonRunService, GameBalanceService, GameFormulaService, IngredientDropService, IngredientService, InventoryService, LootGenerationService, PotionService
 from apps.game.services import INGREDIENT_STORAGE, POTION_STORAGE
 from apps.game.services.ranks import RANKS, rank_for_level
@@ -1413,3 +1413,121 @@ class DungeonLimitCategoryTests(TestCase):
         self.assertEqual(old_forest["limit_category"]["used"], 1)
         self.assertEqual(old_forest["limit_category"]["remaining"], 1)
         self.assertFalse(old_forest["limit_category"]["is_exhausted"])
+
+
+class DungeonLocationActionStateTests(TestCase):
+    """Проверки action_state для кнопок запуска локаций."""
+
+    def setUp(self):
+        SeedCommand().handle()
+        self.user = User.objects.create_user("action-state@example.com", "strongpass123")
+        self.character = GameBalanceService.create_character(
+            self.user, "Planner", CharacterClass.objects.get(key="warrior")
+        )
+        self.location = DungeonLocation.objects.get(name="Старый лес")
+        self.other_location = DungeonLocation.objects.get(name="Заброшенная тропа")
+        self.client = APIClient()
+        login = self.client.post(
+            "/api/auth/login",
+            {"email": "action-state@example.com", "password": "strongpass123"},
+            format="json",
+        )
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access_token']}")
+
+    def _action_state(self, location_id=None):
+        response = self.client.get("/api/dungeons")
+        self.assertEqual(response.status_code, 200)
+        target_id = location_id or self.location.id
+        location = next(loc for loc in response.data if loc["id"] == target_id)
+        return location["action_state"]
+
+    def _run(self, *, location=None, status=DungeonRun.CLAIMED):
+        location = location or self.location
+        return DungeonRun.objects.create(
+            character=self.character,
+            location=location,
+            status=status,
+            started_at=timezone.now(),
+            ends_at=timezone.now(),
+            success_chance=100,
+        )
+
+    def test_action_state_allows_start_when_no_blockers(self):
+        action_state = self._action_state()
+
+        self.assertTrue(action_state["can_start"])
+        self.assertIsNone(action_state["blocker_code"])
+        self.assertFalse(action_state["is_active_location"])
+
+    def test_action_state_reports_daily_limit_blocker(self):
+        self.location.daily_limit = 1
+        self.location.save(update_fields=["daily_limit", "updated_at"])
+        self._run(status=DungeonRun.CLAIMED)
+
+        action_state = self._action_state()
+
+        self.assertFalse(action_state["can_start"])
+        self.assertEqual(action_state["blocker_code"], "daily_limit_reached")
+        self.assertEqual(action_state["daily_remaining"], 0)
+
+    def test_action_state_reports_category_limit_blocker(self):
+        category = self.location.limit_category
+        category.limit_count = 1
+        category.save(update_fields=["limit_count", "updated_at"])
+        self._run(status=DungeonRun.CLAIMED)
+
+        action_state = self._action_state(self.other_location.id)
+
+        self.assertFalse(action_state["can_start"])
+        self.assertEqual(action_state["blocker_code"], "category_limit_reached")
+        self.assertTrue(action_state["limit_category"]["is_exhausted"])
+
+    def test_action_state_reports_active_run_blocker_and_active_location(self):
+        self._run(status=DungeonRun.IN_PROGRESS)
+
+        active_state = self._action_state(self.location.id)
+        other_state = self._action_state(self.other_location.id)
+
+        self.assertFalse(active_state["can_start"])
+        self.assertEqual(active_state["blocker_code"], "active_run_exists")
+        self.assertTrue(active_state["is_active_location"])
+        self.assertFalse(other_state["can_start"])
+        self.assertEqual(other_state["blocker_code"], "active_run_exists")
+        self.assertFalse(other_state["is_active_location"])
+
+    def test_action_state_reports_unclaimed_run_blocker(self):
+        self._run(status=DungeonRun.SUCCESS_WAITING_CLAIM)
+
+        action_state = self._action_state()
+
+        self.assertFalse(action_state["can_start"])
+        self.assertEqual(action_state["blocker_code"], "unclaimed_run_exists")
+
+    def test_action_state_reports_low_hp_for_combat_only(self):
+        self.character.current_hp = 1
+        self.character.save(update_fields=["current_hp", "updated_at"])
+        resource = DungeonLocation.objects.get(name="Лес трав")
+
+        combat_state = self._action_state(self.location.id)
+        resource_state = self._action_state(resource.id)
+
+        self.assertFalse(combat_state["can_start"])
+        self.assertEqual(combat_state["blocker_code"], "hp_too_low")
+        self.assertTrue(resource_state["can_start"])
+        self.assertIsNone(resource_state["blocker_code"])
+
+    def test_action_state_reports_auto_run_summary_blocker(self):
+        run = self._run(status=DungeonRun.CLAIMED)
+        AutoDungeonRun.objects.create(
+            user=self.user,
+            character=self.character,
+            location=self.location,
+            current_run=run,
+            status=AutoDungeonRunStatus.STOPPED,
+            summary_unread=True,
+        )
+
+        action_state = self._action_state()
+
+        self.assertFalse(action_state["can_start"])
+        self.assertEqual(action_state["blocker_code"], "auto_run_summary_unread")

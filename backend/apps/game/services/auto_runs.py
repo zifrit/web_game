@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class AutoDungeonRunService:
-    """Service for starting, stopping, and reading auto dungeon run state."""
+    """Управляет запуском, остановкой и worker-циклом автозапуска."""
 
     @staticmethod
     def _get_character(user, locale=DEFAULT_LOCALE) -> Character:
@@ -145,6 +145,8 @@ class AutoDungeonRunService:
 
     @staticmethod
     def _item_preview(item) -> dict:
+        """Возвращает компактное описание предмета для сводки автозапуска."""
+
         return {
             "id": item.id,
             "name": item.name,
@@ -156,6 +158,8 @@ class AutoDungeonRunService:
 
     @staticmethod
     def _ingredient_previews(ingredients: list) -> list[dict]:
+        """Группирует ингредиенты claim'а в публичные превью с количеством."""
+
         totals: dict[int, int] = {}
         for ingredient in ingredients or []:
             ingredient_id = ingredient.get("ingredient_id")
@@ -180,6 +184,8 @@ class AutoDungeonRunService:
 
     @staticmethod
     def _durability_previews(changes: list) -> list[dict]:
+        """Преобразует изменения прочности в превью для auto-run summary."""
+
         previews = []
         for change in changes or []:
             item = change.get("item")
@@ -201,6 +207,8 @@ class AutoDungeonRunService:
 
     @classmethod
     def _claim_defaults(cls, result: ClaimResult) -> dict:
+        """Возвращает поля `AutoDungeonRunClaim` из результата claim'а."""
+
         ingredients_preview = cls._ingredient_previews(result.ingredients)
         ingredient_total = sum(item["quantity"] for item in ingredients_preview)
         return {
@@ -221,6 +229,8 @@ class AutoDungeonRunService:
 
     @staticmethod
     def _rebuild_summary(auto_run: AutoDungeonRun) -> None:
+        """Пересобирает агрегаты автозапуска из уже учтенных claim'ов."""
+
         claims = list(auto_run.auto_claims.order_by("counted_at", "id"))
         item_previews = []
         ingredient_totals: dict[int, dict] = {}
@@ -292,6 +302,8 @@ class AutoDungeonRunService:
 
     @classmethod
     def _record_claim(cls, auto_run: AutoDungeonRun, result: ClaimResult) -> AutoDungeonRunClaim:
+        """Идемпотентно учитывает один claim в сводке автозапуска."""
+
         auto_claim, _created = AutoDungeonRunClaim.objects.get_or_create(
             dungeon_run=result.run,
             defaults={

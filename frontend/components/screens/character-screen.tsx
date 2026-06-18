@@ -10,6 +10,7 @@ import { useI18n } from "@/components/providers";
 import { DungeonRewardModal } from "@/components/dungeon-reward-modal";
 import { CharacterScreenSkeleton, CopperDisplay, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
+import { resolveDungeonActionState } from "@/lib/dungeon-actions";
 import { formatDuration, type Locale, type TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
 import { useSwipeToClose } from "@/lib/use-modal-scroll-lock";
@@ -955,38 +956,6 @@ export function CharacterScreen({
 
   const startMutation = useMutation({
     mutationFn: (id: number) => api.startRun(id),
-    onMutate: async (dungeonId: number) => {
-      await queryClient.cancelQueries({ queryKey: ["dungeons"] });
-      const prev = queryClient.getQueryData<Dungeon[]>(["dungeons"]);
-      queryClient.setQueryData<Dungeon[]>(["dungeons"], (old) => {
-        if (!old) return old;
-        const target = old.find((d) => d.id === dungeonId);
-        const catId = target?.limit_category?.id;
-        return old.map((d) => {
-          const newD = { ...d };
-          if (d.id === dungeonId && d.daily_remaining !== null) {
-            newD.daily_remaining = Math.max(0, d.daily_remaining - 1);
-          }
-          if (catId && d.limit_category?.id === catId && d.limit_category.limit_count > 0) {
-            const newUsed = d.limit_category.used + 1;
-            const newRemaining = d.limit_category.remaining !== null
-              ? Math.max(0, d.limit_category.remaining - 1)
-              : null;
-            newD.limit_category = {
-              ...d.limit_category,
-              used: newUsed,
-              remaining: newRemaining,
-              is_exhausted: newRemaining !== null ? newRemaining <= 0 : false,
-            };
-          }
-          return newD;
-        });
-      });
-      return { prev };
-    },
-    onError: (_err, _id, context) => {
-      if (context?.prev) queryClient.setQueryData(["dungeons"], context.prev);
-    },
     onSettled: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["current-run"] }),
@@ -1076,6 +1045,7 @@ export function CharacterScreen({
     if (shouldFillMiniInventory) {
       await ensureMiniInventoryFilled(result);
     }
+    await queryClient.invalidateQueries({ queryKey: ["dungeons"] });
   };
 
   const equipMutation = useMutation({
@@ -1228,16 +1198,27 @@ export function CharacterScreen({
     if (quickRunGlobalState.blocksRuns) {
       return { canRun: false, runLabel: quickRunGlobalState.actionLabel };
     }
-    if (dungeon.daily_remaining !== null && dungeon.daily_remaining <= 0) {
-      return { canRun: false, runLabel: t("dungeons.dailyLimitReached") };
-    }
-    if (dungeon.limit_category.is_exhausted) {
-      return { canRun: false, runLabel: t("dungeons.categoryLimitReached") };
-    }
-    if (dungeon.location_type !== "resource" && hpTooLow) {
-      return { canRun: false, runLabel: t("dungeons.lowHp") };
-    }
-    return { canRun: true, runLabel: t("dungeons.run") };
+    const actionState = resolveDungeonActionState(dungeon, {
+      startPending: false,
+      currentRunBlockerCode: null,
+      activeLocationId: null,
+      hpTooLow,
+      labels: {
+        sending: t("dungeons.sending"),
+        autoRunning: quickRunGlobalState.actionLabel,
+        autoSummary: quickRunGlobalState.actionLabel,
+        inProgress: t("dungeons.inProgressButton"),
+        heroBusy: t("dungeons.heroBusy"),
+        claimFirst: t("dungeons.claimFirst"),
+        categoryLimitReached: t("dungeons.categoryLimitReached"),
+        dailyLimitReached: t("dungeons.dailyLimitReached"),
+        repairGear: t("dungeons.repairGear"),
+        lowHp: t("dungeons.lowHp"),
+        gather: t("dungeons.run"),
+        sendHero: t("dungeons.run"),
+      },
+    });
+    return { canRun: !actionState.disabled, runLabel: actionState.actionLabel };
   };
 
   const quickRunLabels = {

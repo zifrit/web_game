@@ -1,6 +1,4 @@
-from django.db.models import Count
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from rest_framework import serializers
 from rest_framework import status
 from rest_framework.response import Response
@@ -39,6 +37,7 @@ from apps.game.serializers import (
 )
 from apps.game.services import (
     AutoDungeonRunService,
+    DungeonAvailabilityService,
     DungeonMiniGameService,
     DungeonRunService,
     GameFormulaService,
@@ -46,33 +45,6 @@ from apps.game.services import (
     request_host_part,
 )
 from apps.game.services.reference_cache import reference_version
-
-
-def _location_daily_used_map(character, location_id=None):
-    """Возвращает {location_id: число сегодняшних заходов} по локациям героя."""
-
-    if character is None:
-        return {}
-    rows = (
-        DungeonRun.objects.filter(
-            character=character,
-            started_at__date=timezone.localdate(),
-        )
-    )
-    if location_id is not None:
-        rows = rows.filter(location_id=location_id)
-    rows = rows.values("location_id").annotate(n=Count("id"))
-    return {row["location_id"]: row["n"] for row in rows}
-
-
-def _category_limit_state_map(character, locations):
-    """Возвращает {category_id: состояние общего лимита} для категорий локаций."""
-
-    categories = {location.limit_category_id: location.limit_category for location in locations}
-    return {
-        category_id: DungeonRunService.category_limit_state(character, category)
-        for category_id, category in categories.items()
-    }
 
 
 class DungeonLocationListView(APIView):
@@ -92,9 +64,8 @@ class DungeonLocationListView(APIView):
         except Character.DoesNotExist:
             pass
         locations = list(DungeonLocation.objects.filter(is_active=True).select_related("media", "limit_category"))
-        daily_used_map = _location_daily_used_map(character)
-        category_limit_state_map = _category_limit_state_map(character, locations)
-        return Response(DungeonLocationSerializer(locations, many=True, context={"request": request, "character": character, "character_power": character_power, "hp_penalty": hp_penalty, "daily_used_map": daily_used_map, "category_limit_state_map": category_limit_state_map}).data)
+        availability_context = DungeonAvailabilityService.context_for_locations(character, locations)
+        return Response(DungeonLocationSerializer(locations, many=True, context={"request": request, "character": character, "character_power": character_power, "hp_penalty": hp_penalty, "availability_context": availability_context}).data)
 
 
 class DungeonLocationDetailView(APIView):
@@ -114,9 +85,8 @@ class DungeonLocationDetailView(APIView):
         except Character.DoesNotExist:
             pass
         location = get_object_or_404(DungeonLocation.objects.select_related("media", "limit_category"), pk=pk, is_active=True)
-        daily_used_map = _location_daily_used_map(character, location_id=location.id)
-        category_limit_state_map = _category_limit_state_map(character, [location])
-        return Response(DungeonLocationSerializer(location, context={"request": request, "character": character, "character_power": character_power, "hp_penalty": hp_penalty, "daily_used_map": daily_used_map, "category_limit_state_map": category_limit_state_map}).data)
+        availability_context = DungeonAvailabilityService.context_for_locations(character, [location])
+        return Response(DungeonLocationSerializer(location, context={"request": request, "character": character, "character_power": character_power, "hp_penalty": hp_penalty, "availability_context": availability_context}).data)
 
 
 class DungeonLocationLootView(APIView):

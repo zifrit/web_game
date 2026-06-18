@@ -382,6 +382,7 @@ function ItemDetailPanel({
     );
     // Инвалидируем детальную карточку предмета (статус is_equipped мог измениться)
     void queryClient.invalidateQueries({ queryKey: ["inventory-item", itemId] });
+    void queryClient.invalidateQueries({ queryKey: ["dungeons"] });
     setConfirmAction(null);
     onChanged();
   };
@@ -392,6 +393,7 @@ function ItemDetailPanel({
       queryClient.invalidateQueries({ queryKey: ["inventory-item", itemId] }),
       queryClient.invalidateQueries({ queryKey: ["character"] }),
       queryClient.invalidateQueries({ queryKey: ["me"] }),
+      queryClient.invalidateQueries({ queryKey: ["dungeons"] }),
     ]);
     setConfirmAction(null);
     onChanged();
@@ -831,6 +833,7 @@ function EquipmentSection() {
       queryClient.invalidateQueries({ queryKey: ["inventory"] }),
       queryClient.invalidateQueries({ queryKey: ["character"] }),
       queryClient.invalidateQueries({ queryKey: ["me"] }),
+      queryClient.invalidateQueries({ queryKey: ["dungeons"] }),
     ]);
     if (selectedId !== null && removedIds.includes(selectedId)) {
       setSelectedId(null);
@@ -1365,6 +1368,7 @@ function ConsumablesSection() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["potions"] });
       void queryClient.invalidateQueries({ queryKey: ["character"] });
+      void queryClient.invalidateQueries({ queryKey: ["dungeons"] });
     },
   });
 

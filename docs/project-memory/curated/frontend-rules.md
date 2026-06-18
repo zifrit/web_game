@@ -10,6 +10,9 @@
 - Locale is stored through helpers in `frontend/lib/i18n.ts`; API requests send
   `Accept-Language`.
 - After claim/repair/auth changes, invalidate relevant TanStack Query data.
+- After repair, equip/unequip, destroy, or potion use, also invalidate
+  `dungeons` so backend `action_state` is recalculated from current HP,
+  equipment, durability, limits, and run state.
 - After potion use, invalidate `potions` and `character`; after crafting,
   invalidate `ingredients`, `potions`, and `character`.
 - After drag-and-drop equip/unequip on the Character screen, patch relevant
@@ -46,6 +49,10 @@ should use `User.avatar` so the profile image is not replaced by hero art.
 - Auto run UI uses the `Auto` button label and the terms "Auto run" /
   "Автозапуск" in guide copy. Only one location can be armed at a time, while
   active server auto state is displayed from the current-run state.
+- Dungeon start buttons consume backend `action_state` through the shared
+  dungeon-action resolver in `frontend/lib/dungeon-actions.ts`; screens should
+  not duplicate blocker/label logic for daily limits, category limits, HP,
+  broken gear, current runs, or auto-run summaries.
 - Auto-owned current runs hide mini-game and manual claim controls. Stopped
   unread auto-run summaries require explicit acknowledgement before new starts
   are enabled.
