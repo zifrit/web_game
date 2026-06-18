@@ -4,17 +4,18 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProp
 import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { CircleHelp, Zap } from "lucide-react";
+import { AutoRunSummaryModal } from "@/components/auto-run-summary-modal";
 import { canOpenMiniGame, DungeonMiniGameDifficultyModal, DungeonMiniGameModal, DungeonMiniGameResultModal } from "@/components/dungeon-mini-game-modal";
 import { useI18n } from "@/components/providers";
 import { DungeonRewardModal } from "@/components/dungeon-reward-modal";
-import { CharacterScreenSkeleton, LoadingLine } from "@/components/ui";
+import { CharacterScreenSkeleton, CopperDisplay, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatDuration, type Locale, type TranslationKey } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
 import { useSwipeToClose } from "@/lib/use-modal-scroll-lock";
 import { rarityColor as rc, rarityGlow as rg } from "@/lib/rarity";
 import { useIsMobile } from "@/lib/use-is-mobile";
-import type { Character, ClaimResponse, Dungeon, DungeonMiniGameAttempt, EquipmentSlot, Inventory, InventoryCard, InventoryMutationResponse, ItemDetail, Potion, StatKey } from "@/lib/types";
+import type { AutoRunState, Character, ClaimResponse, Dungeon, DungeonMiniGameAttempt, DungeonRun, EquipmentSlot, Inventory, InventoryCard, InventoryMutationResponse, ItemDetail, Potion, StatKey } from "@/lib/types";
 
 function setStableDragImage(event: DragEvent<HTMLDivElement>) {
   const node = event.currentTarget;
@@ -230,7 +231,7 @@ function InvCell({
 
 /* ── Quick expedition row ── */
 function QuickDungeonRow({
-  dungeon, canRun, onRun, isPending, locale, runLabel,
+  dungeon, canRun, onRun, isPending, locale, runLabel, powerLabel, xpLabel, lootLabel,
 }: {
   dungeon: Pick<Dungeon, "id" | "name" | "required_power" | "duration_seconds" | "item_drop_chance" | "rewards_preview" | "media">;
   canRun: boolean;
@@ -238,6 +239,9 @@ function QuickDungeonRow({
   isPending: boolean;
   locale: Locale;
   runLabel: string;
+  powerLabel: string;
+  xpLabel: string;
+  lootLabel: string;
 }) {
   // Derive a tier (1–4) from required_power for the artwork gradient
   const tier = dungeon.required_power <= 50 ? 1 : dungeon.required_power <= 150 ? 2 : dungeon.required_power <= 300 ? 3 : 4;
@@ -269,7 +273,7 @@ function QuickDungeonRow({
           color: "var(--bone)",
         }}>{dungeon.name}</div>
         <div className="mono" style={{ fontSize: 11, color: "var(--text-mute)", marginTop: 4 }}>
-          PWR {dungeon.required_power}+ · {durLabel} · {dungeon.rewards_preview?.experience?.max ?? "?"} XP · Loot {dungeon.item_drop_chance}%
+          {powerLabel} {dungeon.required_power}+ · {durLabel} · {dungeon.rewards_preview?.experience?.max ?? "?"} {xpLabel} · {lootLabel} {dungeon.item_drop_chance}%
         </div>
       </div>
       <button
@@ -482,8 +486,9 @@ function PowerHelp({ stats, power }: { stats: Character["stats"]; power: number 
 }
 
 /* ── Active expedition strip ── */
-function ActiveExpeditionStrip({ run, imageUrl, onClaimed, onSpeedUp, speedUpPending }: {
-  run: NonNullable<Awaited<ReturnType<typeof api.currentRun>>>;
+function ActiveExpeditionStrip({ run, autoRun, imageUrl, onClaimed, onSpeedUp, speedUpPending }: {
+  run: DungeonRun;
+  autoRun?: AutoRunState | null;
   imageUrl?: string;
   onClaimed: (result: ClaimResponse) => void;
   onSpeedUp: () => void;
@@ -515,7 +520,9 @@ function ActiveExpeditionStrip({ run, imageUrl, onClaimed, onSpeedUp, speedUpPen
 
   const waitingClaim = run.status === "SUCCESS_WAITING_CLAIM" || run.status === "FAILED_WAITING_CLAIM";
   const inProgress   = run.status === "IN_PROGRESS";
-  const canStartMiniGame = canOpenMiniGame(run);
+  const autoOwned = Boolean(autoRun && autoRun.current_run_id === run.id);
+  const autoBlocksMiniGame = Boolean(autoRun && (autoRun.status === "ACTIVE" || autoRun.status === "STOPPING" || autoRun.summary_unread));
+  const canStartMiniGame = !autoOwned && !autoBlocksMiniGame && canOpenMiniGame(run);
 
   let remaining  = 0;
   let totalSecs  = 1;
@@ -536,6 +543,7 @@ function ActiveExpeditionStrip({ run, imageUrl, onClaimed, onSpeedUp, speedUpPen
   const timeLabel = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 
   const done = waitingClaim;
+  const statusLabel = done && autoOwned ? t("autoRun.processing") : done ? t("dungeons.activeReward") : t("dungeons.inProgress");
 
   useEffect(() => {
     if (inProgress && remaining === 0) {
@@ -557,7 +565,7 @@ function ActiveExpeditionStrip({ run, imageUrl, onClaimed, onSpeedUp, speedUpPen
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="mono" style={{ fontSize: 8, letterSpacing: "0.18em", textTransform: "uppercase", color: done ? "var(--warning)" : "var(--primary-bright)" }}>
-              {done ? t("dungeons.activeReward") : t("dungeons.inProgress")}
+              {statusLabel}
             </div>
             <div style={{ fontFamily: "var(--font-cinzel, 'Cinzel', serif)", fontWeight: 600, fontSize: 15, color: "#eef2f8", textTransform: "uppercase", letterSpacing: "0.04em", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {run.location.name}
@@ -568,7 +576,12 @@ function ActiveExpeditionStrip({ run, imageUrl, onClaimed, onSpeedUp, speedUpPen
               {speedUpPending ? t("miniGame.starting") : t("miniGame.speedUp")}
             </button>
           )}
-          {done && (
+          {done && autoOwned && (
+            <div className="mono" style={{ flexShrink: 0, maxWidth: 120, fontSize: 10, lineHeight: 1.35, textAlign: "right", color: "var(--warning)" }}>
+              {t("autoRun.processing")}
+            </div>
+          )}
+          {done && !autoOwned && (
             <button className="btn btn-primary" style={{ flexShrink: 0, padding: "9px 14px", fontSize: 12 }} disabled={claimMut.isPending} onClick={() => claimMut.mutate(run.id)}>
               {claimMut.isPending ? t("dungeons.claiming") : t("dungeons.claim")}
             </button>
@@ -610,7 +623,7 @@ function ActiveExpeditionStrip({ run, imageUrl, onClaimed, onSpeedUp, speedUpPen
             fontSize: 10, letterSpacing: "0.20em", textTransform: "uppercase",
             color: done ? "var(--warning)" : "var(--primary-bright)",
           }}>
-            {done ? `◆ ${t("dungeons.activeReward")}` : `◷ ${t("dungeons.inProgress")}`}
+            {done ? `◆ ${statusLabel}` : `◷ ${statusLabel}`}
           </div>
           <div style={{
             fontFamily: "var(--font-cinzel, 'Cinzel', serif)",
@@ -647,7 +660,12 @@ function ActiveExpeditionStrip({ run, imageUrl, onClaimed, onSpeedUp, speedUpPen
               {speedUpPending ? t("miniGame.starting") : t("miniGame.speedUp")}
             </button>
           )}
-          {done && (
+          {done && autoOwned && (
+            <div className="mono" style={{ maxWidth: 180, fontSize: 11, lineHeight: 1.45, color: "var(--warning)", textAlign: "right" }}>
+              {t("autoRun.processing")}
+            </div>
+          )}
+          {done && !autoOwned && (
             <button
               className="btn btn-primary"
               onClick={() => claimMut.mutate(run.id)}
@@ -921,18 +939,24 @@ export function CharacterScreen({
   const [miniGameAttempt, setMiniGameAttempt] = useState<DungeonMiniGameAttempt | null>(null);
   const [miniGameResult, setMiniGameResult] = useState<DungeonMiniGameAttempt | null>(null);
   const [choosingDifficulty, setChoosingDifficulty] = useState(false);
+  const [showAutoSummary, setShowAutoSummary] = useState(false);
   const characterQuery  = useQuery({ queryKey: ["character"],    queryFn: api.character });
   const dungeonsQuery   = useQuery({ queryKey: ["dungeons"],     queryFn: api.dungeons  });
   const currentRunQuery = useQuery({
     queryKey: ["current-run"],
     queryFn: api.currentRun,
-    refetchInterval: (q) => q.state.data?.status === "IN_PROGRESS" ? 5000 : false,
+    refetchInterval: (q) => {
+      const run = q.state.data?.current_run;
+      const auto = q.state.data?.auto_run;
+      return run?.status === "IN_PROGRESS" || auto?.status === "ACTIVE" || auto?.status === "STOPPING" ? 5000 : false;
+    },
   });
   const inventoryQuery  = useQuery({ queryKey: ["inventory"],    queryFn: () => api.inventory() });
 
   const startMutation = useMutation({
     mutationFn: (id: number) => api.startRun(id),
-    onMutate: (dungeonId: number) => {
+    onMutate: async (dungeonId: number) => {
+      await queryClient.cancelQueries({ queryKey: ["dungeons"] });
       const prev = queryClient.getQueryData<Dungeon[]>(["dungeons"]);
       queryClient.setQueryData<Dungeon[]>(["dungeons"], (old) => {
         if (!old) return old;
@@ -963,9 +987,11 @@ export function CharacterScreen({
     onError: (_err, _id, context) => {
       if (context?.prev) queryClient.setQueryData(["dungeons"], context.prev);
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["current-run"] });
-      await queryClient.invalidateQueries({ queryKey: ["dungeons"] });
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["current-run"] }),
+        queryClient.invalidateQueries({ queryKey: ["dungeons"] }),
+      ]);
     },
   });
 
@@ -974,6 +1000,20 @@ export function CharacterScreen({
     onSuccess: (attempt) => {
       setChoosingDifficulty(false);
       setMiniGameAttempt(attempt);
+    },
+  });
+
+  const readAutoSummary = useMutation({
+    mutationFn: api.markAutoRunSummaryRead,
+    onSuccess: async () => {
+      setShowAutoSummary(false);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["current-run"] }),
+        queryClient.invalidateQueries({ queryKey: ["dungeons"] }),
+        queryClient.invalidateQueries({ queryKey: ["character"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+        queryClient.invalidateQueries({ queryKey: ["me"] }),
+      ]);
     },
   });
 
@@ -1077,6 +1117,26 @@ export function CharacterScreen({
     };
   }, [visibleIconKey]);
 
+  const currentRunData = currentRunQuery.data?.current_run ?? null;
+  const autoRun = currentRunQuery.data?.auto_run ?? null;
+  const hasCurrentRun = Boolean(currentRunData && currentRunData.status !== "CLAIMED");
+  const awaitingClaim = currentRunData?.status === "SUCCESS_WAITING_CLAIM" || currentRunData?.status === "FAILED_WAITING_CLAIM";
+  const autoOwnedCurrentRun = Boolean(autoRun && currentRunData && autoRun.current_run_id === currentRunData.id);
+  const autoBlocksStarts = Boolean(autoRun && (autoRun.status === "ACTIVE" || autoRun.status === "STOPPING" || autoRun.summary_unread));
+  const miniGameBlockedByAuto = Boolean(autoBlocksStarts || autoOwnedCurrentRun);
+
+  useEffect(() => {
+    if (!autoRun?.summary_unread) {
+      setShowAutoSummary(false);
+    }
+  }, [autoRun?.summary_unread]);
+
+  useEffect(() => {
+    if (miniGameBlockedByAuto) {
+      setChoosingDifficulty(false);
+    }
+  }, [miniGameBlockedByAuto]);
+
   if (characterQuery.isLoading) {
     return <CharacterScreenSkeleton />;
   }
@@ -1107,14 +1167,84 @@ export function CharacterScreen({
     (_, i) => packItems[i],
   );
 
-  const canRun  = !currentRunQuery.data || currentRunQuery.data.status !== "IN_PROGRESS";
+  const hpPercent = character.stats?.hp_percent ?? 100;
+  const hpTooLow = hpPercent < 10;
   const dungeons = dungeonsQuery.data ?? [];
-  const activeRunImage = currentRunQuery.data
+  const activeRunImage = hasCurrentRun && currentRunData
     ? bestMediaUrl(
-        dungeons.find((dungeon) => dungeon.id === currentRunQuery.data?.location.id)?.media,
+        dungeons.find((dungeon) => dungeon.id === currentRunData.location.id)?.media,
         ["small_url", "medium_url", "large_url"],
       )
     : undefined;
+  const quickRunGlobalState = (() => {
+    if (autoRun?.summary_unread) {
+      return {
+        blocksRuns: true,
+        statusText: t("autoRun.summaryRequired"),
+        actionLabel: t("autoRun.summaryTitle"),
+      };
+    }
+    if (autoRun?.status === "STOPPING") {
+      return {
+        blocksRuns: true,
+        statusText: t("autoRun.stopping"),
+        actionLabel: t("autoRun.stopping"),
+      };
+    }
+    if (autoRun?.status === "ACTIVE") {
+      const autoLabel = autoRun.current_run_id ? t("autoRun.running") : t("autoRun.processing");
+      return {
+        blocksRuns: true,
+        statusText: autoLabel,
+        actionLabel: autoLabel,
+      };
+    }
+    if (hasCurrentRun) {
+      if (awaitingClaim) {
+        const claimLabel = autoOwnedCurrentRun ? t("autoRun.processing") : t("dungeons.claimFirst");
+        return {
+          blocksRuns: true,
+          statusText: claimLabel,
+          actionLabel: claimLabel,
+        };
+      }
+      return {
+        blocksRuns: true,
+        statusText: t("dungeons.heroAway"),
+        actionLabel: t("dungeons.inProgressButton"),
+      };
+    }
+    return {
+      blocksRuns: false,
+      statusText: t("dungeons.sendRun"),
+      actionLabel: startMutation.isPending ? t("dungeons.sending") : t("dungeons.run"),
+    };
+  })();
+
+  const getQuickRunState = (dungeon: Dungeon) => {
+    if (startMutation.isPending) {
+      return { canRun: false, runLabel: t("dungeons.sending") };
+    }
+    if (quickRunGlobalState.blocksRuns) {
+      return { canRun: false, runLabel: quickRunGlobalState.actionLabel };
+    }
+    if (dungeon.daily_remaining !== null && dungeon.daily_remaining <= 0) {
+      return { canRun: false, runLabel: t("dungeons.dailyLimitReached") };
+    }
+    if (dungeon.limit_category.is_exhausted) {
+      return { canRun: false, runLabel: t("dungeons.categoryLimitReached") };
+    }
+    if (dungeon.location_type !== "resource" && hpTooLow) {
+      return { canRun: false, runLabel: t("dungeons.lowHp") };
+    }
+    return { canRun: true, runLabel: t("dungeons.run") };
+  };
+
+  const quickRunLabels = {
+    power: t("common.power"),
+    xp: t("common.xp"),
+    loot: t("common.loot"),
+  };
 
   // Compute combat power (sum stats)
   const stats = character.stats ?? {};
@@ -1220,7 +1350,7 @@ export function CharacterScreen({
             </div>
           </div>
 
-          {/* XP + HP bars */}
+          {/* Experience + HP bars */}
           <div style={{ marginTop: 20 }}>
             <BarBlock label={t("common.experience")} cur={xp} max={xpMax} kind="xp" />
             <BarBlock label={t("common.vitality")}   cur={hpCur} max={hpMax} kind="hp" />
@@ -1269,21 +1399,38 @@ export function CharacterScreen({
       <div className="col">
 
         {/* Active expedition strip */}
-        {currentRunQuery.data && currentRunQuery.data.status !== "CLAIMED" && (
+        {currentRunData && currentRunData.status !== "CLAIMED" && (
           <ActiveExpeditionStrip
-            run={currentRunQuery.data}
+            run={currentRunData}
+            autoRun={autoRun}
             imageUrl={activeRunImage}
             onClaimed={setRewardResult}
             onSpeedUp={() => {
-              const mg = currentRunQuery.data!.mini_game;
+              const mg = currentRunData.mini_game;
               if (mg?.started && mg.status === "IN_PROGRESS") {
-                startMiniGameMutation.mutate({ runId: currentRunQuery.data!.id });
+                startMiniGameMutation.mutate({ runId: currentRunData.id });
               } else {
                 setChoosingDifficulty(true);
               }
             }}
             speedUpPending={startMiniGameMutation.isPending}
           />
+        )}
+
+        {autoRun?.summary_unread && (
+          <div className="auto-run-summary-note">
+            <div className="card-sub">{t("autoRun.summaryRequired")}</div>
+            <div className="auto-run-summary-action">
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={readAutoSummary.isPending}
+                onClick={() => setShowAutoSummary(true)}
+              >
+                {t("autoRun.viewSummary")}
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Equipment paperdoll */}
@@ -1335,7 +1482,7 @@ export function CharacterScreen({
           <div className="card-h">
             <div>
               <div className="card-title">{t("dungeons.quickTitle")}</div>
-              <div className="card-sub">{canRun ? t("dungeons.sendRun") : t("dungeons.heroAway")}</div>
+              <div className="card-sub">{quickRunGlobalState.statusText}</div>
             </div>
             <button
               className="btn"
@@ -1348,17 +1495,23 @@ export function CharacterScreen({
           <div className="card-body">
             <div className="quick-dungeons">
               {dungeonsQuery.isLoading && <LoadingLine label={t("dungeons.loading")} />}
-              {dungeons.slice(0, 3).map((d) => (
-                <QuickDungeonRow
-                  key={d.id}
-                  dungeon={d}
-                  canRun={canRun}
-                  onRun={(id) => startMutation.mutate(id)}
-                  isPending={startMutation.isPending}
-                  locale={locale}
-                  runLabel={t("dungeons.run")}
-                />
-              ))}
+              {dungeons.slice(0, 3).map((d) => {
+                const quickRunState = getQuickRunState(d);
+                return (
+                  <QuickDungeonRow
+                    key={d.id}
+                    dungeon={d}
+                    canRun={quickRunState.canRun}
+                    onRun={(id) => startMutation.mutate(id)}
+                    isPending={startMutation.isPending}
+                    locale={locale}
+                    runLabel={quickRunState.runLabel}
+                    powerLabel={quickRunLabels.power}
+                    xpLabel={quickRunLabels.xp}
+                    lootLabel={quickRunLabels.loot}
+                  />
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1384,6 +1537,11 @@ export function CharacterScreen({
             <div className="card-sub">
               {inventoryLimit === null ? t("inventory.inPack", { count: packItems.length }) : `${inventoryCount} / ${inventoryLimit}`} · {t("inventory.dragItem")}
             </div>
+            {dropError && (
+              <div role="alert" style={{ color: "var(--error)", fontSize: 12, marginTop: 6, lineHeight: 1.35 }}>
+                {dropError}
+              </div>
+            )}
           </div>
           <button
             className="btn"
@@ -1412,12 +1570,17 @@ export function CharacterScreen({
 
           {/* Journal */}
           <div className="card-sub" style={{ marginBottom: 10 }}>{t("inventory.recentJournal")}</div>
-          {currentRunQuery.data?.result_preview ? (
-            <div className="log-line" style={{ color: currentRunQuery.data.result_preview.is_success ? "var(--success)" : "var(--error)" }}>
+          {currentRunData?.result_preview ? (
+            <div className="log-line" style={{ color: currentRunData.result_preview.is_success ? "var(--success)" : "var(--error)" }}>
               <span className="t">{t("inventory.now")}</span>
               <span className="m">
-                {currentRunQuery.data.result_preview.is_success
-                  ? `+${currentRunQuery.data.result_preview.experience} XP · +${currentRunQuery.data.result_preview.money_copper}c ${t("inventory.gold")}`
+                {currentRunData.result_preview.is_success
+                  ? (
+                    <>
+                      +{currentRunData.result_preview.experience} {t("common.xp")} ·{" "}
+                      <CopperDisplay value={currentRunData.result_preview.money_copper} locale={locale} />
+                    </>
+                  )
                   : t("inventory.failed")}
               </span>
             </div>
@@ -1457,11 +1620,22 @@ export function CharacterScreen({
           onClose={() => setRewardResult(null)}
         />
       )}
-      {choosingDifficulty && !miniGameAttempt && currentRunQuery.data && (
+      {showAutoSummary && autoRun?.summary_unread && (
+        <AutoRunSummaryModal
+          autoRun={autoRun}
+          pending={readAutoSummary.isPending}
+          onAcknowledge={() => readAutoSummary.mutate()}
+          onOpenInventory={onOpenInventory}
+        />
+      )}
+      {choosingDifficulty && !miniGameAttempt && currentRunData && !miniGameBlockedByAuto && (
         <DungeonMiniGameDifficultyModal
           pending={startMiniGameMutation.isPending}
           onClose={() => setChoosingDifficulty(false)}
-          onSelect={(configId) => startMiniGameMutation.mutate({ runId: currentRunQuery.data!.id, configId })}
+          onSelect={(configId) => {
+            if (miniGameBlockedByAuto) return;
+            startMiniGameMutation.mutate({ runId: currentRunData.id, configId });
+          }}
         />
       )}
       {miniGameAttempt && (

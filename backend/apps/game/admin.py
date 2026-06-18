@@ -12,6 +12,8 @@ from .services.config import GameConfigService
 from .services.formulas import GameFormulaService
 
 from .models import (
+    AutoDungeonRun,
+    AutoDungeonRunClaim,
     CeleryTaskLog,
     Character,
     CharacterClass,
@@ -417,8 +419,61 @@ class DungeonRunClaimItemInline(admin.TabularInline):
 class DungeonRunClaimAdmin(admin.ModelAdmin):
     list_display = ("id", "dungeon_run", "user", "character", "experience_claimed", "money_claimed_copper", "created_at")
     autocomplete_fields = ("dungeon_run", "user", "character")
+    search_fields = ("user__email", "character__name", "dungeon_run__location__name")
     list_select_related = ("dungeon_run", "dungeon_run__location", "user", "character", "character__user", "character__character_class")
     inlines = [DungeonRunClaimItemInline]
+
+
+class AutoDungeonRunClaimInline(admin.TabularInline):
+    model = AutoDungeonRunClaim
+    extra = 0
+
+
+@admin.register(AutoDungeonRun)
+class AutoDungeonRunAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "user",
+        "character",
+        "location",
+        "status",
+        "summary_unread",
+        "runs_claimed",
+        "stop_reason_code",
+        "started_at",
+        "stopped_at",
+    )
+    list_filter = ("status", "summary_unread", "stop_reason_code", "location")
+    search_fields = (
+        "user__email",
+        "character__name",
+        "location__name",
+        "stop_reason_message",
+    )
+    autocomplete_fields = ("user", "character", "location", "current_run")
+    inlines = [AutoDungeonRunClaimInline]
+
+
+@admin.register(AutoDungeonRunClaim)
+class AutoDungeonRunClaimAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "auto_run",
+        "dungeon_run",
+        "claim",
+        "is_success",
+        "experience",
+        "money_copper",
+        "hp_loss",
+        "counted_at",
+    )
+    list_filter = ("is_success",)
+    search_fields = (
+        "auto_run__user__email",
+        "auto_run__character__name",
+        "dungeon_run__location__name",
+    )
+    autocomplete_fields = ("auto_run", "dungeon_run", "claim")
 
 
 @admin.register(UserItem)
@@ -610,11 +665,16 @@ class ShopPurchaseAdmin(admin.ModelAdmin):
     )
 
 def _get_task_map() -> dict:
-    from apps.game.tasks import complete_due_dungeon_runs, daily_gift
+    from apps.game.tasks import (
+        complete_due_dungeon_runs,
+        daily_gift,
+        process_due_auto_dungeon_runs,
+    )
 
     return {
         "complete_due_dungeon_runs": complete_due_dungeon_runs,
         "daily_gift": daily_gift,
+        "process_due_auto_dungeon_runs": process_due_auto_dungeon_runs,
     }
 
 

@@ -1439,9 +1439,17 @@ function ConsumablesSection() {
 /* ═══════════════════════════════════════
    InventoryScreen (section switcher)
 ═══════════════════════════════════════ */
-export function InventoryScreen() {
+export function InventoryScreen({
+  initialSection = "equipment",
+}: {
+  initialSection?: "equipment" | "consumables";
+}) {
   const { t } = useI18n();
-  const [section, setSection] = useState<"equipment" | "consumables">("equipment");
+  const [section, setSection] = useState<"equipment" | "consumables">(initialSection);
+
+  useEffect(() => {
+    setSection(initialSection);
+  }, [initialSection]);
 
   return (
     <div className="col animate-fade-in" style={{ gap: 16 }}>

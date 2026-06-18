@@ -1,8 +1,8 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from apps.game.i18n import DEFAULT_LOCALE, translate
-from apps.game.models import DungeonIngredientDrop, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonRun, DungeonRunStatus, IngredientTemplate, LocationType
+from apps.game.i18n import DEFAULT_LOCALE, message, translate
+from apps.game.models import AutoDungeonRun, DungeonIngredientDrop, DungeonLocation, DungeonLocationItemTemplate, DungeonMiniGameAttempt, DungeonRun, DungeonRunStatus, IngredientTemplate, LocationType
 from apps.game.services import DungeonMiniGameService, DungeonRunService, GameFormulaService
 
 from .common import localized_item_name, localized_name, media_payload, serializer_locale
@@ -171,6 +171,82 @@ class DungeonRunStartSerializer(serializers.Serializer):
     """Сериализатор запроса на запуск подземелья."""
 
     location_id = serializers.IntegerField(min_value=1)
+    auto_run = serializers.BooleanField(required=False, default=False)
+
+
+class AutoDungeonRunSerializer:
+    """Рендер публичного состояния автозапуска подземелья."""
+
+    STOP_REASON_MESSAGE_KEYS = {
+        "player_stopped": "auto_run_player_stopped",
+        "system_error": "auto_run_system_error",
+        "location_limit_reached": "daily_limit_reached",
+        "category_limit_reached": "category_limit_reached",
+        "hp_too_low": "hp_too_low",
+        "broken_equipment": "broken_items_block_run",
+        "location_unavailable": "dungeon_not_found",
+        "active_run_conflict": "active_run_exists",
+    }
+
+    @classmethod
+    def stop_reason_message(cls, auto_run: AutoDungeonRun, locale=DEFAULT_LOCALE) -> str:
+        """Возвращает локализованный текст причины остановки автозапуска."""
+
+        key = cls.STOP_REASON_MESSAGE_KEYS.get(auto_run.stop_reason_code)
+        if key:
+            return message(key, locale)
+        return auto_run.stop_reason_message
+
+    @staticmethod
+    def render(auto_run: AutoDungeonRun | None, locale=DEFAULT_LOCALE):
+        """Преобразует автозапуск в API-ответ или None при отсутствии состояния."""
+
+        if auto_run is None:
+            return None
+        return {
+            "id": auto_run.id,
+            "status": auto_run.status,
+            "location": {
+                "id": auto_run.location_id,
+                "name": localized_name(auto_run.location, locale),
+                "location_type": auto_run.location.location_type,
+            },
+            "current_run_id": auto_run.current_run_id,
+            "summary_unread": auto_run.summary_unread,
+            "stop_reason_code": auto_run.stop_reason_code,
+            "stop_reason_message": AutoDungeonRunSerializer.stop_reason_message(auto_run, locale),
+            "summary": auto_run.summary,
+            "runs_claimed": auto_run.runs_claimed,
+            "success_count": auto_run.success_count,
+            "failure_count": auto_run.failure_count,
+            "experience_total": auto_run.experience_total,
+            "money_total_copper": auto_run.money_total_copper,
+            "items_total": auto_run.items_total,
+            "ingredients_total": auto_run.ingredients_total,
+            "current_hp": auto_run.current_hp,
+            "max_hp": auto_run.max_hp,
+            "hp_loss_total": auto_run.summary.get(
+                "hp_loss_total",
+                sum(claim.hp_loss for claim in auto_run.auto_claims.all()),
+            ),
+            "durability_loss_total": auto_run.durability_loss_total,
+            "durability_changes": auto_run.durability_changes,
+            "started_at": auto_run.started_at,
+            "stopped_at": auto_run.stopped_at,
+        }
+
+
+class CurrentRunEnvelopeSerializer:
+    """Рендер объединённого ответа текущего забега и состояния автозапуска."""
+
+    @staticmethod
+    def render(run, auto_run, request=None, locale=DEFAULT_LOCALE):
+        """Возвращает стабильный envelope для экрана текущего забега."""
+
+        return {
+            "current_run": DungeonRunSerializer(run, context={"request": request}).data if run else None,
+            "auto_run": AutoDungeonRunSerializer.render(auto_run, locale=locale),
+        }
 
 
 class DungeonMiniGameStartSerializer(serializers.Serializer):

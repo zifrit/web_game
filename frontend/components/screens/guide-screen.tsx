@@ -538,7 +538,7 @@ export function GuidebookScreen() {
                 num: 3, color: "#38BDF8",
                 titleEn: "Send your hero on an expedition", titleRu: "Отправьте героя в поход",
                 bodyEn: "Press Send Hero. Your hero sets off — you can track the timer and progress bar in real time.",
-                bodyRu: "Нажмите «Отправить героя». Герой отправляется в путь — следите за таймером и полосой прогресса.",
+                bodyRu: "Нажмите «В бой». Герой отправляется в путь — следите за таймером и полосой прогресса.",
               },
               {
                 num: 4, color: "#22C55E",
@@ -678,6 +678,47 @@ export function GuidebookScreen() {
                 {c(locale,
                   "Success: the remaining expedition time is reduced by the mini-game bonus. Fail: no penalty — the expedition continues normally.",
                   "Успех: оставшееся время похода сокращается на бонус мини-игры. Провал: штрафа нет — поход продолжается в обычном режиме."
+                )}
+              </TipBox>
+            </div>
+          </div>
+
+          {/* Auto run */}
+          <div style={{
+            background: "linear-gradient(135deg, rgba(96,165,250,0.08), rgba(11,16,32,0.5))",
+            border: "1px solid rgba(96,165,250,0.25)",
+            borderRadius: 10,
+            padding: "14px 16px",
+          }}>
+            <div style={{
+              fontFamily: "var(--font-cinzel)",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#BFDBFE",
+              marginBottom: 8,
+            }}>
+              {c(locale, "Auto run", "Автозапуск")}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ fontSize: 12, color: "#94A3B8", lineHeight: 1.65 }}>
+                {c(
+                  locale,
+                  "Press Auto on one dungeon or resource location, then press Send Hero or Gather on that same location. The server will claim rewards and repeat that location until a limit, low HP, broken equipment, a disabled location, Stop Auto run, or a server error stops it.",
+                  "Нажмите Auto на одной локации данжа или ресурсов, затем нажмите «В бой» или «Собрать» на этой же локации. Сервер будет забирать награды и повторять эту локацию, пока автозапуск не упрется в лимит, низкое HP, сломанную экипировку, отключенную локацию, остановку автозапуска или ошибку сервера."
+                )}
+              </div>
+              <TipBox tone="info">
+                {c(
+                  locale,
+                  "Mini-games are disabled during Auto run. While Auto owns the run, rewards are claimed by the server and manual claim controls stay locked.",
+                  "Во время автозапуска мини-игры отключены. Пока запуском владеет автозапуск, награды забирает сервер, а ручное получение наград остается заблокированным."
+                )}
+              </TipBox>
+              <TipBox tone="warn">
+                {c(
+                  locale,
+                  "Stop Auto run does not cancel the current run. The current reward is claimed automatically first, then Auto run stops. Read and acknowledge the stopped summary before you start another run.",
+                  "Остановка автозапуска не отменяет текущий запуск. Сначала награда за текущий запуск забирается автоматически, и только потом автозапуск останавливается. Прочитайте и подтвердите итоговую сводку, прежде чем начинать новый запуск."
                 )}
               </TipBox>
             </div>

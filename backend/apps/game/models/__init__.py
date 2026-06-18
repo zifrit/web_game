@@ -5,6 +5,9 @@ from .config import EquipmentSlotConfig, GameConfig, RarityConfig
 from .consumables import HeroPotionStorage, PotionTemplate
 from .crafting import CraftRecipe, CraftRecipeIngredient
 from .dungeons import (
+    AutoDungeonRun,
+    AutoDungeonRunClaim,
+    AutoDungeonRunStatus,
     DungeonLimitCategory,
     DungeonLocation,
     DungeonLocationItemTemplate,
@@ -32,6 +35,9 @@ from .shop import (
 from .users import User, UserManager, UserTwoFactor
 
 __all__ = [
+    "AutoDungeonRun",
+    "AutoDungeonRunClaim",
+    "AutoDungeonRunStatus",
     "CeleryTaskLog",
     "Character",
     "CharacterClass",

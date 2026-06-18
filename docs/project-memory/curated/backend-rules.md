@@ -86,6 +86,18 @@ should also go through services instead of being calculated in views.
   closes the race where the unlocked GET path could roll a divergent outcome
   against the beat task.
 - Claim must be idempotent.
+- Auto run is a server-side mode over concrete `DungeonRun` records.
+  `AutoDungeonRunService` owns auto start/stop/summary/worker behavior;
+  `DungeonRunService` remains the lifecycle service for one concrete run.
+- Auto-run worker claim accounting is idempotent through `AutoDungeonRunClaim`;
+  manual claim and mini-game starts are blocked for auto-owned runs while the
+  worker claims rewards and either starts the next run or stops with a summary.
+  Already accounted runs remain auto-owned through `AutoDungeonRunClaim`;
+  if accounting or next-start work fails after the current run is claimed, the
+  claim stays committed and the auto run stops with `system_error` instead of
+  leaving a waiting-to-claim dungeon run behind.
+- Unread stopped auto-run summaries block starting another dungeon/resource run
+  until acknowledged.
 - The acceleration mini-game is available for an active run when the location
   has `has_mini_game=true`; the player chooses difficulty (`config_id`) at
   start, and it is fixed on the run (one attempt per run).

@@ -404,3 +404,96 @@ class DungeonRunClaimItem(models.Model):
     class Meta:
         verbose_name = "Предмет из награды"
         verbose_name_plural = "Предметы из наград"
+
+
+class AutoDungeonRunStatus(models.TextChoices):
+    """Статусы автозапуска подземелья."""
+
+    ACTIVE = "ACTIVE", "Active"
+    STOPPING = "STOPPING", "Stopping"
+    STOPPED = "STOPPED", "Stopped"
+
+
+class AutoDungeonRun(TimestampedModel):
+    """Сводная запись автозапуска подземелья для героя."""
+
+    user = models.ForeignKey(User, verbose_name="Пользователь", related_name="auto_dungeon_runs", on_delete=models.CASCADE)
+    character = models.ForeignKey(Character, verbose_name="Герой", related_name="auto_dungeon_runs", on_delete=models.CASCADE)
+    location = models.ForeignKey(DungeonLocation, verbose_name="Локация", related_name="auto_runs", on_delete=models.PROTECT)
+    current_run = models.ForeignKey(DungeonRun, verbose_name="Текущий поход", related_name="auto_run_current_for", on_delete=models.PROTECT)
+    status = models.CharField(
+        verbose_name="Статус",
+        max_length=16,
+        choices=AutoDungeonRunStatus.choices,
+        default=AutoDungeonRunStatus.ACTIVE,
+        db_index=True,
+    )
+    stop_reason_code = models.CharField(verbose_name="Код причины остановки", max_length=64, blank=True, default="")
+    stop_reason_message = models.CharField(verbose_name="Причина остановки", max_length=255, blank=True, default="")
+    stop_reason_details = models.JSONField(verbose_name="Детали причины остановки", default=dict, blank=True)
+    summary_unread = models.BooleanField(verbose_name="Сводка не прочитана", default=False, db_index=True)
+    started_at = models.DateTimeField(verbose_name="Дата запуска", default=timezone.now)
+    stopped_at = models.DateTimeField(verbose_name="Дата остановки", null=True, blank=True)
+    runs_claimed = models.PositiveIntegerField(verbose_name="Учтено походов", default=0)
+    success_count = models.PositiveIntegerField(verbose_name="Успешных походов", default=0)
+    failure_count = models.PositiveIntegerField(verbose_name="Проваленных походов", default=0)
+    experience_total = models.PositiveIntegerField(verbose_name="Всего опыта", default=0)
+    money_total_copper = models.PositiveIntegerField(verbose_name="Всего меди", default=0)
+    items_total = models.PositiveIntegerField(verbose_name="Всего предметов", default=0)
+    ingredients_total = models.PositiveIntegerField(verbose_name="Всего ингредиентов", default=0)
+    current_hp = models.PositiveIntegerField(verbose_name="Текущее HP", default=0)
+    max_hp = models.PositiveIntegerField(verbose_name="Максимальное HP", default=0)
+    durability_loss_total = models.PositiveIntegerField(verbose_name="Общая потеря прочности", default=0)
+    durability_changes = models.JSONField(verbose_name="Изменения прочности", default=list, blank=True)
+    summary = models.JSONField(verbose_name="Сводка", default=dict, blank=True)
+
+    class Meta:
+        verbose_name = "Автозапуск"
+        verbose_name_plural = "Автозапуски"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["character"],
+                condition=Q(status__in=[AutoDungeonRunStatus.ACTIVE, AutoDungeonRunStatus.STOPPING]),
+                name="one_active_auto_dungeon_run_per_character",
+            ),
+            models.UniqueConstraint(
+                fields=["character"],
+                condition=Q(status=AutoDungeonRunStatus.STOPPED, summary_unread=True),
+                name="one_unread_auto_dungeon_run_summary_per_character",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        """Возвращает краткое описание автозапуска."""
+
+        return f"Auto run #{self.pk} for {self.character_id} [{self.status}]"
+
+
+class AutoDungeonRunClaim(TimestampedModel):
+    """Агрегированная награда одного забега, учтённая в автозапуске."""
+
+    auto_run = models.ForeignKey(AutoDungeonRun, verbose_name="Автозапуск", related_name="auto_claims", on_delete=models.CASCADE)
+    dungeon_run = models.OneToOneField(DungeonRun, verbose_name="Поход в данж", related_name="auto_run_claim", on_delete=models.CASCADE)
+    claim = models.OneToOneField(DungeonRunClaim, verbose_name="Получение награды", related_name="auto_run_claim", on_delete=models.CASCADE)
+    is_success = models.BooleanField(verbose_name="Успешный поход", default=False)
+    experience = models.PositiveIntegerField(verbose_name="Опыт", default=0)
+    money_copper = models.PositiveIntegerField(verbose_name="Медь", default=0)
+    items_count = models.PositiveIntegerField(verbose_name="Количество предметов", default=0)
+    ingredients_count = models.PositiveIntegerField(verbose_name="Количество ингредиентов", default=0)
+    current_hp = models.PositiveIntegerField(verbose_name="Текущее HP", default=0)
+    max_hp = models.PositiveIntegerField(verbose_name="Максимальное HP", default=0)
+    hp_loss = models.PositiveIntegerField(verbose_name="Потеря HP", default=0, db_default=0)
+    durability_loss = models.PositiveIntegerField(verbose_name="Потеря прочности", default=0)
+    items_preview = models.JSONField(verbose_name="Превью предметов", default=list, blank=True)
+    ingredients_preview = models.JSONField(verbose_name="Превью ингредиентов", default=list, blank=True)
+    durability_changes = models.JSONField(verbose_name="Изменения прочности", default=list, blank=True)
+    counted_at = models.DateTimeField(verbose_name="Дата учета", default=timezone.now)
+
+    class Meta:
+        verbose_name = "Награда автозапуска"
+        verbose_name_plural = "Награды автозапусков"
+
+    def __str__(self) -> str:
+        """Возвращает техническое описание награды автозапуска."""
+
+        return f"Auto claim #{self.pk} for run #{self.dungeon_run_id}"

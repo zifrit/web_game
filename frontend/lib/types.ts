@@ -237,7 +237,111 @@ export type DungeonRun = {
   mini_game?: DungeonMiniGameState | null;
 };
 
-export type CurrentRunResponse = DungeonRun | null;
+export type AutoRunStatus = "ACTIVE" | "STOPPING" | "STOPPED";
+
+export type AutoRunLocationType = "dungeon" | "resource" | (string & {});
+
+export type AutoRunLocationPreview = {
+  id: number;
+  name: string;
+  location_type?: AutoRunLocationType;
+};
+
+export type AutoRunDurabilityPreview = {
+  current: number;
+  max: number;
+};
+
+export type AutoRunItemPreview = {
+  id?: number;
+  item_id?: number;
+  name?: string;
+  fallback_name?: string;
+  slot?: string;
+  item_type?: string;
+  rarity?: string | null;
+  item_level?: number;
+  durability?: AutoRunDurabilityPreview;
+  [key: string]: unknown;
+};
+
+export type AutoRunIngredientPreview = {
+  id?: number;
+  ingredient_id?: number;
+  code?: string;
+  name?: string;
+  fallback_name?: string;
+  quantity: number;
+  [key: string]: unknown;
+};
+
+export type AutoRunDurabilityChange = {
+  item_id?: number;
+  id?: number;
+  name?: string;
+  fallback_name?: string;
+  slot: string;
+  durability: {
+    current: number;
+    max: number;
+  };
+  removed: number;
+};
+
+export type AutoRunSummary = {
+  hp_loss_total?: number;
+  items_preview?: AutoRunItemPreview[];
+  ingredients_preview?: AutoRunIngredientPreview[];
+  durability_changes?: AutoRunDurabilityChange[];
+};
+
+export type AutoRunSchedule = {
+  next_run_at?: string | null;
+  next_run_in_seconds?: number | null;
+  interval_seconds?: number | null;
+  limit_reached?: boolean;
+  planned_next_run_at?: string | null;
+  next_run_eta_seconds?: number | null;
+};
+
+export type AutoRunState = {
+  id: number;
+  status: AutoRunStatus;
+  location: AutoRunLocationPreview & {
+    location_type: AutoRunLocationType;
+  };
+  current_dungeon?: AutoRunLocationPreview | null;
+  next_dungeon?: AutoRunLocationPreview | null;
+  schedule?: AutoRunSchedule | null;
+  stop_requested?: boolean;
+  current_run_id: number | null;
+  summary_unread: boolean;
+  stop_reason_code: string | null;
+  stop_reason_message: string | null;
+  reason?: string | null;
+  error?: string | null;
+  error_message?: string | null;
+  summary: AutoRunSummary;
+  runs_claimed: number;
+  success_count: number;
+  failure_count: number;
+  experience_total: number;
+  money_total_copper: number;
+  items_total: number;
+  ingredients_total: number;
+  current_hp: number;
+  max_hp: number;
+  hp_loss_total?: number;
+  durability_loss_total: number;
+  durability_changes: AutoRunDurabilityChange[];
+  started_at?: string;
+  stopped_at?: string | null;
+};
+
+export type CurrentRunResponse = {
+  current_run: DungeonRun | null;
+  auto_run: AutoRunState | null;
+};
 
 export type DungeonMiniGameConfig = {
   id: number;

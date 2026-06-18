@@ -4,7 +4,9 @@ from .common import localized_item_name, localized_name, media_payload, serializ
 from .consumables import HeroPotionSerializer, UsePotionSerializer
 from .crafting import CraftPotionSerializer, CraftRecipeSerializer
 from .dungeons import (
+    AutoDungeonRunSerializer,
     ClaimResponseSerializer,
+    CurrentRunEnvelopeSerializer,
     DungeonLootItemSerializer,
     DungeonMiniGameAttemptHistorySerializer,
     DungeonMiniGameAttemptResponseSerializer,
@@ -29,10 +31,12 @@ from .shop import (
 )
 
 __all__ = [
+    "AutoDungeonRunSerializer",
     "CharacterClassSerializer",
     "CharacterCreateSerializer",
     "CharacterMeSerializer",
     "ClaimResponseSerializer",
+    "CurrentRunEnvelopeSerializer",
     "CraftPotionSerializer",
     "CraftRecipeSerializer",
     "DungeonLootItemSerializer",

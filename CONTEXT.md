@@ -72,3 +72,29 @@ common run limit. It is separate from `location_type`: `location_type` describes
 how a location behaves, while `limit_category` describes which locations spend
 from the same limit pool.
 _Avoid_: dungeon type (ambiguous with behavior), location type.
+
+## Language — Dungeon Runs
+
+**Dungeon run**:
+One concrete timed attempt by a hero in one location. A dungeon run may be
+combat or resource-based, but it always occupies the hero's single active
+activity slot until it is ready to be claimed.
+_Avoid_: expedition, поход, activity.
+
+**Auto run**:
+A player-enabled mode that repeats one selected location by claiming the
+finished dungeon run and starting that same location again until the first
+blocking condition. It is not a separate hero activity, but while active or
+stopping it reserves the hero's next dungeon run start.
+_Avoid_: auto chain, auto repeat, автопрохождение.
+
+**Armed auto run**:
+The pre-start UI choice where one location is marked so the next manual run of
+that same location starts an auto run. It is not an active server-side auto run
+until the player starts the marked location.
+_Avoid_: queued auto run, reserved run.
+
+**Auto run summary**:
+The result summary produced when an auto run stops. The player must acknowledge
+an unread auto run summary before starting another dungeon run.
+_Avoid_: notification, toast, report.

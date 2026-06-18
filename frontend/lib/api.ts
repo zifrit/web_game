@@ -6,130 +6,6 @@ export type Tokens = {
   refresh_token: string;
 };
 
-export type ApiUser = {
-  id: number;
-  email: string;
-  money_copper?: number;
-  premium_currency?: number;
-  has_character: boolean;
-  avatar?: AppTypes.MediaAssetUrls | null;
-  two_factor?: AppTypes.TwoFactorStatus;
-};
-
-export type AuthPayload = Tokens & { user: ApiUser };
-
-export type CharacterClass = {
-  key: string;
-  name: string;
-  start_stats: Record<string, number>;
-  media?: AppTypes.MediaAssetUrls | null;
-  male_media?: AppTypes.MediaAssetUrls | null;
-  female_media?: AppTypes.MediaAssetUrls | null;
-};
-
-export type Character = {
-  id: number;
-  name: string;
-  gender?: "male" | "female";
-  avatar?: AppTypes.MediaAssetUrls | null;
-  class: { key: string; name: string; media?: AppTypes.MediaAssetUrls | null };
-  level: number;
-  experience: number;
-  experience_to_next_level: number;
-  stats: Record<string, number>;
-  equipment: Record<string, ItemSummary | null>;
-};
-
-export type Dungeon = {
-  id: number;
-  name: string;
-  description: string;
-  duration_seconds: number;
-  required_power: number;
-  success_chance: number;
-  hp_loss_success_percent: number;
-  hp_loss_fail_percent: number;
-  item_drop_chance: number;
-  has_mini_game: boolean;
-  rewards_preview: {
-    experience: { min: number; max: number };
-    money_copper: { min: number; max: number };
-  };
-};
-
-export type CurrentRun =
-  | { current_run: null }
-  | {
-      id: number;
-      status: "IN_PROGRESS";
-      location: { id: number; name: string };
-      remaining_seconds: number;
-      ends_at: string;
-    }
-  | {
-      id: number;
-      status: "SUCCESS_WAITING_CLAIM" | "FAILED_WAITING_CLAIM";
-      location: { id: number; name: string };
-      result_preview: {
-        is_success: boolean;
-        experience: number;
-        money_copper: number;
-        items_count: number;
-        durability_loss: number;
-        hp_loss: number;
-      };
-    };
-
-export type ItemSummary = {
-  id: number;
-  name?: string;
-  media?: AppTypes.MediaAssetUrls | null;
-  slot: string;
-  rarity: string;
-  durability?: { current: number; max: number };
-  is_broken: boolean;
-};
-
-export type Inventory = {
-  equipment_summary: Record<string, number>;
-  equipped: Record<string, ItemSummary | null>;
-  items_count: number;
-  slots_limit: number | null;
-  free_slots: number | null;
-  pagination: {
-    page: number;
-    page_size: number;
-    total_items: number;
-    total_pages: number;
-    has_next: boolean;
-    has_previous: boolean;
-  };
-  items: ItemSummary[];
-};
-
-export type ItemDetail = {
-  id: number;
-  name: string;
-  slot: string;
-  item_type: string;
-  rarity: string;
-  item_level: number;
-  stats: Record<string, number>;
-  durability: { current: number; max: number };
-  is_equipped: boolean;
-  is_broken: boolean;
-  can_equip: boolean;
-};
-
-export type RepairPreview = {
-  item_ids: number[];
-  items_count: number;
-  durability_missing: number;
-  repair_cost_copper: number;
-  user_money_copper: number;
-  can_repair: boolean;
-};
-
 let activeLocale: Locale = "en";
 
 function defaultApiBase() {
@@ -347,16 +223,20 @@ export const api = {
   dungeonResources(dungeonId: number) {
     return apiFetch<AppTypes.DungeonResourceDrop[]>(`/dungeons/${dungeonId}/resources`);
   },
-  startRun(location_id: number) {
+  startRun(locationId: number, autoRun = false) {
     return apiFetch<AppTypes.DungeonRun>("/dungeon-runs", {
       method: "POST",
-      body: JSON.stringify({ location_id }),
+      body: JSON.stringify({ location_id: locationId, auto_run: autoRun }),
     });
   },
   currentRun() {
-    return apiFetch<AppTypes.DungeonRun | { current_run: null }>("/dungeon-runs/current").then((run) =>
-      "current_run" in run ? null : run,
-    );
+    return apiFetch<AppTypes.CurrentRunResponse>("/dungeon-runs/current");
+  },
+  stopAutoRun() {
+    return apiFetch<AppTypes.AutoRunState>("/dungeon-auto-runs/current/stop", { method: "POST" });
+  },
+  markAutoRunSummaryRead() {
+    return apiFetch<{ summary_unread: false }>("/dungeon-auto-runs/current/summary/read", { method: "POST" });
   },
   claimRun(runId: number) {
     return apiFetch<AppTypes.ClaimResponse>(`/dungeon-runs/${runId}/claim`, { method: "POST" });

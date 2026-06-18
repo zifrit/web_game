@@ -562,9 +562,18 @@ export function RpgClient() {
   const { accessToken, user, isBooting, logout, setUser } = useSession();
   const { t } = useI18n();
   const [tab, setTabState] = useState<Tab>(getInitialTab);
+  const [inventoryInitialSection, setInventoryInitialSection] = useState<"equipment" | "consumables">("equipment");
   const setTab = (next: Tab) => {
+    if (next === "inventory") {
+      setInventoryInitialSection("equipment");
+    }
     setTabState(next);
     localStorage.setItem("activeTab", next);
+  };
+  const openInventory = (section: "equipment" | "consumables" = "equipment") => {
+    setInventoryInitialSection(section);
+    setTabState("inventory");
+    localStorage.setItem("activeTab", "inventory");
   };
   const [exchangeOpen, setExchangeOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -680,12 +689,17 @@ export function RpgClient() {
             {tab === "character"   && (
               <CharacterScreen
                 onOpenDungeons={() => setTab("dungeons")}
-                onOpenInventory={() => setTab("inventory")}
+                onOpenInventory={() => openInventory("equipment")}
               />
             )}
-            {tab === "dungeons"    && <DungeonsScreen />}
+            {tab === "dungeons"    && (
+              <DungeonsScreen
+                onOpenInventory={() => openInventory("equipment")}
+                onOpenConsumables={() => openInventory("consumables")}
+              />
+            )}
             {tab === "shop"        && <ShopScreen />}
-            {tab === "inventory"   && <InventoryScreen />}
+            {tab === "inventory"   && <InventoryScreen initialSection={inventoryInitialSection} />}
             {tab === "leaderboard" && <LeaderboardScreen />}
             {tab === "settings"    && <SettingsScreen />}
             {tab === "guide"       && <GuidebookScreen />}

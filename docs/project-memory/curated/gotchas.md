@@ -13,9 +13,8 @@
   remove it without an explicit request.
 - Historical migrations import `apps.game.models.UserManager`; keep
   `UserManager` exported from `backend/apps/game/models/__init__.py`.
-- Celery Beat is configured through `CELERY_BEAT_SCHEDULE` in settings, not
-  through `django-celery-beat`; Beat models should not be expected in Django
-  Admin.
+- Celery Beat uses `django-celery-beat`'s database scheduler. Periodic task
+  rows are part of runtime configuration and may be managed from Django Admin.
 - Do not commit `backend/celerybeat-schedule`, `.venv`, `.next`,
   `node_modules`, sqlite db, media/cache/runtime outputs.
 - `backend/generated_assets/` is image generator output and is ignored by git;

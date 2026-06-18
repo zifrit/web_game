@@ -277,6 +277,10 @@ class DungeonMiniGameService:
         """Создаёт попытку выбранной сложности или возвращает активную для забега."""
 
         run = cls._get_run_for_update(user, run_id, locale)
+        from .auto_runs import AutoDungeonRunService
+
+        if AutoDungeonRunService.is_auto_owned_run(run.id):
+            raise serializers.ValidationError(message("auto_run_mini_game_blocked", locale))
         if run.status != DungeonRunStatus.IN_PROGRESS:
             raise serializers.ValidationError(message("mini_game_run_not_active", locale))
         if not run.location.has_mini_game:

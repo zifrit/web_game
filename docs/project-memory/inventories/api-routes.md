@@ -37,6 +37,8 @@ Dungeons:
 - `GET /api/dungeons/<id>/loot`
 - `POST /api/dungeon-runs`
 - `GET /api/dungeon-runs/current`
+- `POST /api/dungeon-auto-runs/current/stop`
+- `POST /api/dungeon-auto-runs/current/summary/read`
 - `POST /api/dungeon-runs/<id>/claim`
 - `POST /api/dungeon-runs/<id>/mini-game/start` (body `config_id` - selected difficulty)
 - `POST /api/dungeon-mini-games/<id>/reveal`

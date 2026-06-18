@@ -61,9 +61,11 @@ function StatCard({
 export function DungeonLootModal({
   dungeon,
   onClose,
+  actions,
 }: {
   dungeon: Dungeon;
   onClose: () => void;
+  actions?: React.ReactNode;
 }) {
   useModalScrollLock();
   const swipeToClose = useSwipeToClose(onClose);
@@ -308,8 +310,10 @@ export function DungeonLootModal({
         <div style={{
           padding: "12px 24px",
           borderTop: "1px solid var(--line-soft)",
-          display: "flex", justifyContent: "flex-end",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          gap: 12, flexWrap: "wrap",
         }}>
+          {actions ?? <span />}
           <button className="btn btn-secondary" onClick={onClose}>
             {locale === "ru" ? "Закрыть" : "Close"}
           </button>

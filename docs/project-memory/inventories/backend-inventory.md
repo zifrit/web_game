@@ -66,6 +66,8 @@ and domain modules:
 - `formulas.py` - `GameFormulaService`
 - `loot.py` - `LootGenerationService` and `item_allowed_for_character`
 - `dungeon_runs.py` - `DungeonRunService`, `ClaimResult`
+- `auto_runs.py` - `AutoDungeonRunService` start/stop/summary state plus worker
+  claim accounting and next-run processing.
 - `mini_games.py` - `DungeonMiniGameService`; live memory-pairs state lives in
   Redis during play, with a single DB flush on finish (server-authoritative
   scoring, percent run-time reduction capped by `max_reduction_seconds`)
@@ -194,9 +196,12 @@ query through `request.user`, so superuser bypass does not add impersonation.
   contains older prompt feeds.
 - `backend/generated_assets/` is ignored local output, not DB seed data.
 - Tests currently include `test_mvp_api.py`, `test_services.py`,
-  `test_image_generation.py`.
+  `test_auto_runs.py`, `test_image_generation.py`.
 
 ## Celery
 
 - Task: `apps.game.tasks.complete_due_dungeon_runs`.
 - Implementation delegates to `DungeonRunService.complete_due_runs(limit=100)`.
+- Task: `apps.game.tasks.process_due_auto_dungeon_runs`.
+- Implementation delegates to
+  `AutoDungeonRunService.process_due_auto_runs(limit=100)`.

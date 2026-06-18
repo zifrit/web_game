@@ -1,11 +1,12 @@
 from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from rest_framework import serializers
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.game.i18n import request_locale
+from apps.game.i18n import message, request_locale
 from apps.game.models import (
     Character,
     CharacterClass,
@@ -19,7 +20,9 @@ from apps.game.models import (
     MiniGameCardFace,
 )
 from apps.game.serializers import (
+    AutoDungeonRunSerializer,
     ClaimResponseSerializer,
+    CurrentRunEnvelopeSerializer,
     DungeonLootItemSerializer,
     DungeonResourceDropSerializer,
     localized_name,
@@ -35,6 +38,7 @@ from apps.game.serializers import (
     DungeonRunStartSerializer,
 )
 from apps.game.services import (
+    AutoDungeonRunService,
     DungeonMiniGameService,
     DungeonRunService,
     GameFormulaService,
@@ -174,7 +178,11 @@ class DungeonRunStartView(APIView):
         serializer = DungeonRunStartSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         locale = request_locale(request)
-        run = DungeonRunService.start_run(request.user, serializer.validated_data["location_id"], locale=locale)
+        location_id = serializer.validated_data["location_id"]
+        if serializer.validated_data.get("auto_run"):
+            run, _auto_run = AutoDungeonRunService.start_auto_run(request.user, location_id, locale=locale)
+            return Response(DungeonRunSerializer(run, context={"request": request}).data, status=status.HTTP_201_CREATED)
+        run = DungeonRunService.start_run(request.user, location_id, locale=locale)
         return Response(DungeonRunSerializer(run, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
 
@@ -184,24 +192,61 @@ class DungeonRunCurrentView(APIView):
     def get(self, request):
         """Возвращает активный забег и при необходимости завершает его на лету."""
 
-        run = (
-            DungeonRun.objects.select_related("location", "character", "character__character_class")
-            .filter(
-                character__user=request.user,
-                status__in=[
-                    DungeonRunStatus.IN_PROGRESS,
-                    DungeonRunStatus.SUCCESS_WAITING_CLAIM,
-                    DungeonRunStatus.FAILED_WAITING_CLAIM,
-                ],
+        locale = request_locale(request)
+        try:
+            character = Character.objects.get(user=request.user)
+        except Character.DoesNotExist:
+            character = None
+
+        auto_run = None
+        run = None
+        if character is not None:
+            auto_run = (
+                AutoDungeonRunService.active_for_character(character)
+                or AutoDungeonRunService.unread_summary_for_character(character)
             )
-            .order_by("-started_at")
-            .first()
-        )
-        if not run:
-            return Response({"current_run": None})
-        if run.status == DungeonRunStatus.IN_PROGRESS:
-            run = DungeonRunService.finalize_due_run(run.id)
-        return Response(DungeonRunSerializer(run, context={"request": request}).data)
+            run = (
+                DungeonRun.objects.select_related("location", "character", "character__character_class")
+                .filter(
+                    character=character,
+                    status__in=[
+                        DungeonRunStatus.IN_PROGRESS,
+                        DungeonRunStatus.SUCCESS_WAITING_CLAIM,
+                        DungeonRunStatus.FAILED_WAITING_CLAIM,
+                    ],
+                )
+                .order_by("-started_at")
+                .first()
+            )
+            if run and run.status == DungeonRunStatus.IN_PROGRESS:
+                run = DungeonRunService.finalize_due_run(run.id)
+        return Response(CurrentRunEnvelopeSerializer.render(run, auto_run, request=request, locale=locale))
+
+
+class DungeonAutoRunStopView(APIView):
+    """API-ручка запроса остановки текущего автозапуска."""
+
+    throttle_scope = "dungeon_write"
+
+    def post(self, request):
+        """Переводит активный автозапуск в STOPPING."""
+
+        locale = request_locale(request)
+        auto_run = AutoDungeonRunService.request_stop(request.user, locale=locale)
+        return Response(AutoDungeonRunSerializer.render(auto_run, locale=locale))
+
+
+class DungeonAutoRunSummaryReadView(APIView):
+    """API-ручка отметки сводки автозапуска прочитанной."""
+
+    throttle_scope = "dungeon_write"
+
+    def post(self, request):
+        """Идемпотентно снимает unread-флаг со сводки автозапуска."""
+
+        locale = request_locale(request)
+        AutoDungeonRunService.mark_summary_read(request.user, locale=locale)
+        return Response({"summary_unread": False})
 
 
 class DungeonRunClaimView(APIView):
@@ -213,6 +258,8 @@ class DungeonRunClaimView(APIView):
         """Идемпотентно начисляет опыт, деньги, предметы и потерю прочности."""
 
         locale = request_locale(request)
+        if AutoDungeonRunService.is_auto_owned_run(pk):
+            raise serializers.ValidationError(message("auto_run_claim_blocked", locale))
         result = DungeonRunService.claim_run(request.user, pk, locale=locale)
         return Response(ClaimResponseSerializer.render(result, locale=locale))
 

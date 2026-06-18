@@ -51,6 +51,34 @@ MESSAGES = {
         "en": "Claim the reward for the finished dungeon run before starting a new one.",
         "ru": "Сначала заберите награду за завершенный поход, затем запускайте новый.",
     },
+    "auto_run_active": {
+        "en": "Auto run is already active.",
+        "ru": "Автозапуск уже активен.",
+    },
+    "auto_run_not_found": {
+        "en": "Active auto run not found.",
+        "ru": "Активный автозапуск не найден.",
+    },
+    "auto_run_summary_unread": {
+        "en": "Read your Auto run summary before starting another dungeon run.",
+        "ru": "Сначала прочитайте сводку автозапуска, затем запускайте новый данж.",
+    },
+    "auto_run_claim_blocked": {
+        "en": "Auto run will claim this reward automatically.",
+        "ru": "Автозапуск заберет эту награду автоматически.",
+    },
+    "auto_run_mini_game_blocked": {
+        "en": "Mini-games are not available during Auto run.",
+        "ru": "Мини-игры недоступны во время автозапуска.",
+    },
+    "auto_run_player_stopped": {
+        "en": "Auto run stopped after the current run.",
+        "ru": "Автозапуск остановлен после текущего данжа.",
+    },
+    "auto_run_system_error": {
+        "en": "Auto run stopped because of a server error. Please try again later.",
+        "ru": "Автозапуск остановлен из-за ошибки сервера. Попробуйте позже.",
+    },
     "broken_items_block_run": {
         "en": "Broken equipped items block starting a new dungeon run.",
         "ru": "Сломанные надетые предметы блокируют запуск нового похода.",

@@ -9,6 +9,7 @@ from .config import (
     _invalidate_game_config_cache,
     _invalidate_rarity_config_cache,
 )
+from .auto_runs import AutoDungeonRunService
 from .dungeon_runs import ClaimResult, DungeonRunService
 from .formulas import GameFormulaService
 from .ingredients import IngredientDropService, IngredientService
@@ -35,6 +36,7 @@ from .wallets import (
 
 __all__ = [
     "ClaimResult",
+    "AutoDungeonRunService",
     "CraftService",
     "DEFAULT_CONFIGS",
     "DEFAULT_RARITIES",

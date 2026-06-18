@@ -112,11 +112,22 @@ class DungeonRunService:
 
     @classmethod
     @transaction.atomic
-    def start_run(cls, user, location_id: int, locale=DEFAULT_LOCALE) -> DungeonRun:
+    def start_run(
+        cls,
+        user,
+        location_id: int,
+        locale=DEFAULT_LOCALE,
+        *,
+        bypass_auto_guards: bool = False,
+    ) -> DungeonRun:
         """Транзакционно запускает новый забег героя в выбранную локацию."""
 
         character = cls._get_character(user, locale)
         character = Character.objects.select_for_update().select_related("character_class").prefetch_related("equipped_items").get(pk=character.pk)
+        if not bypass_auto_guards:
+            from .auto_runs import AutoDungeonRunService
+
+            AutoDungeonRunService.ensure_can_start_manual_run(character, locale)
         if DungeonRun.objects.filter(character=character, status=DungeonRunStatus.IN_PROGRESS).exists():
             raise serializers.ValidationError(message("active_run_exists", locale))
         if DungeonRun.objects.filter(

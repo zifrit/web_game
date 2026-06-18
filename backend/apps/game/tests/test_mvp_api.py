@@ -319,8 +319,9 @@ class MvpApiTests(APITestCase):
 
         current = self.client.get("/api/dungeon-runs/current")
         self.assertEqual(current.status_code, status.HTTP_200_OK)
-        self.assertEqual(current.data["status"], "SUCCESS_WAITING_CLAIM")
-        self.assertEqual(current.data["location"]["name"], "Old Forest")
+        self.assertIsNone(current.data["auto_run"])
+        self.assertEqual(current.data["current_run"]["status"], "SUCCESS_WAITING_CLAIM")
+        self.assertEqual(current.data["current_run"]["location"]["name"], "Old Forest")
 
         claim = self.client.post(f"/api/dungeon-runs/{start.data['id']}/claim", {}, format="json")
         self.assertEqual(claim.status_code, status.HTTP_200_OK, claim.data)
@@ -423,9 +424,10 @@ class MvpApiTests(APITestCase):
 
         current_started = self.client.get("/api/dungeon-runs/current")
         self.assertEqual(current_started.status_code, status.HTTP_200_OK, current_started.data)
-        self.assertFalse(current_started.data["mini_game"]["available"])
-        self.assertTrue(current_started.data["mini_game"]["started"])
-        self.assertEqual(current_started.data["mini_game"]["status"], DungeonMiniGameAttempt.IN_PROGRESS)
+        self.assertIsNone(current_started.data["auto_run"])
+        self.assertFalse(current_started.data["current_run"]["mini_game"]["available"])
+        self.assertTrue(current_started.data["current_run"]["mini_game"]["started"])
+        self.assertEqual(current_started.data["current_run"]["mini_game"]["status"], DungeonMiniGameAttempt.IN_PROGRESS)
 
         existing_attempt = self.client.post(
             f"/api/dungeon-runs/{start.data['id']}/mini-game/start", {"config_id": config.id}, format="json"
@@ -468,7 +470,8 @@ class MvpApiTests(APITestCase):
 
         current = self.client.get("/api/dungeon-runs/current")
         self.assertEqual(current.status_code, status.HTTP_200_OK, current.data)
-        self.assertFalse(current.data["mini_game"]["available"])
+        self.assertIsNone(current.data["auto_run"])
+        self.assertFalse(current.data["current_run"]["mini_game"]["available"])
 
         history = self.client.get("/api/dungeon-mini-games/history")
         self.assertEqual(history.status_code, status.HTTP_200_OK, history.data)

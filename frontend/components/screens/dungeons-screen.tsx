@@ -1,19 +1,21 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Info, LayoutGrid, List, MapPin, Sprout, Swords, Zap } from "lucide-react";
+import { CheckCircle2, ChevronRight, Coins, Flag, Info, LayoutGrid, List, MapPin, ShieldPlus, Sparkles, Sprout, Square, Swords, Zap } from "lucide-react";
+import type React from "react";
 import { useEffect, useMemo, useState } from "react";
+import { AutoRunSummaryModal } from "@/components/auto-run-summary-modal";
 import { canOpenMiniGame, DungeonMiniGameDifficultyModal, DungeonMiniGameModal, DungeonMiniGameResultModal } from "@/components/dungeon-mini-game-modal";
 import { DungeonLootModal } from "@/components/dungeon-loot-modal";
 import { DungeonResourceModal } from "@/components/dungeon-resource-modal";
 import { useI18n } from "@/components/providers";
 import { DungeonRewardModal } from "@/components/dungeon-reward-modal";
-import { LoadingLine } from "@/components/ui";
+import { CopperDisplay, LoadingLine } from "@/components/ui";
 import { api } from "@/lib/api";
-import { formatDuration, formatTime } from "@/lib/i18n";
+import { formatDuration, formatNumber, formatTime } from "@/lib/i18n";
 import { bestMediaUrl } from "@/lib/media";
 import { useIsMobile } from "@/lib/use-is-mobile";
-import type { ClaimResponse, Dungeon, DungeonMiniGameAttempt, DungeonRun } from "@/lib/types";
+import type { AutoRunState, ClaimResponse, CurrentRunResponse, Dungeon, DungeonMiniGameAttempt, DungeonRun } from "@/lib/types";
 
 /* ── Timer hook ── */
 function useRemainingSeconds(run?: DungeonRun | null) {
@@ -272,6 +274,166 @@ function ActiveRunBanner({
   );
 }
 
+const ARMED_AUTO_STORAGE_KEY = "armedAutoLocationId";
+
+function readArmedAutoLocationId() {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(ARMED_AUTO_STORAGE_KEY);
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function AutoRunStatusBlock({
+  autoRun,
+  run,
+  pending,
+  onStop,
+}: {
+  autoRun: AutoRunState;
+  run: DungeonRun | null;
+  pending: boolean;
+  onStop: () => void;
+}) {
+  const { locale, t } = useI18n();
+  const remaining = useRemainingSeconds(run);
+  const locationName = run?.location.name || autoRun.current_dungeon?.name || autoRun.location.name;
+  const statusLabel = autoRun.status === "STOPPING" ? t("autoRun.stopping") : t("autoRun.running");
+  const stopReason = autoRun.stop_reason_message || autoRun.reason;
+  const errorText = autoRun.error_message || autoRun.error;
+  const totalSecs = useMemo(() => {
+    if (run?.ends_at && run.started_at) {
+      return Math.max(1, Math.ceil((new Date(run.ends_at).getTime() - new Date(run.started_at).getTime()) / 1000));
+    }
+    return Math.max(1, run?.remaining_seconds ?? 1);
+  }, [run]);
+  const progress = run?.status === "IN_PROGRESS"
+    ? Math.max(0, Math.min(100, Math.round(((totalSecs - remaining) / totalSecs) * 100)))
+    : 100;
+  const showProgress = Boolean(run && run.status === "IN_PROGRESS");
+  const metricCards: Array<{
+    key: string;
+    label: string;
+    value: React.ReactNode;
+    variant: "blue" | "green" | "red" | "cyan" | "violet" | "gold";
+    icon: React.ReactNode;
+  }> = [
+    {
+      key: "runs",
+      label: t("autoRun.runs"),
+      value: formatNumber(autoRun.runs_claimed, locale),
+      variant: "blue",
+      icon: <Flag size={28} strokeWidth={1.7} />,
+    },
+    {
+      key: "successes",
+      label: t("autoRun.successes"),
+      value: formatNumber(autoRun.success_count, locale),
+      variant: "green",
+      icon: <CheckCircle2 size={30} strokeWidth={1.8} />,
+    },
+    {
+      key: "failures",
+      label: t("autoRun.failures"),
+      value: formatNumber(autoRun.failure_count, locale),
+      variant: "red",
+      icon: <Swords size={29} strokeWidth={1.8} />,
+    },
+    {
+      key: "hp",
+      label: t("common.hp"),
+      value: `${formatNumber(autoRun.current_hp, locale)} / ${formatNumber(autoRun.max_hp, locale)}`,
+      variant: "cyan",
+      icon: <ShieldPlus size={30} strokeWidth={1.8} />,
+    },
+    {
+      key: "experience",
+      label: t("reward.experience"),
+      value: `+${formatNumber(autoRun.experience_total, locale)} ${t("common.xp")}`,
+      variant: "violet",
+      icon: <Sparkles size={30} strokeWidth={1.75} />,
+    },
+    {
+      key: "money",
+      label: t("reward.money"),
+      value: <CopperDisplay value={autoRun.money_total_copper} locale={locale} compact={false} />,
+      variant: "gold",
+      icon: <Coins size={30} strokeWidth={1.8} />,
+    },
+  ];
+
+  return (
+    <section className="auto-run-panel" aria-label={statusLabel}>
+      <div className="auto-run-panel-top" aria-hidden="true" />
+      <div className="auto-run-panel-bottom" aria-hidden="true" />
+
+      <div className="auto-run-state-head">
+        <div className="auto-run-state-heading">
+          <div className="mono auto-run-state-kicker">
+            <Sparkles size={19} strokeWidth={1.8} />
+            {statusLabel}
+          </div>
+          <div className="auto-run-state-title">{locationName}</div>
+        </div>
+        {showProgress && (
+          <div className="auto-run-progress-block" aria-label={t("dungeons.inProgress")}>
+            <div className="bar auto-run-progress-bar">
+              <i style={{ width: `${progress}%` }} />
+            </div>
+            <div className="auto-run-progress-meta">
+              <span>{t("dungeons.complete", { progress })}</span>
+              <span>{t("dungeons.left", { time: formatTime(remaining) })}</span>
+            </div>
+          </div>
+        )}
+        <button
+          type="button"
+          className="auto-run-stop-btn"
+          disabled={pending || autoRun.status === "STOPPING"}
+          onClick={onStop}
+        >
+          <span className="auto-run-stop-icon" aria-hidden="true">
+            <Square size={12} fill="currentColor" strokeWidth={1.5} />
+          </span>
+          {t("autoRun.stop")}
+        </button>
+      </div>
+
+      <div className="auto-run-state-grid">
+        {metricCards.map((card) => (
+          <article key={card.key} className={`auto-run-stat-card auto-run-stat-card-${card.variant}`}>
+            <div className="auto-run-stat-icon" aria-hidden="true">
+              {card.icon}
+            </div>
+            <div className="auto-run-stat-copy">
+              <div className="auto-run-stat-label">{card.label}</div>
+              <div className={`auto-run-stat-value${card.key === "money" ? " auto-run-money-value" : ""}`}>
+                {card.value}
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {(stopReason || errorText) && (
+        <div className="auto-run-state-notes">
+          {stopReason && (
+            <div className="auto-run-summary-note">
+              <div className="card-sub">{t("autoRun.stopReason")}</div>
+              <div className="auto-run-summary-note-body">{stopReason}</div>
+            </div>
+          )}
+          {errorText && (
+            <div className="auto-run-summary-note auto-run-summary-note-error">
+              <div className="card-sub">{t("autoRun.error")}</div>
+              <div className="auto-run-summary-note-body">{errorText}</div>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 /* ── Dungeon tier helpers ── */
 const TIER_GRADIENT: Record<number, string> = {
   1: "var(--bg-3)",
@@ -289,7 +451,13 @@ function getTier(required_power: number) {
 /* ═══════════════════════════════════════
    DungeonsScreen
 ═══════════════════════════════════════ */
-export function DungeonsScreen() {
+export function DungeonsScreen({
+  onOpenInventory,
+  onOpenConsumables,
+}: {
+  onOpenInventory?: () => void;
+  onOpenConsumables?: () => void;
+}) {
   const queryClient   = useQueryClient();
   const { locale, t } = useI18n();
   const isMobile = useIsMobile();
@@ -300,13 +468,27 @@ export function DungeonsScreen() {
   const [category, setCategory] = useState<"dungeon" | "resource">("dungeon");
   const [lootDungeon, setLootDungeon] = useState<Dungeon | null>(null);
   const [resourceLocation, setResourceLocation] = useState<Dungeon | null>(null);
+  const [armedAutoLocationId, setArmedAutoLocationId] = useState<number | null>(null);
+  const [showAutoSummary, setShowAutoSummary] = useState(false);
   const dungeonsQuery = useQuery({ queryKey: ["dungeons"],     queryFn: api.dungeons  });
   const characterQuery = useQuery({ queryKey: ["character"],   queryFn: api.character });
-  const currentRun    = useQuery({
+  const currentRun = useQuery<CurrentRunResponse>({
     queryKey: ["current-run"],
     queryFn: api.currentRun,
-    refetchInterval: (q) => q.state.data?.status === "IN_PROGRESS" ? 5000 : false,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data?.current_run?.status === "IN_PROGRESS") return 5000;
+      if (data?.auto_run?.status === "ACTIVE" || data?.auto_run?.status === "STOPPING") return 5000;
+      return false;
+    },
   });
+
+  const currentRunData = currentRun.data?.current_run ?? null;
+  const autoRun = currentRun.data?.auto_run ?? null;
+  const isRunning = currentRunData?.status === "IN_PROGRESS";
+  const hasRun = Boolean(currentRunData && currentRunData.status !== "CLAIMED");
+  const awaitingClaim = currentRunData?.status === "SUCCESS_WAITING_CLAIM" || currentRunData?.status === "FAILED_WAITING_CLAIM";
+  const autoBlocksStarts = Boolean(autoRun && (autoRun.status === "ACTIVE" || autoRun.status === "STOPPING" || autoRun.summary_unread));
 
   const hpPercent = characterQuery.data?.stats?.hp_percent ?? 100;
   const hpTooLow  = hpPercent < 10;
@@ -320,17 +502,43 @@ export function DungeonsScreen() {
     [dungeonsQuery.data],
   );
 
+  const setArmedAuto = (locationId: number | null) => {
+    setArmedAutoLocationId(locationId);
+    if (typeof window === "undefined") return;
+    if (locationId == null) {
+      window.localStorage.removeItem(ARMED_AUTO_STORAGE_KEY);
+      return;
+    }
+    window.localStorage.setItem(ARMED_AUTO_STORAGE_KEY, String(locationId));
+  };
+
+  useEffect(() => {
+    setArmedAutoLocationId(readArmedAutoLocationId());
+  }, []);
+
+  useEffect(() => {
+    if (hasRun || autoBlocksStarts) {
+      setArmedAuto(null);
+    }
+  }, [autoBlocksStarts, hasRun]);
+
+  useEffect(() => {
+    if (!autoRun?.summary_unread) {
+      setShowAutoSummary(false);
+    }
+  }, [autoRun?.summary_unread]);
+
   const startMutation = useMutation({
-    mutationFn: (id: number) => api.startRun(id),
-    onMutate: (dungeonId: number) => {
+    mutationFn: ({ id, auto }: { id: number; auto: boolean }) => api.startRun(id, auto),
+    onMutate: ({ id }) => {
       const prev = queryClient.getQueryData<Dungeon[]>(["dungeons"]);
       queryClient.setQueryData<Dungeon[]>(["dungeons"], (old) => {
         if (!old) return old;
-        const target = old.find((d) => d.id === dungeonId);
+        const target = old.find((d) => d.id === id);
         const catId = target?.limit_category?.id;
         return old.map((d) => {
           const newD = { ...d };
-          if (d.id === dungeonId && d.daily_remaining !== null) {
+          if (d.id === id && d.daily_remaining !== null) {
             newD.daily_remaining = Math.max(0, d.daily_remaining - 1);
           }
           if (catId && d.limit_category?.id === catId && d.limit_category.limit_count > 0) {
@@ -350,30 +558,242 @@ export function DungeonsScreen() {
       });
       return { prev };
     },
-    onError: (_err, _id, context) => {
+    onError: (_err, _variables, context) => {
       if (context?.prev) queryClient.setQueryData(["dungeons"], context.prev);
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["current-run"] });
-      await queryClient.invalidateQueries({ queryKey: ["dungeons"] });
+    onSuccess: () => {
+      setArmedAuto(null);
+    },
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["current-run"] }),
+        queryClient.invalidateQueries({ queryKey: ["dungeons"] }),
+      ]);
     },
   });
 
-  const isRunning = currentRun.data?.status === "IN_PROGRESS";
-  const hasRun    = Boolean(currentRun.data && currentRun.data.status !== "CLAIMED");
-  const awaitingClaim = currentRun.data?.status === "SUCCESS_WAITING_CLAIM" || currentRun.data?.status === "FAILED_WAITING_CLAIM";
-  const activeRunImage = currentRun.data
+  const stopAutoRun = useMutation({
+    mutationFn: api.stopAutoRun,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["current-run"] }),
+        queryClient.invalidateQueries({ queryKey: ["dungeons"] }),
+      ]);
+    },
+  });
+
+  const readAutoSummary = useMutation({
+    mutationFn: api.markAutoRunSummaryRead,
+    onSuccess: async () => {
+      setShowAutoSummary(false);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["current-run"] }),
+        queryClient.invalidateQueries({ queryKey: ["dungeons"] }),
+      ]);
+    },
+  });
+
+  const activeLocationId = autoBlocksStarts
+    ? autoRun?.location.id ?? currentRunData?.location.id ?? null
+    : currentRunData?.location.id ?? null;
+  const activeRunImage = currentRunData
     ? bestMediaUrl(
-        dungeonsQuery.data?.find((dungeon) => dungeon.id === currentRun.data?.location.id)?.media,
+        dungeonsQuery.data?.find((dungeon) => dungeon.id === currentRunData.location.id)?.media,
         ["large_url", "medium_url", "small_url"],
       )
     : undefined;
+  const autoStatusLabel = autoRun?.summary_unread
+    ? t("autoRun.summaryTitle")
+    : autoRun?.status === "STOPPING"
+      ? t("autoRun.stopping")
+      : autoRun?.status === "ACTIVE"
+        ? autoRun.current_run_id
+          ? t("autoRun.running")
+          : t("autoRun.processing")
+        : null;
+
+  const getActionLabel = ({
+    isActive,
+    exhausted,
+    categoryExhausted,
+    isResource,
+  }: {
+    isActive: boolean;
+    exhausted: boolean;
+    categoryExhausted: boolean;
+    isResource: boolean;
+  }) => {
+    if (startMutation.isPending) return t("dungeons.sending");
+    if (autoStatusLabel) return autoStatusLabel;
+    if (isActive) return t("dungeons.inProgressButton");
+    if (categoryExhausted) return t("dungeons.categoryLimitReached");
+    if (exhausted) return t("dungeons.dailyLimitReached");
+    if (awaitingClaim) return t("dungeons.claimFirst");
+    if (isRunning) return t("dungeons.heroBusy");
+    if (!isResource && hpTooLow) return t("dungeons.lowHp");
+    return isResource ? t("dungeons.gather") : t("dungeons.sendHero");
+  };
+
+  const getActionDisabled = ({
+    exhausted,
+    categoryExhausted,
+    needsHpCheck,
+  }: {
+    exhausted: boolean;
+    categoryExhausted: boolean;
+    needsHpCheck: boolean;
+  }) => hasRun || autoBlocksStarts || startMutation.isPending || exhausted || categoryExhausted || (needsHpCheck && hpTooLow);
+
+  const renderAutoButton = (locationId: number, disabled: boolean, stretch = false) => {
+    const armed = armedAutoLocationId === locationId;
+    return (
+      <button
+        type="button"
+        title={t("autoRun.tooltip")}
+        aria-label={t("autoRun.tooltip")}
+        aria-pressed={armed}
+        data-tooltip={t("autoRun.tooltip")}
+        disabled={disabled || hasRun || autoBlocksStarts}
+        onClick={(event) => {
+          event.stopPropagation();
+          setArmedAuto(armed ? null : locationId);
+        }}
+        className={`btn btn-secondary auto-run-btn${armed ? " armed" : ""}${stretch ? " full" : ""}`}
+      >
+        <span>{armed ? t("autoRun.on") : t("autoRun.off")}</span>
+        <span className="auto-run-btn-track" aria-hidden="true">
+          <span className="auto-run-btn-dot" />
+        </span>
+      </button>
+    );
+  };
+
+  const getLocationActionState = (location: Dungeon) => {
+    const exhausted = location.daily_remaining !== null && location.daily_remaining <= 0;
+    const categoryExhausted = location.limit_category.is_exhausted;
+    const isResource = location.location_type === "resource";
+    const isActive = activeLocationId === location.id;
+    const disabled = getActionDisabled({
+      exhausted,
+      categoryExhausted,
+      needsHpCheck: !isResource,
+    });
+    const actionLabel = getActionLabel({
+      isActive,
+      exhausted,
+      categoryExhausted,
+      isResource,
+    });
+
+    return { actionLabel, categoryExhausted, disabled, exhausted, isActive, isResource };
+  };
+
+  const closeDetails = () => {
+    setLootDungeon(null);
+    setResourceLocation(null);
+  };
+
+  const openLocationDetails = (location: Dungeon) => {
+    if (location.location_type === "resource") {
+      setResourceLocation(location);
+      setLootDungeon(null);
+      return;
+    }
+    setLootDungeon(location);
+    setResourceLocation(null);
+  };
+
+  const handleLocationKeyDown = (event: React.KeyboardEvent<HTMLElement>, location: Dungeon) => {
+    if (event.currentTarget !== event.target) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openLocationDetails(location);
+  };
+
+  const startLocationRun = (locationId: number, disabled: boolean) => {
+    if (disabled) return;
+    startMutation.mutate({ id: locationId, auto: armedAutoLocationId === locationId });
+    closeDetails();
+  };
+
+  const renderPrimaryRunButton = (
+    location: Dungeon,
+    disabled: boolean,
+    actionLabel: string,
+    isActive: boolean,
+    style?: React.CSSProperties,
+  ) => (
+    <button
+      disabled={disabled}
+      onClick={(event) => {
+        event.stopPropagation();
+        startLocationRun(location.id, disabled);
+      }}
+      className="btn btn-primary"
+      style={{ opacity: isActive ? 0.7 : undefined, ...style }}
+    >
+      <Swords size={15} strokeWidth={1.9} />
+      {actionLabel}
+    </button>
+  );
+
+  const renderDetailActions = (location: Dungeon) => {
+    const { actionLabel, disabled, isActive } = getLocationActionState(location);
+    return (
+      <div className="dungeon-detail-actions">
+        {renderPrimaryRunButton(location, disabled, actionLabel, isActive, {
+          minWidth: 170,
+          minHeight: 40,
+        })}
+        {renderAutoButton(location.id, disabled)}
+      </div>
+    );
+  };
+
+  const showAutoStatusBlock = Boolean(autoRun && (autoRun.status === "ACTIVE" || autoRun.status === "STOPPING"));
+  const showAutoSummaryPrompt = Boolean(autoRun?.summary_unread);
+  const showManualRunBanner = Boolean(currentRunData && hasRun && !autoBlocksStarts);
+  const detailsHint = effectiveView === "list" ? t("dungeons.tapRowDetails") : t("dungeons.tapCardDetails");
 
   return (
     <div className="col animate-fade-in">
 
       {/* Active run banner */}
-      {hasRun && currentRun.data && <ActiveRunBanner run={currentRun.data} imageUrl={activeRunImage} onClaimed={setRewardResult} />}
+      {showAutoStatusBlock && autoRun && (
+        <AutoRunStatusBlock
+          autoRun={autoRun}
+          run={currentRunData}
+          pending={stopAutoRun.isPending}
+          onStop={() => stopAutoRun.mutate()}
+        />
+      )}
+      {showAutoSummaryPrompt && autoRun && (
+        <section className="auto-run-panel" aria-label={t("autoRun.summaryTitle")}>
+          <div className="auto-run-panel-top" aria-hidden="true" />
+          <div className="auto-run-panel-bottom" aria-hidden="true" />
+          <div className="auto-run-state-head" style={{ marginBottom: 0 }}>
+            <div className="auto-run-state-heading">
+              <div className="mono auto-run-state-kicker">
+                <Sparkles size={19} strokeWidth={1.8} />
+                {t("autoRun.summaryTitle")}
+              </div>
+              <div className="auto-run-state-title">{autoRun.location.name}</div>
+              <div className="card-sub" style={{ marginTop: 4 }}>{t("autoRun.summaryRequired")}</div>
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={readAutoSummary.isPending}
+              onClick={() => setShowAutoSummary(true)}
+            >
+              {t("autoRun.viewSummary")}
+            </button>
+          </div>
+        </section>
+      )}
+      {showManualRunBanner && currentRunData && (
+        <ActiveRunBanner run={currentRunData} imageUrl={activeRunImage} onClaimed={setRewardResult} />
+      )}
 
       {dungeonsQuery.isLoading && <LoadingLine label={t("dungeons.loading")} />}
 
@@ -420,7 +840,7 @@ export function DungeonsScreen() {
                 <Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
                 {isMobile && (
                   <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1 }}>
-                    {cat === "dungeon" ? t("dungeons.categoryDungeons") : locale === "ru" ? "Сбор" : "Gather"}
+                    {cat === "dungeon" ? t("dungeons.categoryDungeons") : t("dungeons.gather")}
                   </span>
                 )}
               </button>
@@ -462,6 +882,11 @@ export function DungeonsScreen() {
         </div>
       </div>
 
+      <div className="dungeon-detail-hint">
+        <Info size={14} strokeWidth={1.8} />
+        <span>{detailsHint}</span>
+      </div>
+
       {/* Dungeon grid view */}
       {effectiveView === "grid" && category === "dungeon" && (
         <div style={{
@@ -471,19 +896,34 @@ export function DungeonsScreen() {
         }}>
           {combatDungeons.map((dungeon) => {
             const tier       = getTier(dungeon.required_power);
-            const isActive   = currentRun.data?.location?.id === dungeon.id && isRunning;
+            const isActive   = activeLocationId === dungeon.id;
             const localRemaining = dungeon.daily_remaining;
             const localExhausted = localRemaining !== null && localRemaining <= 0;
             const categoryExhausted = dungeon.limit_category.is_exhausted;
-            const disabled   = hasRun || startMutation.isPending || hpTooLow || localExhausted || categoryExhausted;
+            const disabled = getActionDisabled({
+              exhausted: localExhausted,
+              categoryExhausted,
+              needsHpCheck: true,
+            });
             const dungeonImage = bestMediaUrl(dungeon.media, ["large_url", "medium_url", "small_url"]);
-
             const durLabel = formatDuration(dungeon.duration_seconds, locale);
+            const actionLabel = getActionLabel({
+              isActive,
+              exhausted: localExhausted,
+              categoryExhausted,
+              isResource: false,
+            });
+            const isSelected = lootDungeon?.id === dungeon.id;
 
             return (
               <div
                 key={dungeon.id}
-                className={`dungeon${isActive ? " active" : ""}`}
+                className={`dungeon${isActive ? " active" : ""}${isSelected ? " selected" : ""}`}
+                role="button"
+                tabIndex={0}
+                aria-label={t("dungeons.openDetails", { name: dungeon.name })}
+                onClick={() => openLocationDetails(dungeon)}
+                onKeyDown={(event) => handleLocationKeyDown(event, dungeon)}
               >
                 {/* Artwork */}
                 <div style={{
@@ -563,22 +1003,8 @@ export function DungeonsScreen() {
 
                     {/* CTA buttons */}
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button
-                        disabled={disabled}
-                        onClick={() => !disabled && startMutation.mutate(dungeon.id)}
-                        className="btn btn-primary"
-                        style={{ flex: 1, opacity: isActive ? 0.7 : undefined }}
-                      >
-                        {startMutation.isPending ? t("dungeons.sending") : isActive ? t("dungeons.inProgressButton") : categoryExhausted ? t("dungeons.categoryLimitReached") : localExhausted ? t("dungeons.dailyLimitReached") : awaitingClaim ? t("dungeons.claimFirst") : isRunning ? t("dungeons.heroBusy") : hpTooLow ? t("dungeons.lowHp") : t("dungeons.sendHero")}
-                      </button>
-                      <button
-                        onClick={() => setLootDungeon(dungeon)}
-                        className="btn btn-secondary"
-                        aria-label="Dungeon info"
-                        style={{ width: 40, padding: 0, flexShrink: 0 }}
-                      >
-                        <Info size={15} />
-                      </button>
+                      {renderPrimaryRunButton(dungeon, disabled, actionLabel, isActive, { flex: 1 })}
+                      {renderAutoButton(dungeon.id, disabled)}
                     </div>
                   </div>
                 </div>
@@ -593,40 +1019,40 @@ export function DungeonsScreen() {
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {combatDungeons.map((dungeon) => {
             const tier         = getTier(dungeon.required_power);
-            const isActive     = currentRun.data?.location?.id === dungeon.id && isRunning;
+            const isActive     = activeLocationId === dungeon.id;
             const localRemaining = dungeon.daily_remaining;
             const localExhausted = localRemaining !== null && localRemaining <= 0;
             const categoryExhausted = dungeon.limit_category.is_exhausted;
-            const disabled     = hasRun || startMutation.isPending || hpTooLow || localExhausted || categoryExhausted;
+            const disabled = getActionDisabled({
+              exhausted: localExhausted,
+              categoryExhausted,
+              needsHpCheck: true,
+            });
             const dungeonImage = bestMediaUrl(dungeon.media, ["small_url", "medium_url", "large_url"]);
             const durLabel     = formatDuration(dungeon.duration_seconds, locale);
-            const actionLabel   = startMutation.isPending
-              ? t("dungeons.sending")
-              : isActive
-                ? t("dungeons.inProgressButton")
-                : categoryExhausted
-                  ? t("dungeons.categoryLimitReached")
-                  : localExhausted
-                    ? t("dungeons.dailyLimitReached")
-                    : awaitingClaim
-                      ? t("dungeons.claimFirst")
-                      : isRunning
-                        ? t("dungeons.heroBusy")
-                        : hpTooLow
-                          ? t("dungeons.lowHp")
-                          : t("dungeons.sendHero");
+            const actionLabel = getActionLabel({
+              isActive,
+              exhausted: localExhausted,
+              categoryExhausted,
+              isResource: false,
+            });
+            const isSelected = lootDungeon?.id === dungeon.id;
 
             if (isMobile) {
               return (
                 <div
                   key={dungeon.id}
-                  className={`dungeon${isActive ? " active" : ""}`}
+                  className={`dungeon${isActive ? " active" : ""}${isSelected ? " selected" : ""}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={t("dungeons.openDetails", { name: dungeon.name })}
+                  onClick={() => openLocationDetails(dungeon)}
+                  onKeyDown={(event) => handleLocationKeyDown(event, dungeon)}
                   style={{
                     minHeight: 96,
                     padding: 10,
                     borderRadius: 14,
                     overflow: "hidden",
-                    cursor: "default",
                   }}
                 >
                   <div style={{ display: "flex", gap: 11, alignItems: "stretch" }}>
@@ -682,15 +1108,11 @@ export function DungeonsScreen() {
                       <div style={{
                         marginTop: 8,
                         display: "grid",
-                        gridTemplateColumns: "minmax(0, 1fr) 38px",
+                        gridTemplateColumns: "minmax(0, 1fr) minmax(0, 0.9fr) 30px",
                         gap: 8,
                         alignItems: "center",
                       }}>
-                        <button
-                          disabled={!isActive && disabled}
-                          onClick={() => !disabled && startMutation.mutate(dungeon.id)}
-                          className="btn btn-primary"
-                          style={{
+                        {renderPrimaryRunButton(dungeon, disabled, actionLabel, isActive, {
                             minHeight: 32, height: 32, padding: "0 10px",
                             borderRadius: 8, fontSize: 12, fontWeight: 700,
                             background: isActive
@@ -702,22 +1124,18 @@ export function DungeonsScreen() {
                             boxShadow: isActive || disabled ? "none" : undefined,
                             color: !isActive && disabled ? "rgba(148,163,184,0.72)" : undefined,
                             opacity: isActive || disabled ? 1 : undefined,
-                          }}
-                        >
-                          {actionLabel}
-                        </button>
+                          })}
+                        {renderAutoButton(dungeon.id, disabled)}
                         <button
-                          onClick={() => setLootDungeon(dungeon)}
-                          className="btn btn-secondary"
-                          aria-label="Dungeon info"
-                          style={{
-                            width: 38, minWidth: 38, height: 32, padding: 0,
-                            borderRadius: 9, color: "rgba(203,213,225,0.78)",
-                            borderColor: "rgba(46,59,90,0.72)",
-                            background: "rgba(11,16,32,0.42)",
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openLocationDetails(dungeon);
                           }}
+                          className="dungeon-detail-arrow"
+                          aria-label={t("dungeons.openDetails", { name: dungeon.name })}
                         >
-                          <Info size={14} />
+                          <ChevronRight size={18} />
                         </button>
                       </div>
                     </div>
@@ -729,7 +1147,12 @@ export function DungeonsScreen() {
             return (
               <div
                 key={dungeon.id}
-                className={`dungeon${isActive ? " active" : ""}`}
+                className={`dungeon${isActive ? " active" : ""}${isSelected ? " selected" : ""}`}
+                role="button"
+                tabIndex={0}
+                aria-label={t("dungeons.openDetails", { name: dungeon.name })}
+                onClick={() => openLocationDetails(dungeon)}
+                onKeyDown={(event) => handleLocationKeyDown(event, dungeon)}
                 style={{ flexDirection: "row", minHeight: 99, overflow: "hidden" }}
               >
                 {/* Zone 1 — thumbnail */}
@@ -810,40 +1233,44 @@ export function DungeonsScreen() {
                       </span>
                     )}
                   </div>
+                  {dungeon.description && (
+                    <p style={{
+                      color: "var(--text-dim)", fontSize: 13, margin: 0, lineHeight: 1.45,
+                      overflow: "hidden", display: "-webkit-box",
+                      WebkitLineClamp: 1, WebkitBoxOrient: "vertical" as React.CSSProperties["WebkitBoxOrient"],
+                    }}>
+                      {dungeon.description}
+                    </p>
+                  )}
                 </div>
 
                 {/* Zone 3 — action */}
                 <div style={{
-                  width: 160, minWidth: 160, flexShrink: 0,
+                  width: 360, minWidth: 360, flexShrink: 0,
                   borderLeft: "1px solid var(--line-soft)",
-                  display: "flex", flexDirection: "column",
+                  display: "flex", flexDirection: "row",
                   alignItems: "center", justifyContent: "center",
-                  gap: 8, padding: "12px 18px",
+                  gap: 12, padding: "12px 18px",
                 }}>
+                  {renderPrimaryRunButton(dungeon, disabled, actionLabel, isActive, {
+                    minWidth: 142, minHeight: 44, height: "auto", fontSize: 13,
+                    whiteSpace: "normal", lineHeight: 1.2, textAlign: "center",
+                    paddingTop: 8, paddingBottom: 8,
+                  })}
+                  {renderAutoButton(dungeon.id, disabled)}
                   <button
-                    disabled={disabled}
-                    onClick={() => !disabled && startMutation.mutate(dungeon.id)}
-                    className="btn btn-primary"
-                    style={{
-                      width: "100%", minHeight: 44, height: "auto", fontSize: 13,
-                      whiteSpace: "normal", lineHeight: 1.2, textAlign: "center",
-                      paddingTop: 8, paddingBottom: 8,
-                      opacity: isActive ? 0.7 : undefined,
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openLocationDetails(dungeon);
                     }}
+                    className="dungeon-detail-arrow"
+                    aria-label={t("dungeons.openDetails", { name: dungeon.name })}
                   >
-                    {actionLabel}
-                  </button>
-                  <button
-                    onClick={() => setLootDungeon(dungeon)}
-                    className="btn btn-secondary"
-                    aria-label="Dungeon info"
-                    style={{ width: "100%", height: 32, fontSize: 12, gap: 6 }}
-                  >
-                    <Info size={13} />
-                    {locale === "ru" ? "Обзор" : "Overview"}
+                    <ChevronRight size={20} />
                   </button>
                   {isActive && (
-                    <div style={{ width: "100%" }}>
+                    <div style={{ width: 42 }}>
                       <div className="bar" style={{ height: 5 }}>
                         <i style={{
                           width: "100%",
@@ -887,13 +1314,32 @@ export function DungeonsScreen() {
             const used        = location.daily_limit - remaining;
             const exhausted   = location.daily_remaining !== null && remaining <= 0;
             const categoryExhausted = location.limit_category.is_exhausted;
-            const isActive    = currentRun.data?.location?.id === location.id && isRunning;
-            const disabled    = hasRun || startMutation.isPending || exhausted || categoryExhausted;
+            const isActive = activeLocationId === location.id;
+            const disabled = getActionDisabled({
+              exhausted,
+              categoryExhausted,
+              needsHpCheck: false,
+            });
             const locationImage = bestMediaUrl(location.media, ["large_url", "medium_url", "small_url"]);
             const durLabel    = formatDuration(location.duration_seconds, locale);
+            const actionLabel = getActionLabel({
+              isActive,
+              exhausted,
+              categoryExhausted,
+              isResource: true,
+            });
+            const isSelected = resourceLocation?.id === location.id;
 
             return (
-              <div key={location.id} className={`dungeon${isActive ? " active" : ""}`}>
+              <div
+                key={location.id}
+                className={`dungeon${isActive ? " active" : ""}${isSelected ? " selected" : ""}`}
+                role="button"
+                tabIndex={0}
+                aria-label={t("dungeons.openDetails", { name: location.name })}
+                onClick={() => openLocationDetails(location)}
+                onKeyDown={(event) => handleLocationKeyDown(event, location)}
+              >
                 <div style={{
                   aspectRatio: "1 / 1", position: "relative",
                   background: locationImage ? undefined : "var(--bg-3)",
@@ -962,34 +1408,8 @@ export function DungeonsScreen() {
                     </div>
 
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button
-                        disabled={disabled}
-                        onClick={() => !disabled && startMutation.mutate(location.id)}
-                        className="btn btn-primary"
-                        style={{ flex: 1, opacity: isActive ? 0.7 : undefined }}
-                      >
-                        {startMutation.isPending
-                          ? t("dungeons.sending")
-                          : isActive
-                            ? t("dungeons.inProgressButton")
-                            : categoryExhausted
-                              ? t("dungeons.categoryLimitReached")
-                              : exhausted
-                                ? t("dungeons.dailyLimitReached")
-                                : awaitingClaim
-                                  ? t("dungeons.claimFirst")
-                                  : isRunning
-                                    ? t("dungeons.heroBusy")
-                                    : t("dungeons.gather")}
-                      </button>
-                      <button
-                        onClick={() => setResourceLocation(location)}
-                        className="btn btn-secondary"
-                        aria-label={locale === "ru" ? "Информация о локации" : "Location info"}
-                        style={{ width: 40, padding: 0, flexShrink: 0 }}
-                      >
-                        <Info size={15} />
-                      </button>
+                      {renderPrimaryRunButton(location, disabled, actionLabel, isActive, { flex: 1 })}
+                      {renderAutoButton(location.id, disabled)}
                     </div>
                   </div>
                 </div>
@@ -1007,35 +1427,37 @@ export function DungeonsScreen() {
             const used          = location.daily_limit - remaining;
             const exhausted     = location.daily_remaining !== null && remaining <= 0;
             const categoryExhausted = location.limit_category.is_exhausted;
-            const isActive      = currentRun.data?.location?.id === location.id && isRunning;
-            const disabled      = hasRun || startMutation.isPending || exhausted || categoryExhausted;
+            const isActive = activeLocationId === location.id;
+            const disabled = getActionDisabled({
+              exhausted,
+              categoryExhausted,
+              needsHpCheck: false,
+            });
             const locationImage = bestMediaUrl(location.media, ["small_url", "medium_url", "large_url"]);
             const durLabel      = formatDuration(location.duration_seconds, locale);
-            const actionLabel   = startMutation.isPending
-              ? t("dungeons.sending")
-              : isActive
-                ? t("dungeons.inProgressButton")
-                : categoryExhausted
-                  ? t("dungeons.categoryLimitReached")
-                  : exhausted
-                    ? t("dungeons.dailyLimitReached")
-                    : awaitingClaim
-                      ? t("dungeons.claimFirst")
-                      : isRunning
-                        ? t("dungeons.heroBusy")
-                        : t("dungeons.gather");
+            const actionLabel = getActionLabel({
+              isActive,
+              exhausted,
+              categoryExhausted,
+              isResource: true,
+            });
+            const isSelected = resourceLocation?.id === location.id;
 
             if (isMobile) {
               return (
                 <div
                   key={location.id}
-                  className={`dungeon${isActive ? " active" : ""}`}
+                  className={`dungeon${isActive ? " active" : ""}${isSelected ? " selected" : ""}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={t("dungeons.openDetails", { name: location.name })}
+                  onClick={() => openLocationDetails(location)}
+                  onKeyDown={(event) => handleLocationKeyDown(event, location)}
                   style={{
                     minHeight: 96,
                     padding: 10,
                     borderRadius: 14,
                     overflow: "hidden",
-                    cursor: "default",
                   }}
                 >
                   <div style={{ display: "flex", gap: 11, alignItems: "stretch" }}>
@@ -1093,15 +1515,11 @@ export function DungeonsScreen() {
                       <div style={{
                         marginTop: 8,
                         display: "grid",
-                        gridTemplateColumns: "minmax(0, 1fr) 38px",
+                        gridTemplateColumns: "minmax(0, 1fr) minmax(0, 0.9fr) 30px",
                         gap: 8,
                         alignItems: "center",
                       }}>
-                        <button
-                          disabled={!isActive && disabled}
-                          onClick={() => !disabled && startMutation.mutate(location.id)}
-                          className="btn btn-primary"
-                          style={{
+                        {renderPrimaryRunButton(location, disabled, actionLabel, isActive, {
                             minHeight: 32, height: 32, padding: "0 10px",
                             borderRadius: 8, fontSize: 12, fontWeight: 700,
                             background: isActive
@@ -1113,22 +1531,18 @@ export function DungeonsScreen() {
                             boxShadow: isActive || disabled ? "none" : undefined,
                             color: !isActive && disabled ? "rgba(148,163,184,0.72)" : undefined,
                             opacity: isActive || disabled ? 1 : undefined,
-                          }}
-                        >
-                          {actionLabel}
-                        </button>
+                          })}
+                        {renderAutoButton(location.id, disabled)}
                         <button
-                          onClick={() => setResourceLocation(location)}
-                          className="btn btn-secondary"
-                          aria-label={locale === "ru" ? "Информация о локации" : "Location info"}
-                          style={{
-                            width: 38, minWidth: 38, height: 32, padding: 0,
-                            borderRadius: 9, color: "rgba(203,213,225,0.78)",
-                            borderColor: "rgba(46,59,90,0.72)",
-                            background: "rgba(11,16,32,0.42)",
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openLocationDetails(location);
                           }}
+                          className="dungeon-detail-arrow"
+                          aria-label={t("dungeons.openDetails", { name: location.name })}
                         >
-                          <Info size={14} />
+                          <ChevronRight size={18} />
                         </button>
                       </div>
                     </div>
@@ -1140,7 +1554,12 @@ export function DungeonsScreen() {
             return (
               <div
                 key={location.id}
-                className={`dungeon${isActive ? " active" : ""}`}
+                className={`dungeon${isActive ? " active" : ""}${isSelected ? " selected" : ""}`}
+                role="button"
+                tabIndex={0}
+                aria-label={t("dungeons.openDetails", { name: location.name })}
+                onClick={() => openLocationDetails(location)}
+                onKeyDown={(event) => handleLocationKeyDown(event, location)}
                 style={{ flexDirection: "row", minHeight: 99, overflow: "hidden" }}
               >
                 {/* Zone 1 — thumbnail */}
@@ -1214,43 +1633,57 @@ export function DungeonsScreen() {
                       </span>
                     )}
                   </div>
+                  {location.description && (
+                    <p style={{
+                      color: "var(--text-dim)", fontSize: 13, margin: 0, lineHeight: 1.45,
+                      overflow: "hidden", display: "-webkit-box",
+                      WebkitLineClamp: 1, WebkitBoxOrient: "vertical" as React.CSSProperties["WebkitBoxOrient"],
+                    }}>
+                      {location.description}
+                    </p>
+                  )}
                 </div>
 
                 {/* Zone 3 — action */}
                 <div style={{
-                  width: 160, minWidth: 160, flexShrink: 0,
+                  width: 360, minWidth: 360, flexShrink: 0,
                   borderLeft: "1px solid var(--line-soft)",
-                  display: "flex", flexDirection: "column",
+                  display: "flex", flexDirection: "row",
                   alignItems: "center", justifyContent: "center",
-                  gap: 8, padding: "12px 18px",
+                  gap: 12, padding: "12px 18px",
                 }}>
+                  {renderPrimaryRunButton(location, disabled, actionLabel, isActive, {
+                    minWidth: 142, minHeight: 44, height: "auto", fontSize: 13,
+                    whiteSpace: "normal", lineHeight: 1.2, textAlign: "center",
+                    paddingTop: 8, paddingBottom: 8,
+                  })}
+                  {renderAutoButton(location.id, disabled)}
                   <button
-                    disabled={disabled}
-                    onClick={() => !disabled && startMutation.mutate(location.id)}
-                    className="btn btn-primary"
-                    style={{
-                      width: "100%", minHeight: 44, height: "auto", fontSize: 13,
-                      whiteSpace: "normal", lineHeight: 1.2, textAlign: "center",
-                      paddingTop: 8, paddingBottom: 8,
-                      opacity: isActive ? 0.7 : undefined,
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openLocationDetails(location);
                     }}
+                    className="dungeon-detail-arrow"
+                    aria-label={t("dungeons.openDetails", { name: location.name })}
                   >
-                    {actionLabel}
-                  </button>
-                  <button
-                    onClick={() => setResourceLocation(location)}
-                    className="btn btn-secondary"
-                    aria-label={locale === "ru" ? "Информация о локации" : "Location info"}
-                    style={{ width: "100%", height: 32, fontSize: 12, gap: 6 }}
-                  >
-                    <Info size={13} />
-                    {locale === "ru" ? "Обзор" : "Overview"}
+                    <ChevronRight size={20} />
                   </button>
                 </div>
               </div>
             );
           })}
         </div>
+      )}
+
+      {showAutoSummary && autoRun?.summary_unread && (
+        <AutoRunSummaryModal
+          autoRun={autoRun}
+          pending={readAutoSummary.isPending}
+          onAcknowledge={() => readAutoSummary.mutate()}
+          onOpenInventory={onOpenInventory}
+          onOpenConsumables={onOpenConsumables}
+        />
       )}
 
       {rewardResult && (
@@ -1263,12 +1696,14 @@ export function DungeonsScreen() {
         <DungeonLootModal
           dungeon={lootDungeon}
           onClose={() => setLootDungeon(null)}
+          actions={renderDetailActions(lootDungeon)}
         />
       )}
       {resourceLocation && (
         <DungeonResourceModal
           location={resourceLocation}
           onClose={() => setResourceLocation(null)}
+          actions={renderDetailActions(resourceLocation)}
         />
       )}
     </div>

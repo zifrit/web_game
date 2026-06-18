@@ -5,8 +5,8 @@
 - Keep all API calls in `frontend/lib/api.ts`.
 - API base is selected through `NEXT_PUBLIC_API_BASE_URL`, or falls back to the
   current host with port `8000`.
-- Tokens are stored in `localStorage` under the `rpg_tokens` key.
-- The active shell tab is stored in `localStorage` under the `activeTab` key.
+- Auth/session state and the active shell tab may be persisted client-side for
+  continuity, but the backend remains the source of truth for game state.
 - Locale is stored through helpers in `frontend/lib/i18n.ts`; API requests send
   `Accept-Language`.
 - After claim/repair/auth changes, invalidate relevant TanStack Query data.
@@ -43,19 +43,22 @@ should use `User.avatar` so the profile image is not replaced by hero art.
 - The interface should be an actual game UI, not a marketing/landing page.
 - The client may format display values, but must not calculate critical game
   formulas, rewards, economy, or server-authoritative results.
-- Memory-pairs mini-game: "Accelerate" opens a difficulty selection modal
-  (percentages from `GET /mini-game/configs`), and the selected value sends
-  `config_id` to start; availability, timer, scoring, and run acceleration are
-  server-authoritative.
-- The board arrives by `code`; SVG faces are resolved locally from the
-  `GET /mini-game/card-faces` catalog (`useCardFaces` hook; localStorage is used
-  only as instant initialData, while the backend remains the source of truth
-  after admin changes). `reveal`/`move` return a `finished` flag; when
-  `finished`, show the result modal.
-- Result modal: green on SUCCESS with actual `duration_reduction_seconds`, red
-  on timeout only if the game modal is still open. The board should remain
-  locally stable: do not replace the entire board after a move; update only
-  selected/matched cards.
+- Auto run UI uses the `Auto` button label and the terms "Auto run" /
+  "Автозапуск" in guide copy. Only one location can be armed at a time, while
+  active server auto state is displayed from the current-run state.
+- Auto-owned current runs hide mini-game and manual claim controls. Stopped
+  unread auto-run summaries require explicit acknowledgement before new starts
+  are enabled.
+- Summary item CTAs open inventory equipment; ingredient CTAs open inventory
+  consumables.
+- Memory-pairs mini-game: "Accelerate" opens a difficulty selection modal;
+  availability, timer, scoring, and run acceleration are server-authoritative.
+- Card face art may be resolved through a local catalog/cache for responsiveness,
+  but the backend remains the source of truth after admin changes. The board
+  should remain locally stable through moves and only update selected/matched
+  card state.
+- Result modal: green on success with the actual acceleration bonus, red on
+  timeout only if the game modal is still open.
 - Inventory should show at least 24 cells and load following pages when
   `pagination.has_next` is true.
 - Inventory has two sections: equipment and consumables. Consumables combines
