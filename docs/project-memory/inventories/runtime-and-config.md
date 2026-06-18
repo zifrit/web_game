@@ -4,7 +4,7 @@ Updated from code inspection on 2026-05-30.
 
 ## Docker Compose services
 
-Source: `docker-compose.yml`.
+Source: `docker-compose.yml`, `docker-compose.prod.yml`.
 
 - `postgres` - `postgres:17.9`, port `5432`, healthcheck via `pg_isready`.
 - `redis` - `redis:7-alpine`, port `6379`, healthcheck via `redis-cli ping`.
@@ -13,6 +13,9 @@ Source: `docker-compose.yml`.
 - `celery_beat` - builds `./backend`, runs `celery -A config beat -l info`.
 - `frontend` - builds `./frontend`, runs `npm run dev -- --hostname 0.0.0.0`
   on `3000`.
+- Production `frontend` uses `frontend/Dockerfile.prod`, passes
+  `NEXT_PUBLIC_API_BASE_URL` at build time, and allows overriding the npm
+  registry with `NPM_REGISTRY` while defaulting to `https://registry.npmjs.org/`.
 
 Compose references env files, but project memory must not read or reproduce
 `.env` or `.env.*` contents. Current compose uses `.env` for backend and an env
